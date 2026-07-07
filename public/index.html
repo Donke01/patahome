@@ -13,17 +13,17 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
   :root{
-    --green:#0e7c5a; --green-dark:#0a5c43; --green-light:#e6f4ef;
-    --ink:#1c2320; --muted:#5f6b66; --line:#e3e8e5; --bg:#f7faf8;
-    --amber:#e8a13a; --card:#ffffff; --radius:14px;
-    --shadow:0 2px 10px rgba(20,40,30,.08);
-    --header-bg:#fff; --footer-bg:#1c2320;
+    --green:#7c3aed; --green-dark:#5b21b6; --green-light:#f3ecff;
+    --ink:#241b33; --muted:#6e6482; --line:#e9e2f5; --bg:#faf8ff;
+    --amber:#ff7a1a; --card:#ffffff; --radius:20px;
+    --shadow:0 3px 14px rgba(90,40,180,.10);
+    --header-bg:#fff; --footer-bg:#1d1430;
   }
   body.dark{
-    --green:#2fbd8f; --green-dark:#5cd6ab; --green-light:#12352a;
-    --ink:#e8efeb; --muted:#93a39c; --line:#2a3530; --bg:#101815;
-    --card:#182420; --shadow:0 2px 12px rgba(0,0,0,.4);
-    --header-bg:#141e1a; --footer-bg:#0b110e;
+    --green:#a78bfa; --green-dark:#c4b5fd; --green-light:#2b2145;
+    --ink:#efeaf8; --muted:#a79cbd; --line:#3a2f52; --bg:#151021;
+    --card:#1f172f; --shadow:0 3px 14px rgba(0,0,0,.45);
+    --header-bg:#1a1228; --footer-bg:#0e0918;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;transition:background .3s,color .3s}
@@ -58,9 +58,10 @@
   .icon-btn.active-filter{border-color:var(--amber);background:rgba(232,161,58,.12)}
 
   /* ---------- Hero ---------- */
-  .hero{background:linear-gradient(120deg,#0a5c43,#0e7c5a,#14997a,#0a5c43);background-size:300% 300%;animation:heroShift 12s ease infinite;color:#fff;padding:44px 20px 58px;text-align:center;position:relative;overflow:hidden}
+  .hero{background:linear-gradient(120deg,#4c1d95,#7c3aed,#c026d3,#ff7a1a,#7c3aed);background-size:400% 400%;animation:heroShift 14s ease infinite;color:#fff;padding:44px 20px 58px;text-align:center;position:relative;overflow:hidden}
   .blob{position:absolute;font-size:2.2rem;opacity:.22;animation:floaty 7s ease-in-out infinite;pointer-events:none}
-  .hero h1{font-size:clamp(1.5rem,4vw,2.4rem);font-weight:800;margin-bottom:8px;position:relative;animation:fadeUp .7s both}
+  .hero h1{font-size:clamp(1.6rem,4.5vw,2.7rem);font-weight:900;letter-spacing:-1px;margin-bottom:8px;position:relative;animation:fadeUp .7s both}
+  .hero h1 .hl{background:linear-gradient(90deg,#ffd34d,#ff7a1a);-webkit-background-clip:text;background-clip:text;color:transparent}
   .hero p{opacity:.9;max-width:620px;margin:0 auto 20px;font-size:.98rem;position:relative;animation:fadeUp .7s .12s both}
   .stats{display:flex;justify-content:center;gap:34px;margin-bottom:22px;position:relative;animation:fadeUp .7s .2s both;flex-wrap:wrap}
   .stat .num{font-size:1.45rem;font-weight:800}
@@ -73,12 +74,16 @@
   .loc-row{margin-top:16px;display:flex;justify-content:center;gap:10px;flex-wrap:wrap;position:relative;animation:fadeUp .7s .4s both}
   .loc-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.4);color:#fff;border-radius:999px;padding:8px 18px;font-size:.88rem;font-weight:600;display:flex;align-items:center;gap:7px;transition:.2s}
   .loc-btn:hover{background:rgba(255,255,255,.28);transform:translateY(-1px)}
-  .loc-btn.active{background:#fff;color:#0e7c5a}
+  .loc-btn.active{background:#fff;color:#7c3aed}
   #locStatus{font-size:.82rem;opacity:.9;margin-top:10px;position:relative}
+  .quick-row{margin-top:14px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap;position:relative;animation:fadeUp .7s .5s both}
+  .quick{background:rgba(255,255,255,.92);color:#5b21b6;border:none;border-radius:999px;padding:8px 16px;font-size:.83rem;font-weight:800;transition:.15s;box-shadow:0 3px 10px rgba(0,0,0,.15)}
+  .quick:hover{transform:translateY(-2px) scale(1.04);background:#ffd34d;color:#241b33}
 
   /* ---------- Ticker ---------- */
-  .ticker-wrap{background:#11201a;color:#d9e5df;overflow:hidden;white-space:nowrap;font-size:.8rem;padding:7px 0;border-bottom:1px solid var(--line)}
-  body.dark .ticker-wrap{background:#060a08}
+  .ticker-wrap{background:#1d1430;color:#e4dcf5;overflow:hidden;white-space:nowrap;font-size:.8rem;padding:7px 0;border-bottom:1px solid var(--line)}
+  body.dark .ticker-wrap{background:#0a0612}
+  .ticker span b{color:#ffd34d}
   .ticker{display:inline-flex;gap:44px;animation:ticker 36s linear infinite;padding-right:44px}
   .ticker span b{color:var(--amber)}
   .ticker-wrap:hover .ticker{animation-play-state:paused}
@@ -192,9 +197,9 @@
   <span class="blob" style="top:12%;left:6%">🏠</span>
   <span class="blob" style="top:60%;left:12%;animation-delay:1.5s">🌍</span>
   <span class="blob" style="top:20%;right:8%;animation-delay:.8s">🚗</span>
-  <span class="blob" style="top:65%;right:14%;animation-delay:2.2s">🔑</span>
-  <h1>Find your next home, plot or ride — near you</h1>
-  <p>PataHome connects tenants and buyers directly with verified property owners across Kenya — and shows you what's closest to you first. No middlemen, no viewing-fee scams.</p>
+  <span class="blob" style="top:65%;right:14%;animation-delay:2.2s">🎓</span>
+  <h1>Pata keja bila stress. <span class="hl">Comrade approved.</span> 🎒</h1>
+  <p>Bedsitters, hostels-escape cribs and shared units near your campus — straight from verified owners at comrade prices. No agents, no viewing fees, no games.</p>
   <div class="stats">
     <div class="stat"><div class="num" id="statListings">0</div><div class="cap">Live listings</div></div>
     <div class="stat"><div class="num" id="statAreas">0</div><div class="cap">Areas covered</div></div>
@@ -209,6 +214,12 @@
     <select class="loc-btn" id="citySelect" onchange="useCity(this.value)" style="appearance:auto;color:#1c2320;background:#fff">
       <option value="">…or pick an area</option>
     </select>
+  </div>
+  <div class="quick-row">
+    <button class="quick" onclick="quickFilter('rent','0-5000','0','🎒 Bedsitters under 5K')">🎒 Bedsitters under 5K</button>
+    <button class="quick" onclick="quickFilter('rent','5000-20000','1','🛏 1BRs under 20K')">🛏 1BRs under 20K</button>
+    <button class="quick" onclick="quickFilter('rent','5000-20000','2','👯 2BRs to share')">👯 2BRs to share</button>
+    <button class="quick" onclick="quickFilter('vehicle','0-1000000','','🛵 Rides under 1M')">🛵 Rides under 1M</button>
   </div>
   <div id="locStatus"></div>
 </section>
@@ -353,10 +364,10 @@ const AREAS = {
   "Kwanza, Trans Nzoia":[1.1440,34.9990],"Bikeke, Trans Nzoia":[0.9700,35.0600]
 };
 const CAT = {
-  rent:{label:"For Rent",emoji:"🏠",unit:"/month",grad:"linear-gradient(135deg,#0e7c5a,#3aa87d)",gal:["🏠","🛋️","🚿"]},
-  sale:{label:"For Sale",emoji:"🏡",unit:"",grad:"linear-gradient(135deg,#1d5c8f,#4a90c9)",gal:["🏡","🌳","🍽️"]},
-  land:{label:"Land",emoji:"🌍",unit:"",grad:"linear-gradient(135deg,#8a6d1e,#c9a94a)",gal:["🌍","📐","🛣️"]},
-  vehicle:{label:"Vehicles",emoji:"🚗",unit:"",grad:"linear-gradient(135deg,#7a2e4e,#b4577f)",gal:["🚗","🛞","⚙️"]}
+  rent:{label:"For Rent",emoji:"🏠",unit:"/month",grad:"linear-gradient(135deg,#7c3aed,#c026d3)",gal:["🏠","🛋️","🚿"]},
+  sale:{label:"For Sale",emoji:"🏡",unit:"",grad:"linear-gradient(135deg,#2563eb,#06b6d4)",gal:["🏡","🌳","🍽️"]},
+  land:{label:"Land",emoji:"🌍",unit:"",grad:"linear-gradient(135deg,#d97706,#facc15)",gal:["🌍","📐","🛣️"]},
+  vehicle:{label:"Vehicles",emoji:"🚗",unit:"",grad:"linear-gradient(135deg,#e11d48,#fb7185)",gal:["🚗","🛞","⚙️"]}
 };
 const AMENITIES = {
   rent:["Secure compound","Water 24/7","Parking","Near matatu route"],
@@ -457,7 +468,7 @@ function animateStats(){
   countUp(document.getElementById("statOwners"),OWNERS.length);
 }
 /* Typewriter placeholder */
-const HINTS=["2 bedroom Kilimani…","plot Ruiru…","maize land Kwanza…","bedsitter Kitale…","Probox under 1M…","beach plot Nyali…"];
+const HINTS=["bedsitter Kasarani…","1BR near campus…","keja Kitale under 5K…","2BR to share Ruiru…","boda under 150K…","plot Bikeke…"];
 let hi=0;
 function typewriter(){
   const inp=document.getElementById("searchInput");
@@ -496,6 +507,16 @@ function confetti(){
     document.body.appendChild(s);
     setTimeout(()=>s.remove(),3600);
   }
+}
+/* Student quick filters */
+function quickFilter(cat,price,beds,label){
+  activeCat=cat;
+  document.getElementById("priceFilter").value=price;
+  document.getElementById("bedFilter").value=beds;
+  document.getElementById("searchInput").value="";
+  render();
+  toast(label+" — sorted! 🔥");
+  document.getElementById("tabs").scrollIntoView({behavior:"smooth",block:"start"});
 }
 /* Favourites */
 function toggleFav(id){
@@ -546,7 +567,7 @@ function afterLocation(){
   if(map){
     map.setView(userLoc,12);
     if(userMarker)userMarker.remove();
-    userMarker=L.circleMarker(userLoc,{radius:9,color:"#fff",weight:2.5,fillColor:"#0e7c5a",fillOpacity:1}).addTo(map).bindPopup("You are here");
+    userMarker=L.circleMarker(userLoc,{radius:9,color:"#fff",weight:2.5,fillColor:"#7c3aed",fillOpacity:1}).addTo(map).bindPopup("You are here");
   }
   render();
 }
