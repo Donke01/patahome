@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PataHome — Find Homes, Land & Vehicles Near You</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+  :root{
+    --green:#0e7c5a; --green-dark:#0a5c43; --green-light:#e6f4ef;
+    --ink:#1c2320; --muted:#5f6b66; --line:#e3e8e5; --bg:#f7faf8;
+    --amber:#e8a13a; --card:#ffffff; --radius:14px;
+    --shadow:0 2px 10px rgba(20,40,30,.08);
+    --header-bg:#fff; --footer-bg:#1c2320;
+  }
+  body.dark{
+    --green:#2fbd8f; --green-dark:#5cd6ab; --green-light:#12352a;
+    --ink:#e8efeb; --muted:#93a39c; --line:#2a3530; --bg:#101815;
+    --card:#182420; --shadow:0 2px 12px rgba(0,0,0,.4);
+    --header-bg:#141e1a; --footer-bg:#0b110e;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;transition:background .3s,color .3s}
+  button{font-family:inherit;cursor:pointer}
+  input,select{font-family:inherit}
+
+  /* ---------- Animations ---------- */
+  @keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+  @keyframes heroShift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+  @keyframes floaty{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-18px) rotate(6deg)}}
+  @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+  @keyframes heartPop{0%{transform:scale(1)}40%{transform:scale(1.5)}100%{transform:scale(1)}}
+  @keyframes ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  @keyframes confettiFall{to{transform:translateY(105vh) rotate(720deg);opacity:.9}}
+  @keyframes wiggle{0%,100%{transform:rotate(0)}25%{transform:rotate(-8deg)}75%{transform:rotate(8deg)}}
+
+  /* ---------- Header ---------- */
+  header{position:sticky;top:0;z-index:1000;background:var(--header-bg);border-bottom:1px solid var(--line);padding:10px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;transition:background .3s}
+  .logo{font-size:1.35rem;font-weight:800;color:var(--green);display:flex;align-items:center;gap:8px;letter-spacing:-.5px}
+  .logo svg{width:26px;height:26px}
+  .logo:hover svg{animation:wiggle .5s}
+  .logo span b{color:var(--amber)}
+  .header-actions{margin-left:auto;display:flex;gap:10px;align-items:center}
+  .btn{border:none;border-radius:10px;padding:9px 16px;font-weight:600;font-size:.9rem;transition:.15s}
+  .btn-primary{background:var(--green);color:#fff}
+  .btn-primary:hover{background:var(--green-dark);transform:translateY(-1px)}
+  .btn-ghost{background:transparent;color:var(--green);border:1.5px solid var(--green)}
+  .btn-ghost:hover{background:var(--green-light)}
+  .icon-btn{background:transparent;border:1.5px solid var(--line);border-radius:10px;width:38px;height:38px;font-size:1.05rem;display:flex;align-items:center;justify-content:center;position:relative;color:var(--ink)}
+  .icon-btn:hover{border-color:var(--green)}
+  .icon-btn .pill{position:absolute;top:-6px;right:-6px;background:var(--amber);color:#fff;font-size:.65rem;font-weight:800;border-radius:999px;min-width:17px;height:17px;display:flex;align-items:center;justify-content:center;padding:0 4px}
+  .icon-btn.active-filter{border-color:var(--amber);background:rgba(232,161,58,.12)}
+
+  /* ---------- Hero ---------- */
+  .hero{background:linear-gradient(120deg,#0a5c43,#0e7c5a,#14997a,#0a5c43);background-size:300% 300%;animation:heroShift 12s ease infinite;color:#fff;padding:44px 20px 58px;text-align:center;position:relative;overflow:hidden}
+  .blob{position:absolute;font-size:2.2rem;opacity:.22;animation:floaty 7s ease-in-out infinite;pointer-events:none}
+  .hero h1{font-size:clamp(1.5rem,4vw,2.4rem);font-weight:800;margin-bottom:8px;position:relative;animation:fadeUp .7s both}
+  .hero p{opacity:.9;max-width:620px;margin:0 auto 20px;font-size:.98rem;position:relative;animation:fadeUp .7s .12s both}
+  .stats{display:flex;justify-content:center;gap:34px;margin-bottom:22px;position:relative;animation:fadeUp .7s .2s both;flex-wrap:wrap}
+  .stat .num{font-size:1.45rem;font-weight:800}
+  .stat .cap{font-size:.74rem;opacity:.85;text-transform:uppercase;letter-spacing:1px}
+  .searchbar{max-width:640px;margin:0 auto;display:flex;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.18);position:relative;animation:fadeUp .7s .3s both;transition:transform .2s}
+  .searchbar:focus-within{transform:scale(1.02)}
+  .searchbar input{flex:1;border:none;outline:none;padding:14px 16px;font-size:1rem;min-width:0;color:#1c2320}
+  .searchbar button{background:var(--amber);border:none;color:#fff;padding:0 22px;font-weight:700;font-size:.95rem}
+  .searchbar button:hover{filter:brightness(1.08)}
+  .loc-row{margin-top:16px;display:flex;justify-content:center;gap:10px;flex-wrap:wrap;position:relative;animation:fadeUp .7s .4s both}
+  .loc-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.4);color:#fff;border-radius:999px;padding:8px 18px;font-size:.88rem;font-weight:600;display:flex;align-items:center;gap:7px;transition:.2s}
+  .loc-btn:hover{background:rgba(255,255,255,.28);transform:translateY(-1px)}
+  .loc-btn.active{background:#fff;color:#0e7c5a}
+  #locStatus{font-size:.82rem;opacity:.9;margin-top:10px;position:relative}
+
+  /* ---------- Ticker ---------- */
+  .ticker-wrap{background:#11201a;color:#d9e5df;overflow:hidden;white-space:nowrap;font-size:.8rem;padding:7px 0;border-bottom:1px solid var(--line)}
+  body.dark .ticker-wrap{background:#060a08}
+  .ticker{display:inline-flex;gap:44px;animation:ticker 36s linear infinite;padding-right:44px}
+  .ticker span b{color:var(--amber)}
+  .ticker-wrap:hover .ticker{animation-play-state:paused}
+
+  /* ---------- Layout ---------- */
+  .wrap{max-width:1200px;margin:0 auto;padding:0 20px}
+  .tabs{display:flex;gap:8px;overflow-x:auto;padding:18px 0 4px;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{white-space:nowrap;border:1.5px solid var(--line);background:var(--card);border-radius:999px;padding:8px 18px;font-size:.9rem;font-weight:600;color:var(--muted);display:flex;gap:7px;align-items:center;transition:.18s}
+  .tab:hover{transform:translateY(-2px);border-color:var(--green)}
+  .tab.active{background:var(--green);border-color:var(--green);color:#fff}
+  .tab .count{background:rgba(0,0,0,.08);border-radius:999px;padding:1px 8px;font-size:.75rem}
+  .tab.active .count{background:rgba(255,255,255,.25)}
+
+  .filters{display:flex;gap:10px;flex-wrap:wrap;padding:12px 0;align-items:center}
+  .filters select{border:1.5px solid var(--line);border-radius:10px;padding:8px 12px;background:var(--card);font-size:.88rem;color:var(--ink);outline:none}
+  .filters select:focus{border-color:var(--green)}
+  .sort-label{font-size:.85rem;color:var(--muted);margin-left:auto}
+
+  .insights{background:var(--green-light);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin:10px 0 18px;display:none;animation:fadeUp .5s both}
+  .insights.show{display:block}
+  .insights h3{font-size:.95rem;color:var(--green-dark);display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .insight-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+  .insight-card{background:var(--card);border-radius:10px;padding:12px 14px;box-shadow:var(--shadow);transition:transform .15s}
+  .insight-card:hover{transform:translateY(-3px)}
+  .insight-card .val{font-size:1.15rem;font-weight:800;color:var(--green-dark)}
+  .insight-card .lbl{font-size:.75rem;color:var(--muted);margin-top:2px}
+
+  .main{display:grid;grid-template-columns:1fr 380px;gap:20px;padding-bottom:50px;align-items:start}
+  @media(max-width:900px){.main{grid-template-columns:1fr}.map-panel{order:-1;position:static}}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+  .card{background:var(--card);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);transition:transform .18s, box-shadow .18s;cursor:pointer;border:1px solid var(--line);animation:fadeUp .5s both}
+  .card:hover{transform:translateY(-4px);box-shadow:0 10px 26px rgba(20,40,30,.16)}
+  .card-img{height:150px;display:flex;align-items:center;justify-content:center;font-size:3rem;position:relative;color:#fff;overflow:hidden}
+  .card-img .emoji{transition:transform .3s}
+  .card:hover .card-img .emoji{transform:scale(1.25) rotate(-5deg)}
+  .badge{position:absolute;top:10px;left:10px;background:rgba(0,0,0,.55);color:#fff;font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:999px;text-transform:uppercase;letter-spacing:.5px}
+  .new-badge{position:absolute;top:38px;left:10px;background:var(--amber);color:#fff;font-size:.68rem;font-weight:800;padding:3px 10px;border-radius:999px;animation:pulse 1.6s infinite}
+  .heart{position:absolute;top:8px;right:8px;background:rgba(255,255,255,.9);border:none;border-radius:50%;width:32px;height:32px;font-size:1rem;display:flex;align-items:center;justify-content:center;color:#c33;transition:.15s}
+  .heart:hover{transform:scale(1.15)}
+  .heart.on{animation:heartPop .35s}
+  .dist-badge{position:absolute;bottom:10px;right:10px;background:#fff;color:#0a5c43;font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:999px;box-shadow:var(--shadow)}
+  .card-body{padding:13px 15px 15px}
+  .price{font-weight:800;color:var(--green-dark);font-size:1.05rem}
+  .price small{font-weight:600;color:var(--muted);font-size:.75rem}
+  .title{font-size:.92rem;font-weight:600;margin:3px 0 2px}
+  .meta{font-size:.8rem;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
+  .card-actions{display:flex;gap:8px;margin-top:11px}
+  .card-actions .btn{flex:1;padding:7px 0;font-size:.82rem;border-radius:8px}
+  .empty{grid-column:1/-1;text-align:center;color:var(--muted);padding:60px 20px;font-size:.95rem}
+
+  .map-panel{position:sticky;top:74px}
+  #map{height:480px;border-radius:var(--radius);border:1px solid var(--line);box-shadow:var(--shadow)}
+  .map-hint{font-size:.76rem;color:var(--muted);margin-top:6px;text-align:center}
+
+  /* ---------- Modals ---------- */
+  .overlay{position:fixed;inset:0;background:rgba(10,25,18,.55);z-index:2000;display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px)}
+  .overlay.show{display:flex}
+  .modal{background:var(--card);border-radius:16px;max-width:480px;width:100%;max-height:90vh;overflow-y:auto;padding:24px;animation:fadeUp .3s both;color:var(--ink)}
+  .modal h2{font-size:1.15rem;margin-bottom:4px;color:var(--green-dark)}
+  .modal .sub{font-size:.85rem;color:var(--muted);margin-bottom:16px}
+  .modal label{display:block;font-size:.8rem;font-weight:700;color:var(--muted);margin:12px 0 4px}
+  .modal input,.modal select,.modal textarea{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;font-size:.9rem;outline:none;font-family:inherit;background:var(--bg);color:var(--ink)}
+  .modal input:focus,.modal select:focus{border-color:var(--green)}
+  .modal-actions{display:flex;gap:10px;margin-top:20px}
+  .modal-actions .btn{flex:1;padding:11px 0}
+  .close-x{float:right;background:none;border:none;font-size:1.3rem;color:var(--muted);line-height:1}
+  .contact-row{display:flex;align-items:center;gap:12px;background:var(--green-light);border-radius:12px;padding:14px;margin-top:14px}
+  .avatar{width:44px;height:44px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.05rem;flex-shrink:0}
+  .contact-row .name{font-weight:700;font-size:.92rem}
+  .contact-row .phone{font-size:.85rem;color:var(--muted)}
+  .verify{font-size:.72rem;color:var(--green-dark);font-weight:700}
+
+  /* Detail modal gallery */
+  .gallery{position:relative;height:190px;border-radius:12px;overflow:hidden;margin-bottom:14px}
+  .slide{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:4rem;color:#fff;opacity:0;transition:opacity .35s}
+  .slide.on{opacity:1}
+  .gal-nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.4);color:#fff;border:none;border-radius:50%;width:32px;height:32px;font-size:1rem;z-index:5}
+  .gal-nav:hover{background:rgba(0,0,0,.65)}
+  .gal-prev{left:8px}.gal-next{right:8px}
+  .dots{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:5px;z-index:5}
+  .dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.5)}
+  .dot.on{background:#fff}
+  .chips{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0}
+  .chip{background:var(--green-light);color:var(--green-dark);font-size:.75rem;font-weight:700;padding:5px 12px;border-radius:999px}
+
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#1c2320;color:#fff;padding:12px 22px;border-radius:12px;font-size:.9rem;z-index:3000;opacity:0;transition:.3s;box-shadow:0 8px 30px rgba(0,0,0,.3)}
+  .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+  .confetti{position:fixed;top:-20px;z-index:4000;font-size:1.1rem;animation:confettiFall linear forwards;pointer-events:none}
+
+  footer{background:var(--footer-bg);color:#aab5b0;text-align:center;padding:26px 20px;font-size:.82rem}
+  footer b{color:#fff}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg>
+    <span>Pata<b>Home</b></span>
+  </div>
+  <div class="header-actions">
+    <button class="icon-btn" id="favBtn" title="Saved listings" onclick="toggleFavView()">♥<span class="pill" id="favCount" style="display:none">0</span></button>
+    <button class="icon-btn" id="darkBtn" title="Dark mode" onclick="toggleDark()">🌙</button>
+    <button class="btn btn-ghost" onclick="openModal('postModal')">+ Post a Listing</button>
+    <a class="btn btn-primary" href="/dashboard.html" style="text-decoration:none">Owner Dashboard</a>
+  </div>
+</header>
+
+<section class="hero">
+  <span class="blob" style="top:12%;left:6%">🏠</span>
+  <span class="blob" style="top:60%;left:12%;animation-delay:1.5s">🌍</span>
+  <span class="blob" style="top:20%;right:8%;animation-delay:.8s">🚗</span>
+  <span class="blob" style="top:65%;right:14%;animation-delay:2.2s">🔑</span>
+  <h1>Find your next home, plot or ride — near you</h1>
+  <p>PataHome connects tenants and buyers directly with verified property owners across Kenya — and shows you what's closest to you first. No middlemen, no viewing-fee scams.</p>
+  <div class="stats">
+    <div class="stat"><div class="num" id="statListings">0</div><div class="cap">Live listings</div></div>
+    <div class="stat"><div class="num" id="statAreas">0</div><div class="cap">Areas covered</div></div>
+    <div class="stat"><div class="num" id="statOwners">0</div><div class="cap">Verified owners</div></div>
+  </div>
+  <div class="searchbar">
+    <input id="searchInput" type="text" placeholder="" oninput="render()">
+    <button onclick="render()">Search</button>
+  </div>
+  <div class="loc-row">
+    <button class="loc-btn" id="gpsBtn" onclick="useMyLocation()">📍 Use my location</button>
+    <select class="loc-btn" id="citySelect" onchange="useCity(this.value)" style="appearance:auto;color:#1c2320;background:#fff">
+      <option value="">…or pick an area</option>
+    </select>
+  </div>
+  <div id="locStatus"></div>
+</section>
+
+<div class="ticker-wrap"><div class="ticker" id="ticker"></div></div>
+
+<div class="wrap">
+  <div class="tabs" id="tabs"></div>
+
+  <div class="filters">
+    <select id="priceFilter" onchange="render()">
+      <option value="">Any price</option>
+      <option value="0-5000">Under KES 5K</option>
+      <option value="5000-20000">KES 5K – 20K</option>
+      <option value="20000-100000">KES 20K – 100K</option>
+      <option value="100000-1000000">KES 100K – 1M</option>
+      <option value="1000000-5000000">KES 1M – 5M</option>
+      <option value="5000000-999999999">Above KES 5M</option>
+    </select>
+    <select id="bedFilter" onchange="render()">
+      <option value="">Any bedrooms</option>
+      <option value="0">Bedsitter / Studio</option>
+      <option value="1">1 bedroom</option>
+      <option value="2">2 bedrooms</option>
+      <option value="3">3+ bedrooms</option>
+    </select>
+    <select id="sortSelect" onchange="render()">
+      <option value="distance">Nearest first</option>
+      <option value="price-asc">Price: low → high</option>
+      <option value="price-desc">Price: high → low</option>
+      <option value="newest">Newest</option>
+    </select>
+    <span class="sort-label" id="resultCount"></span>
+  </div>
+
+  <div class="insights" id="insights">
+    <h3>📊 Insights near <span id="insightLoc">you</span></h3>
+    <div class="insight-grid" id="insightGrid"></div>
+  </div>
+
+  <div class="main">
+    <div class="cards" id="cards"></div>
+    <div class="map-panel">
+      <div id="map"></div>
+      <div class="map-hint">🟢 you · 📍 listings — click a pin for details</div>
+    </div>
+  </div>
+</div>
+
+<footer><b>PataHome</b> · Bridging tenants & property owners across Kenya · Prototype build</footer>
+
+<!-- Detail modal -->
+<div class="overlay" id="detailModal" onclick="if(event.target===this)closeModal('detailModal')">
+  <div class="modal">
+    <button class="close-x" onclick="closeModal('detailModal')">✕</button>
+    <div class="gallery" id="gallery"></div>
+    <h2 id="dTitle"></h2>
+    <div class="sub" id="dSub"></div>
+    <div class="chips" id="dChips"></div>
+    <div class="contact-row">
+      <div class="avatar" id="dAvatar"></div>
+      <div>
+        <div class="name" id="dOwner"></div>
+        <div class="phone" id="dPhone"></div>
+        <div class="verify">✓ ID & ownership verified</div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="dContactBtn">Contact Owner</button>
+      <button class="btn btn-ghost" id="dMapBtn">🗺 View on map</button>
+    </div>
+  </div>
+</div>
+
+<!-- Contact modal -->
+<div class="overlay" id="contactModal" onclick="if(event.target===this)closeModal('contactModal')">
+  <div class="modal">
+    <button class="close-x" onclick="closeModal('contactModal')">✕</button>
+    <h2 id="cTitle"></h2>
+    <div class="sub" id="cSub"></div>
+    <div class="contact-row">
+      <div class="avatar" id="cAvatar"></div>
+      <div>
+        <div class="name" id="cOwner"></div>
+        <div class="phone" id="cPhone"></div>
+        <div class="verify">✓ ID & ownership verified</div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="toast('Opening WhatsApp… (prototype)')">💬 WhatsApp</button>
+      <button class="btn btn-ghost" onclick="toast('Calling owner… (prototype)')">📞 Call</button>
+    </div>
+  </div>
+</div>
+
+<!-- Post listing modal -->
+<div class="overlay" id="postModal" onclick="if(event.target===this)closeModal('postModal')">
+  <div class="modal">
+    <button class="close-x" onclick="closeModal('postModal')">✕</button>
+    <h2>Post a Listing</h2>
+    <div class="sub">Owners list free during launch. Your listing appears instantly in this demo.</div>
+    <label>Category</label>
+    <select id="pCat"><option value="rent">House — For Rent</option><option value="sale">House — For Sale</option><option value="land">Land / Plot</option><option value="vehicle">Vehicle</option></select>
+    <label>Title</label>
+    <input id="pTitle" placeholder="e.g. Spacious 2BR apartment with balcony">
+    <label>Area / Neighbourhood</label>
+    <select id="pArea"></select>
+    <label>Price (KES)</label>
+    <input id="pPrice" type="number" placeholder="e.g. 35000">
+    <label>Bedrooms (houses only)</label>
+    <select id="pBeds"><option value="">N/A</option><option>0</option><option>1</option><option>2</option><option>3</option><option>4</option></select>
+    <label>Your name</label>
+    <input id="pOwner" placeholder="e.g. Grace W.">
+    <label>Phone</label>
+    <input id="pPhone" placeholder="e.g. 0712 345 678">
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('postModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitListing()">Publish</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* ================= DATA ================= */
+const AREAS = {
+  // Nairobi & environs
+  "Kilimani, Nairobi":[-1.2906,36.7870],"Westlands, Nairobi":[-1.2635,36.8029],
+  "Kasarani, Nairobi":[-1.2200,36.8968],"South B, Nairobi":[-1.3081,36.8410],
+  "Ruaka, Kiambu":[-1.2050,36.7772],"Ruiru, Kiambu":[-1.1500,36.9600],
+  "Syokimau, Machakos":[-1.3560,36.9260],"Thika Town, Kiambu":[-1.0396,37.0900],
+  // Coast
+  "Nyali, Mombasa":[-4.0210,39.7090],
+  // Western & Rift
+  "Kisumu CBD, Kisumu":[-0.0917,34.7680],"Nakuru Town, Nakuru":[-0.3031,36.0800],
+  "Eldoret Town, Uasin Gishu":[0.5143,35.2698],
+  // Trans Nzoia
+  "Kitale Town CBD, Trans Nzoia":[1.0157,35.0062],"Milimani Kitale, Trans Nzoia":[1.0210,35.0150],
+  "Kiminini, Trans Nzoia":[0.8940,34.9290],"Endebess, Trans Nzoia":[1.0713,34.8353],
+  "Kwanza, Trans Nzoia":[1.1440,34.9990],"Bikeke, Trans Nzoia":[0.9700,35.0600]
+};
+const CAT = {
+  rent:{label:"For Rent",emoji:"🏠",unit:"/month",grad:"linear-gradient(135deg,#0e7c5a,#3aa87d)",gal:["🏠","🛋️","🚿"]},
+  sale:{label:"For Sale",emoji:"🏡",unit:"",grad:"linear-gradient(135deg,#1d5c8f,#4a90c9)",gal:["🏡","🌳","🍽️"]},
+  land:{label:"Land",emoji:"🌍",unit:"",grad:"linear-gradient(135deg,#8a6d1e,#c9a94a)",gal:["🌍","📐","🛣️"]},
+  vehicle:{label:"Vehicles",emoji:"🚗",unit:"",grad:"linear-gradient(135deg,#7a2e4e,#b4577f)",gal:["🚗","🛞","⚙️"]}
+};
+const AMENITIES = {
+  rent:["Secure compound","Water 24/7","Parking","Near matatu route"],
+  sale:["Ready title","Gated community","Mains power","Borehole"],
+  land:["Title deed ready","Beacons in place","Water on site","Near tarmac"],
+  vehicle:["Logbook ready","Accident-free","Inspection welcome","Negotiable"]
+};
+const OWNERS=[["Grace Wanjiru","0712 445 210"],["Brian Otieno","0723 118 904"],["Amina Yusuf","0733 902 341"],["Peter Kamau","0701 556 782"],["Faith Chebet","0745 220 913"],["David Mwangi","0728 664 105"],["Lucy Njeri","0710 337 458"],["Hassan Ali","0754 881 236"]];
+
+let _id=0;
+let LISTINGS=[
+  // Rentals
+  l("rent","Modern 2BR apartment, balcony & borehole","Kilimani, Nairobi",65000,2,"3 days ago"),
+  l("rent","Bedsitter near Safari Park, wifi ready","Kasarani, Nairobi",12000,0,"today"),
+  l("rent","1BR with parking, secure court","South B, Nairobi",28000,1,"2 days ago"),
+  l("rent","Executive 3BR + DSQ, gym & pool","Westlands, Nairobi",145000,3,"1 week ago"),
+  l("rent","Spacious 2BR, near Two Rivers","Ruaka, Kiambu",38000,2,"3 days ago"),
+  l("rent","1BR new build, tiled, tokens","Ruiru, Kiambu",16000,1,"today"),
+  l("rent","2BR sea-breeze apartment","Nyali, Mombasa",45000,2,"5 days ago"),
+  l("rent","Bedsitter, 5 min to CBD","Kisumu CBD, Kisumu",9500,0,"1 day ago"),
+  l("rent","2BR near Section 58","Nakuru Town, Nakuru",22000,2,"4 days ago"),
+  l("rent","Modern 2BR, tiled, own compound gate","Milimani Kitale, Trans Nzoia",18000,2,"3 days ago"),
+  l("rent","Bedsitter near Mega Centre, water incl.","Kitale Town CBD, Trans Nzoia",4500,0,"today"),
+  l("rent","Executive 3BR maisonette + DSQ","Milimani Kitale, Trans Nzoia",35000,3,"1 week ago"),
+  l("rent","Spacious 2BR near Kiminini market","Kiminini, Trans Nzoia",9500,2,"3 days ago"),
+  l("rent","1BR near Eldoret CBD, secure","Eldoret Town, Uasin Gishu",13000,1,"2 days ago"),
+  // For sale
+  l("sale","4BR maisonette in gated community","Syokimau, Machakos",14500000,4,"2 weeks ago"),
+  l("sale","3BR bungalow, own compound","Thika Town, Kiambu",8900000,3,"1 week ago"),
+  l("sale","2BR apartment, ready title","Kilimani, Nairobi",9800000,2,"3 days ago"),
+  l("sale","3BR townhouse near Sarit","Westlands, Nairobi",23000000,3,"6 days ago"),
+  l("sale","4BR maisonette on 1/4 acre","Milimani Kitale, Trans Nzoia",12500000,4,"2 weeks ago"),
+  l("sale","2BR starter home, ready title","Bikeke, Trans Nzoia",2900000,2,"3 days ago"),
+  l("sale","3BR farmhouse on 1 acre","Endebess, Trans Nzoia",7500000,3,"6 days ago"),
+  // Land
+  l("land","50x100 plot, ready title deed","Ruiru, Kiambu",2400000,null,"1 day ago"),
+  l("land","1/8 acre, water & power on site","Syokimau, Machakos",3900000,null,"1 week ago"),
+  l("land","1 acre agricultural, red soil","Thika Town, Kiambu",5200000,null,"2 weeks ago"),
+  l("land","50x100 near tarmac","Eldoret Town, Uasin Gishu",1450000,null,"4 days ago"),
+  l("land","Beach-side 1/4 acre","Nyali, Mombasa",12500000,null,"3 weeks ago"),
+  l("land","50x100 plot, ready title deed","Bikeke, Trans Nzoia",550000,null,"1 day ago"),
+  l("land","5 acres maize land, fertile loam","Kwanza, Trans Nzoia",5500000,null,"2 weeks ago"),
+  l("land","Prime 50x100 commercial plot","Kitale Town CBD, Trans Nzoia",3500000,null,"3 weeks ago"),
+  // Vehicles
+  l("vehicle","Toyota Probox 2017, clean, local use","Kasarani, Nairobi",890000,null,"today"),
+  l("vehicle","Mazda Demio 2016, lady-owned","Westlands, Nairobi",980000,null,"2 days ago"),
+  l("vehicle","Toyota Hilux 2015 single cab","Nakuru Town, Nakuru",2350000,null,"1 week ago"),
+  l("vehicle","Nissan Note 2017, just arrived","Nyali, Mombasa",1150000,null,"5 days ago"),
+  l("vehicle","Massey Ferguson 375 tractor, working","Kwanza, Trans Nzoia",1850000,null,"1 week ago"),
+  l("vehicle","Boda TVS 2023, 8k km","Kisumu CBD, Kisumu",145000,null,"1 day ago")
+];
+function l(cat,title,area,price,beds,posted){
+  const o=OWNERS[_id%OWNERS.length];
+  const [lat,lng]=AREAS[area];
+  return {id:_id++,cat,title,area,price,beds,posted,owner:o[0],phone:o[1],
+    lat:lat+(Math.sin(_id*7)*0.006),lng:lng+(Math.cos(_id*5)*0.006)};
+}
+
+/* ================= STATE ================= */
+let userLoc=null, userLocName=null, activeCat="all", map, markers=[], userMarker=null;
+let favs=new Set(), favView=false;
+
+/* ================= HELPERS ================= */
+const fmt=n=>"KES "+n.toLocaleString("en-KE");
+function dist(a,b,c,d){
+  const r=Math.PI/180,R=6371;
+  const h=Math.sin((c-a)*r/2)**2+Math.cos(a*r)*Math.cos(c*r)*Math.sin((d-b)*r/2)**2;
+  return 2*R*Math.asin(Math.sqrt(h));
+}
+function toast(msg){
+  const t=document.getElementById("toast");
+  t.textContent=msg;t.classList.add("show");
+  clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("show"),2600);
+}
+function openModal(id){document.getElementById(id).classList.add("show")}
+function closeModal(id){document.getElementById(id).classList.remove("show")}
+function esc(s){return s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+const inBrowser=typeof requestAnimationFrame==="function";
+
+/* ================= LIVELY BITS ================= */
+function toggleDark(){
+  document.body.classList.toggle("dark");
+  document.getElementById("darkBtn").textContent=document.body.classList.contains("dark")?"☀️":"🌙";
+}
+function countUp(el,target,ms){
+  ms=ms||1200;
+  if(!inBrowser){el.textContent=target;return}
+  const t0=performance.now();
+  (function step(t){
+    const p=Math.min(1,(t-t0)/ms), eased=1-Math.pow(1-p,3);
+    el.textContent=Math.round(target*eased).toLocaleString();
+    if(p<1)requestAnimationFrame(step);
+  })(t0);
+}
+function animateStats(){
+  countUp(document.getElementById("statListings"),LISTINGS.length);
+  countUp(document.getElementById("statAreas"),Object.keys(AREAS).length);
+  countUp(document.getElementById("statOwners"),OWNERS.length);
+}
+/* Typewriter placeholder */
+const HINTS=["2 bedroom Kilimani…","plot Ruiru…","maize land Kwanza…","bedsitter Kitale…","Probox under 1M…","beach plot Nyali…"];
+let hi=0;
+function typewriter(){
+  const inp=document.getElementById("searchInput");
+  const word="Search e.g. "+HINTS[hi];
+  let i=0;
+  const iv=setInterval(()=>{
+    if(inp.value){clearInterval(iv);inp.placeholder="Search listings…";return}
+    inp.placeholder=word.slice(0,++i);
+    if(i>=word.length){clearInterval(iv);setTimeout(()=>{hi=(hi+1)%HINTS.length;typewriter()},2200)}
+  },45);
+}
+/* Activity ticker */
+const NAMES=["Brian","Achieng","Kevin","Wambui","Mutua","Zawadi","Kiptoo","Neema"];
+function buildTicker(){
+  const verbs={rent:"is viewing",sale:"enquired about",land:"saved",vehicle:"test-drove"};
+  const acts=[];
+  for(let i=0;i<8;i++){
+    const x=LISTINGS[(i*3)%LISTINGS.length];
+    acts.push(`<span>🔥 <b>${NAMES[i%NAMES.length]}</b> ${verbs[x.cat]} <b>${esc(x.title.split(",")[0])}</b> in ${x.area.split(",")[0]}</span>`);
+  }
+  acts.push(`<span>✅ <b>3 new listings</b> posted in the last hour</span>`);
+  acts.push(`<span>📍 Tip: tap <b>Use my location</b> for nearby insights</span>`);
+  document.getElementById("ticker").innerHTML=acts.join("")+acts.join("");
+}
+/* Confetti */
+function confetti(){
+  if(!inBrowser)return;
+  const bits=["🎉","✨","🏠","🔑","💚"];
+  for(let i=0;i<26;i++){
+    const s=document.createElement("span");
+    s.className="confetti";
+    s.textContent=bits[i%bits.length];
+    s.style.left=Math.random()*100+"vw";
+    s.style.animationDuration=(1.8+Math.random()*1.6)+"s";
+    s.style.fontSize=(0.8+Math.random()*1)+"rem";
+    document.body.appendChild(s);
+    setTimeout(()=>s.remove(),3600);
+  }
+}
+/* Favourites */
+function toggleFav(id){
+  const adding=!favs.has(id);
+  adding?favs.add(id):favs.delete(id);
+  const n=favs.size,pill=document.getElementById("favCount");
+  pill.textContent=n;pill.style.display=n?"flex":"none";
+  if(adding)toast("Saved to favourites ❤️");
+  if(favView&&!n){favView=false;document.getElementById("favBtn").classList.remove("active-filter")}
+  render();
+}
+function toggleFavView(){
+  if(!favView&&!favs.size){toast("No saved listings yet — tap ♥ on a card");return}
+  favView=!favView;
+  document.getElementById("favBtn").classList.toggle("active-filter",favView);
+  toast(favView?"Showing saved listings only":"Showing all listings");
+  render();
+}
+
+/* ================= LOCATION ================= */
+function useMyLocation(){
+  const st=document.getElementById("locStatus");
+  if(!navigator.geolocation){st.textContent="Geolocation not supported — pick an area instead.";return}
+  st.textContent="Locating…";
+  navigator.geolocation.getCurrentPosition(
+    p=>{
+      userLoc=[p.coords.latitude,p.coords.longitude];
+      let best=null,bd=1e9;
+      for(const[name,[la,ln]]of Object.entries(AREAS)){const d=dist(userLoc[0],userLoc[1],la,ln);if(d<bd){bd=d;best=name}}
+      userLocName=bd<40?("near "+best):"your location";
+      st.textContent="✅ Location set — showing what's around you";
+      document.getElementById("gpsBtn").classList.add("active");
+      document.getElementById("citySelect").value="";
+      afterLocation();
+    },
+    ()=>{st.textContent="⚠️ Couldn't get GPS — pick an area from the dropdown instead."}
+  );
+}
+function useCity(name){
+  if(!name)return;
+  userLoc=AREAS[name].slice();userLocName=name;
+  document.getElementById("gpsBtn").classList.remove("active");
+  document.getElementById("locStatus").textContent="✅ Showing listings around "+name;
+  afterLocation();
+}
+function afterLocation(){
+  document.getElementById("sortSelect").value="distance";
+  if(map){
+    map.setView(userLoc,12);
+    if(userMarker)userMarker.remove();
+    userMarker=L.circleMarker(userLoc,{radius:9,color:"#fff",weight:2.5,fillColor:"#0e7c5a",fillOpacity:1}).addTo(map).bindPopup("You are here");
+  }
+  render();
+}
+
+/* ================= INSIGHTS ================= */
+function renderInsights(){
+  const box=document.getElementById("insights");
+  if(!userLoc){box.classList.remove("show");return}
+  const R=10;
+  const near=LISTINGS.filter(x=>dist(userLoc[0],userLoc[1],x.lat,x.lng)<=R);
+  const rents=near.filter(x=>x.cat==="rent");
+  const avg=rents.length?Math.round(rents.reduce((s,x)=>s+x.price,0)/rents.length):null;
+  const cheapest=rents.length?Math.min(...rents.map(x=>x.price)):null;
+  const plots=near.filter(x=>x.cat==="land").length;
+  document.getElementById("insightLoc").textContent=userLocName||"you";
+  document.getElementById("insightGrid").innerHTML=`
+    <div class="insight-card"><div class="val" id="iv0">0</div><div class="lbl">listings within ${R} km</div></div>
+    <div class="insight-card"><div class="val">${avg?fmt(avg):"—"}</div><div class="lbl">avg rent nearby /month</div></div>
+    <div class="insight-card"><div class="val">${cheapest?fmt(cheapest):"—"}</div><div class="lbl">cheapest rental nearby</div></div>
+    <div class="insight-card"><div class="val" id="iv3">0</div><div class="lbl">plots/land for sale nearby</div></div>`;
+  box.classList.add("show");
+  countUp(document.getElementById("iv0"),near.length,700);
+  countUp(document.getElementById("iv3"),plots,700);
+}
+
+/* ================= RENDER ================= */
+function renderTabs(){
+  const counts={all:LISTINGS.length};
+  for(const c of Object.keys(CAT))counts[c]=LISTINGS.filter(x=>x.cat===c).length;
+  const t=document.getElementById("tabs");
+  t.innerHTML=[["all","✨ All"],...Object.entries(CAT).map(([k,v])=>[k,v.emoji+" "+v.label])]
+    .map(([k,lab])=>`<button class="tab ${activeCat===k?"active":""}" onclick="activeCat='${k}';render()">${lab}<span class="count">${counts[k]}</span></button>`).join("");
+}
+function filtered(){
+  const q=document.getElementById("searchInput").value.trim().toLowerCase();
+  const pr=document.getElementById("priceFilter").value;
+  const bd=document.getElementById("bedFilter").value;
+  let list=LISTINGS.filter(x=>{
+    if(favView&&!favs.has(x.id))return false;
+    if(activeCat!=="all"&&x.cat!==activeCat)return false;
+    if(q&&!(x.title+" "+x.area+" "+CAT[x.cat].label).toLowerCase().includes(q))return false;
+    if(pr){const[lo,hi]=pr.split("-").map(Number);if(x.price<lo||x.price>hi)return false}
+    if(bd!==""){if(x.beds===null)return false;if(bd==="3"?x.beds<3:x.beds!==+bd)return false}
+    return true;
+  });
+  const sort=document.getElementById("sortSelect").value;
+  if(sort==="distance"&&userLoc)list.sort((a,b)=>dist(userLoc[0],userLoc[1],a.lat,a.lng)-dist(userLoc[0],userLoc[1],b.lat,b.lng));
+  else if(sort==="price-asc")list.sort((a,b)=>a.price-b.price);
+  else if(sort==="price-desc")list.sort((a,b)=>b.price-a.price);
+  else if(sort==="newest")list.sort((a,b)=>b.id-a.id);
+  return list;
+}
+function render(){
+  renderTabs();
+  const list=filtered();
+  document.getElementById("resultCount").textContent=list.length+" result"+(list.length===1?"":"s");
+  const cards=document.getElementById("cards");
+  cards.innerHTML=list.length?list.map((x,i)=>{
+    const c=CAT[x.cat];
+    const d=userLoc?dist(userLoc[0],userLoc[1],x.lat,x.lng):null;
+    const isNew=/today|just now/.test(x.posted);
+    return `<div class="card" style="animation-delay:${Math.min(i*60,420)}ms" onclick="openDetail(${x.id})">
+      <div class="card-img" style="background:${c.grad}">
+        <span class="emoji">${c.emoji}</span>
+        <span class="badge">${c.label}</span>
+        ${isNew?`<span class="new-badge">NEW</span>`:""}
+        <button class="heart ${favs.has(x.id)?"on":""}" onclick="event.stopPropagation();toggleFav(${x.id})">${favs.has(x.id)?"♥":"♡"}</button>
+        ${d!==null?`<span class="dist-badge">${d<1?Math.round(d*1000)+" m":d.toFixed(1)+" km"} away</span>`:""}
+      </div>
+      <div class="card-body">
+        <div class="price">${fmt(x.price)} <small>${c.unit}</small></div>
+        <div class="title">${esc(x.title)}</div>
+        <div class="meta">
+          <span>📍 ${x.area}</span>
+          ${x.beds!==null?`<span>🛏 ${x.beds===0?"Bedsitter":x.beds+" BR"}</span>`:""}
+          <span>🕓 ${x.posted}</span>
+        </div>
+        <div class="card-actions">
+          <button class="btn btn-primary" onclick="event.stopPropagation();openContact(${x.id})">Contact Owner</button>
+          <button class="btn btn-ghost" onclick="event.stopPropagation();openDetail(${x.id})">Details</button>
+        </div>
+      </div>
+    </div>`;
+  }).join(""):`<div class="empty">😕 No listings match. Try widening your filters.</div>`;
+  renderInsights();
+  renderMarkers(list);
+}
+
+/* ================= MAP ================= */
+function initMap(){
+  map=L.map("map").setView([0.1,37.0],6); // Kenya-wide until we know where you are
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(map);
+  renderMarkers(filtered());
+}
+function renderMarkers(list){
+  if(!map)return;
+  markers.forEach(m=>m.remove());markers=[];
+  list.forEach(x=>{
+    const c=CAT[x.cat];
+    const m=L.marker([x.lat,x.lng]).addTo(map)
+      .bindPopup(`<b>${c.emoji} ${esc(x.title)}</b><br>${fmt(x.price)}${c.unit}<br>📍 ${x.area}<br><a href="#" onclick="openContact(${x.id});return false">Contact owner</a>`);
+    markers.push(m);
+  });
+}
+function focusOnMap(id){
+  const x=LISTINGS.find(y=>y.id===id);
+  closeModal("detailModal");
+  if(map){map.setView([x.lat,x.lng],14);markers.forEach(m=>{const p=m.getLatLng();if(Math.abs(p.lat-x.lat)<1e-6)m.openPopup()})}
+  window.scrollTo({top:document.getElementById("map").getBoundingClientRect().top+window.scrollY-90,behavior:"smooth"});
+}
+
+/* ================= DETAIL / CONTACT / POST ================= */
+let galIdx=0,galItem=null;
+function openDetail(id){
+  const x=LISTINGS.find(y=>y.id===id),c=CAT[x.cat];
+  galItem=x;galIdx=0;
+  renderGallery();
+  document.getElementById("dTitle").textContent=x.title;
+  const d=userLoc?dist(userLoc[0],userLoc[1],x.lat,x.lng):null;
+  document.getElementById("dSub").textContent=fmt(x.price)+c.unit+" · "+x.area+(d!==null?" · "+(d<1?Math.round(d*1000)+" m":d.toFixed(1)+" km")+" from you":"")+" · posted "+x.posted;
+  document.getElementById("dChips").innerHTML=AMENITIES[x.cat].map(a=>`<span class="chip">✓ ${a}</span>`).join("");
+  document.getElementById("dOwner").textContent=x.owner;
+  document.getElementById("dPhone").textContent=x.phone;
+  document.getElementById("dAvatar").textContent=x.owner[0];
+  document.getElementById("dContactBtn").onclick=()=>{closeModal("detailModal");openContact(id)};
+  document.getElementById("dMapBtn").onclick=()=>focusOnMap(id);
+  openModal("detailModal");
+}
+function renderGallery(){
+  const c=CAT[galItem.cat];
+  document.getElementById("gallery").innerHTML=
+    c.gal.map((e,i)=>`<div class="slide ${i===galIdx?"on":""}" style="background:${c.grad}">${e}</div>`).join("")+
+    `<button class="gal-nav gal-prev" onclick="galStep(-1)">‹</button>
+     <button class="gal-nav gal-next" onclick="galStep(1)">›</button>
+     <div class="dots">${c.gal.map((_,i)=>`<span class="dot ${i===galIdx?"on":""}"></span>`).join("")}</div>`;
+}
+function galStep(n){
+  const len=CAT[galItem.cat].gal.length;
+  galIdx=(galIdx+n+len)%len;
+  renderGallery();
+}
+function openContact(id){
+  const x=LISTINGS.find(y=>y.id===id),c=CAT[x.cat];
+  document.getElementById("cTitle").textContent=x.title;
+  document.getElementById("cSub").textContent=fmt(x.price)+c.unit+" · "+x.area;
+  document.getElementById("cOwner").textContent=x.owner;
+  document.getElementById("cPhone").textContent=x.phone;
+  document.getElementById("cAvatar").textContent=x.owner[0];
+  openModal("contactModal");
+}
+function submitListing(){
+  const title=document.getElementById("pTitle").value.trim();
+  const price=+document.getElementById("pPrice").value;
+  const area=document.getElementById("pArea").value;
+  if(!title||!price||!area){toast("Please fill in title, area and price");return}
+  const beds=document.getElementById("pBeds").value;
+  const cat=document.getElementById("pCat").value;
+  const [lat,lng]=AREAS[area];
+  LISTINGS.unshift({id:_id++,cat,title,area,price,
+    beds:beds===""?null:+beds,posted:"just now",
+    owner:document.getElementById("pOwner").value||"You",
+    phone:document.getElementById("pPhone").value||"—",
+    lat:lat+(Math.random()-.5)*0.01,lng:lng+(Math.random()-.5)*0.01});
+  closeModal("postModal");
+  toast("🎉 Listing published!");
+  confetti();
+  render();
+  document.getElementById("statListings").textContent=LISTINGS.length;
+}
+
+/* ================= INIT ================= */
+(function(){
+  const cs=document.getElementById("citySelect"),pa=document.getElementById("pArea");
+  for(const name of Object.keys(AREAS)){
+    cs.insertAdjacentHTML("beforeend",`<option>${name}</option>`);
+    pa.insertAdjacentHTML("beforeend",`<option>${name}</option>`);
+  }
+  render();
+  initMap();
+  buildTicker();
+  animateStats();
+  if(inBrowser)typewriter();
+  // Auto-detect location on load so nearby listings surface immediately
+  if(inBrowser&&navigator.geolocation){
+    document.getElementById("locStatus").textContent="📍 Detecting your location for nearby listings…";
+    useMyLocation();
+  }
+})();
+</script>
+</body>
+</html>

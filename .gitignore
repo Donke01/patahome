@@ -1,0 +1,14 @@
+# database files — never commit user data
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# environment / secrets
+.env
+.env.*
+
+# misc
+node_modules/
+.DS_Store
+*.log

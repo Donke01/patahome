@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Owner Dashboard — PataHome</title>
+<style>
+  :root{
+    --green:#0e7c5a; --green-dark:#0a5c43; --green-light:#e6f4ef;
+    --ink:#1c2320; --muted:#5f6b66; --line:#e3e8e5; --bg:#f7faf8;
+    --amber:#e8a13a; --card:#fff; --red:#c0392b; --radius:14px;
+    --shadow:0 2px 10px rgba(20,40,30,.08);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;min-height:100vh}
+  button{font-family:inherit;cursor:pointer}
+  input,select,textarea{font-family:inherit}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+  header{position:sticky;top:0;z-index:100;background:#fff;border-bottom:1px solid var(--line);padding:10px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .logo{font-size:1.25rem;font-weight:800;color:var(--green);display:flex;align-items:center;gap:8px;text-decoration:none}
+  .logo svg{width:24px;height:24px}
+  .logo b{color:var(--amber)}
+  .logo .tag{font-size:.7rem;background:var(--green-light);color:var(--green-dark);border-radius:999px;padding:2px 10px;font-weight:700;margin-left:4px}
+  .header-right{margin-left:auto;display:flex;gap:10px;align-items:center}
+  .who{font-size:.85rem;color:var(--muted)}
+  .btn{border:none;border-radius:10px;padding:9px 16px;font-weight:600;font-size:.88rem;transition:.15s}
+  .btn-primary{background:var(--green);color:#fff}
+  .btn-primary:hover{background:var(--green-dark)}
+  .btn-ghost{background:transparent;color:var(--green);border:1.5px solid var(--green)}
+  .btn-ghost:hover{background:var(--green-light)}
+  .btn-amber{background:var(--amber);color:#fff}
+  .btn-danger{background:transparent;color:var(--red);border:1.5px solid #e5b9b3}
+  .btn-danger:hover{background:#fdf0ee}
+  .btn-sm{padding:6px 12px;font-size:.78rem;border-radius:8px}
+
+  .wrap{max-width:1050px;margin:0 auto;padding:24px 20px 60px}
+
+  /* auth card */
+  .auth-card{max-width:400px;margin:8vh auto;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:28px;box-shadow:var(--shadow);animation:fadeUp .4s both}
+  .auth-card h1{font-size:1.25rem;color:var(--green-dark);margin-bottom:4px}
+  .auth-card .sub{font-size:.85rem;color:var(--muted);margin-bottom:14px}
+  .auth-tabs{display:flex;gap:6px;margin-bottom:14px}
+  .auth-tabs button{flex:1;border:1.5px solid var(--line);background:#fff;border-radius:10px;padding:8px;font-weight:700;font-size:.85rem;color:var(--muted)}
+  .auth-tabs button.on{background:var(--green);border-color:var(--green);color:#fff}
+  label{display:block;font-size:.78rem;font-weight:700;color:var(--muted);margin:11px 0 4px}
+  input,select,textarea{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;font-size:.9rem;outline:none;background:#fff;color:var(--ink)}
+  input:focus,select:focus,textarea:focus{border-color:var(--green)}
+  .err{color:var(--red);font-size:.82rem;margin-top:10px;min-height:1.2em}
+  .hint{font-size:.75rem;color:var(--muted);margin-top:10px;background:var(--green-light);border-radius:8px;padding:8px 10px}
+
+  /* stats */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:22px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);animation:fadeUp .4s both}
+  .stat .num{font-size:1.6rem;font-weight:800;color:var(--green-dark)}
+  .stat .lbl{font-size:.78rem;color:var(--muted)}
+
+  .section-head{display:flex;align-items:center;gap:12px;margin:8px 0 14px}
+  .section-head h2{font-size:1.05rem;color:var(--green-dark)}
+  .section-head .btn{margin-left:auto}
+
+  /* listings table */
+  .table{width:100%;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+  .row{display:grid;grid-template-columns:2.2fr .9fr 1fr .6fr .9fr 2fr;gap:10px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);font-size:.87rem}
+  .row:last-child{border-bottom:none}
+  .row.head{background:var(--green-light);font-weight:700;font-size:.75rem;text-transform:uppercase;letter-spacing:.5px;color:var(--green-dark)}
+  .row .title{font-weight:600}
+  .row .area{font-size:.76rem;color:var(--muted)}
+  .pill{display:inline-block;font-size:.7rem;font-weight:700;border-radius:999px;padding:2px 10px}
+  .pill.active{background:var(--green-light);color:var(--green-dark)}
+  .pill.rented,.pill.sold{background:#eee;color:var(--muted)}
+  .pill.featured{background:var(--amber);color:#fff}
+  .leads-badge{font-weight:800;color:var(--green-dark)}
+  .actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .empty{padding:40px;text-align:center;color:var(--muted)}
+  @media(max-width:800px){
+    .row{grid-template-columns:1fr 1fr;gap:6px}
+    .row.head{display:none}
+    .actions{justify-content:flex-start}
+  }
+
+  /* modal */
+  .overlay{position:fixed;inset:0;background:rgba(10,25,18,.55);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px)}
+  .overlay.show{display:flex}
+  .modal{background:#fff;border-radius:16px;max-width:440px;width:100%;max-height:90vh;overflow-y:auto;padding:24px;animation:fadeUp .3s both}
+  .modal h2{font-size:1.1rem;color:var(--green-dark);margin-bottom:4px}
+  .modal .sub{font-size:.83rem;color:var(--muted);margin-bottom:10px}
+  .modal-actions{display:flex;gap:10px;margin-top:18px}
+  .modal-actions .btn{flex:1;padding:10px 0}
+  .close-x{float:right;background:none;border:none;font-size:1.25rem;color:var(--muted)}
+  .plan{border:1.5px solid var(--line);border-radius:12px;padding:14px;margin-top:10px;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+  .plan:hover,.plan.sel{border-color:var(--amber);background:#fdf6ec}
+  .plan .p-name{font-weight:700;font-size:.92rem}
+  .plan .p-sub{font-size:.76rem;color:var(--muted)}
+  .plan .p-price{font-weight:800;color:var(--green-dark)}
+
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--ink);color:#fff;padding:12px 22px;border-radius:12px;font-size:.9rem;z-index:3000;opacity:0;transition:.3s}
+  .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+
+  /* inquiries inbox */
+  .inbox{display:flex;flex-direction:column;gap:12px}
+  .inq{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);animation:fadeUp .4s both}
+  .inq.unreplied{border-left:4px solid var(--amber)}
+  .inq-top{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:6px}
+  .inq-from{font-weight:700;font-size:.92rem}
+  .inq-phone{font-size:.8rem;color:var(--muted)}
+  .inq-listing{font-size:.76rem;background:var(--green-light);color:var(--green-dark);border-radius:999px;padding:2px 10px;font-weight:700}
+  .inq-time{font-size:.74rem;color:var(--muted);margin-left:auto}
+  .inq-msg{font-size:.9rem;background:var(--bg);border-radius:10px;padding:10px 12px}
+  .inq-reply{margin-top:10px;font-size:.87rem;background:#eef7f3;border-radius:10px;padding:10px 12px;border-left:3px solid var(--green)}
+  .inq-reply .r-lbl{font-size:.72rem;font-weight:700;color:var(--green-dark);text-transform:uppercase;letter-spacing:.5px}
+  .reply-box{display:flex;gap:8px;margin-top:10px}
+  .reply-box input{flex:1}
+  .badge-new{background:var(--amber);color:#fff;font-size:.68rem;font-weight:800;border-radius:999px;padding:2px 9px}
+</style>
+</head>
+<body>
+
+<header>
+  <a class="logo" href="/">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg>
+    <span>Pata<b>Home</b></span><span class="tag">Owner Dashboard</span>
+  </a>
+  <div class="header-right" id="headerRight" style="display:none">
+    <span class="who" id="who"></span>
+    <a class="btn btn-ghost" href="/" style="text-decoration:none">View Site</a>
+    <button class="btn btn-primary" onclick="logout()">Log Out</button>
+  </div>
+</header>
+
+<!-- ============ AUTH ============ -->
+<div id="authView">
+  <div class="auth-card">
+    <h1>Karibu, Property Owner 👋</h1>
+    <div class="sub">Manage your listings, track leads, and boost visibility.</div>
+    <div class="auth-tabs">
+      <button id="tabLogin" class="on" onclick="setMode('login')">Log In</button>
+      <button id="tabReg" onclick="setMode('register')">Register</button>
+    </div>
+    <div id="regName" style="display:none">
+      <label>Full name</label>
+      <input id="aName" placeholder="e.g. Grace Wanjiru">
+    </div>
+    <label>Phone</label>
+    <input id="aPhone" placeholder="07XXXXXXXX" inputmode="numeric">
+    <label>Password</label>
+    <input id="aPass" type="password" placeholder="At least 8 characters">
+    <div class="err" id="authErr"></div>
+    <button class="btn btn-primary" style="width:100%;padding:12px" onclick="submitAuth()" id="authBtn">Log In</button>
+    <div class="hint">Demo owner: phone <b>0712445210</b>, password <b>demo1234</b></div>
+  </div>
+</div>
+
+<!-- ============ DASHBOARD ============ -->
+<div id="dashView" class="wrap" style="display:none">
+  <div class="stats">
+    <div class="stat"><div class="num" id="sActive">–</div><div class="lbl">Active listings</div></div>
+    <div class="stat"><div class="num" id="sLeads">–</div><div class="lbl">Total leads (contact requests)</div></div>
+    <div class="stat"><div class="num" id="sFeatured">–</div><div class="lbl">Currently featured</div></div>
+    <div class="stat"><div class="num" id="sInq">–</div><div class="lbl">Messages awaiting your reply</div></div>
+  </div>
+
+  <div class="section-head">
+    <h2>My Listings</h2>
+    <button class="btn btn-primary" onclick="openAdd()">+ New Listing</button>
+  </div>
+  <div class="table" id="table"></div>
+
+  <div class="section-head" style="margin-top:28px">
+    <h2>📬 Messages from Tenants & Buyers</h2>
+  </div>
+  <div class="inbox" id="inbox"></div>
+</div>
+
+<!-- ============ ADD/EDIT MODAL ============ -->
+<div class="overlay" id="editModal" onclick="if(event.target===this)hide('editModal')">
+  <div class="modal">
+    <button class="close-x" onclick="hide('editModal')">✕</button>
+    <h2 id="emTitle">New Listing</h2>
+    <div class="sub">Your listing goes live immediately.</div>
+    <div id="emCatWrap">
+      <label>Category</label>
+      <select id="eCat"><option value="rent">House — For Rent</option><option value="sale">House — For Sale</option><option value="land">Land / Plot</option><option value="vehicle">Vehicle</option></select>
+      <label>Area</label>
+      <select id="eArea"></select>
+    </div>
+    <label>Title</label>
+    <input id="eTitle" placeholder="e.g. Spacious 2BR with balcony">
+    <label>Description (optional)</label>
+    <textarea id="eDesc" rows="2" placeholder="Amenities, terms, directions…"></textarea>
+    <label>Price (KES)</label>
+    <input id="ePrice" type="number" placeholder="e.g. 15000">
+    <label>Bedrooms (houses only)</label>
+    <select id="eBeds"><option value="">N/A</option><option value="0">Bedsitter</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+    <div id="emStatusWrap" style="display:none">
+      <label>Status</label>
+      <select id="eStatus"><option value="active">Active</option><option value="rented">Rented out</option><option value="sold">Sold</option></select>
+    </div>
+    <div class="err" id="emErr"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="hide('editModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveListing()" id="emSave">Publish</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ FEATURE MODAL ============ -->
+<div class="overlay" id="featModal" onclick="if(event.target===this)hide('featModal')">
+  <div class="modal">
+    <button class="close-x" onclick="hide('featModal')">✕</button>
+    <h2>⭐ Feature this listing</h2>
+    <div class="sub" id="fmSub">Featured listings appear above all others in search results and on the map.</div>
+    <div class="plan" data-plan="feature_7d" onclick="selPlan(this)">
+      <div><div class="p-name">7-day boost</div><div class="p-sub">Great for rentals</div></div>
+      <div class="p-price">KES 300</div>
+    </div>
+    <div class="plan" data-plan="feature_30d" onclick="selPlan(this)">
+      <div><div class="p-name">30-day boost</div><div class="p-sub">Best for land & vehicles</div></div>
+      <div class="p-price">KES 1,000</div>
+    </div>
+    <div class="err" id="fmErr"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="hide('featModal')">Cancel</button>
+      <button class="btn btn-amber" onclick="payFeature()">Pay with M-Pesa</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = ""; // same origin
+let token = localStorage.getItem("pb_token") || null;
+let userName = localStorage.getItem("pb_name") || "";
+let mode = "login", areas = [], myListings = [], myInquiries = [], editId = null, featId = null, plan = null;
+
+/* ---------- helpers ---------- */
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => "KES " + Number(n).toLocaleString("en-KE");
+function toast(m){const t=$("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("show"),2800)}
+function show(id){$(id).classList.add("show")}
+function hide(id){$(id).classList.remove("show")}
+function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+
+async function api(path, opts = {}) {
+  const res = await fetch(API + path, {
+    ...opts,
+    headers: { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}), ...(opts.headers || {}) }
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || ("Request failed (" + res.status + ")"));
+  return data;
+}
+
+/* ---------- auth ---------- */
+function setMode(m){
+  mode=m;
+  $("tabLogin").classList.toggle("on",m==="login");
+  $("tabReg").classList.toggle("on",m==="register");
+  $("regName").style.display=m==="register"?"block":"none";
+  $("authBtn").textContent=m==="login"?"Log In":"Create Account";
+  $("authErr").textContent="";
+}
+async function submitAuth(){
+  $("authErr").textContent="";
+  try{
+    const body={phone:$("aPhone").value.trim(),password:$("aPass").value};
+    if(mode==="register")body.name=$("aName").value.trim();
+    const r=await api("/api/auth/"+(mode==="login"?"login":"register"),{method:"POST",body:JSON.stringify(body)});
+    token=r.token;userName=r.user.name;
+    localStorage.setItem("pb_token",token);localStorage.setItem("pb_name",userName);
+    enterDash();
+  }catch(e){$("authErr").textContent=e.message}
+}
+function logout(){
+  token=null;localStorage.removeItem("pb_token");localStorage.removeItem("pb_name");
+  $("dashView").style.display="none";$("headerRight").style.display="none";
+  $("authView").style.display="block";
+}
+
+/* ---------- dashboard ---------- */
+async function enterDash(){
+  $("authView").style.display="none";
+  $("dashView").style.display="block";
+  $("headerRight").style.display="flex";
+  $("who").textContent="👤 "+userName;
+  if(!areas.length){
+    areas=await api("/api/areas");
+    $("eArea").innerHTML=areas.map(a=>`<option value="${a.id}">${esc(a.name)} — ${esc(a.county)}</option>`).join("");
+  }
+  await refresh();
+}
+async function refresh(){
+  const [listings,inquiries]=await Promise.all([api("/api/my/listings"),api("/api/my/inquiries")]);
+  myListings=listings;myInquiries=inquiries;
+  const active=myListings.filter(x=>x.status==="active");
+  const totalLeads=myListings.reduce((s,x)=>s+x.leads,0);
+  $("sActive").textContent=active.length;
+  $("sLeads").textContent=totalLeads;
+  $("sFeatured").textContent=myListings.filter(x=>x.featured).length;
+  $("sInq").textContent=myInquiries.filter(x=>!x.reply).length;
+  renderTable();
+  renderInbox();
+}
+function renderInbox(){
+  const CAT={rent:"🏠",sale:"🏡",land:"🌍",vehicle:"🚗"};
+  if(!myInquiries.length){$("inbox").innerHTML=`<div class="inq" style="text-align:center;color:var(--muted)">No messages yet — they'll appear here when tenants and buyers reach out. 📭</div>`;return}
+  $("inbox").innerHTML=myInquiries.map(q=>`
+    <div class="inq ${q.reply?"":"unreplied"}">
+      <div class="inq-top">
+        <span class="inq-from">${esc(q.fromName)}</span>
+        <span class="inq-phone">📞 ${esc(q.fromPhone)}</span>
+        <span class="inq-listing">${CAT[q.category]||""} ${esc(q.listingTitle)}</span>
+        ${q.reply?"":`<span class="badge-new">NEEDS REPLY</span>`}
+        <span class="inq-time">${esc(q.createdAt)}</span>
+      </div>
+      <div class="inq-msg">${esc(q.message)}</div>
+      ${q.reply?`
+        <div class="inq-reply"><div class="r-lbl">Your reply · ${esc(q.repliedAt||"")}</div>${esc(q.reply)}</div>`:`
+        <div class="reply-box">
+          <input id="rep${q.id}" placeholder="Type your reply… e.g. Yes, available! Viewing Sat 10am works.">
+          <button class="btn btn-primary btn-sm" onclick="sendReply(${q.id})">Reply</button>
+        </div>`}
+    </div>`).join("");
+}
+async function sendReply(id){
+  const box=$("rep"+id);
+  if(!box.value.trim()){toast("Type a reply first");return}
+  try{
+    await api(`/api/inquiries/${id}/reply`,{method:"POST",body:JSON.stringify({reply:box.value.trim()})});
+    toast("✅ Reply sent");
+    await refresh();
+  }catch(e){toast("⚠️ "+e.message)}
+}
+function renderTable(){
+  const CAT={rent:"🏠 Rent",sale:"🏡 Sale",land:"🌍 Land",vehicle:"🚗 Vehicle"};
+  if(!myListings.length){$("table").innerHTML=`<div class="empty">No listings yet — post your first one! 🎉</div>`;return}
+  $("table").innerHTML=`
+    <div class="row head"><div>Listing</div><div>Category</div><div>Price</div><div>Leads</div><div>Status</div><div style="text-align:right">Actions</div></div>`+
+    myListings.map(x=>`
+    <div class="row">
+      <div><div class="title">${esc(x.title)}</div><div class="area">📍 ${esc(x.area)}, ${esc(x.county)}</div></div>
+      <div>${CAT[x.category]||x.category}</div>
+      <div>${fmt(x.price)}${x.category==="rent"?"<span style='color:var(--muted);font-size:.75rem'>/mo</span>":""}</div>
+      <div class="leads-badge">${x.leads} 📞</div>
+      <div>${x.featured?`<span class="pill featured">⭐ Featured</span>`:`<span class="pill ${x.status}">${x.status}</span>`}</div>
+      <div class="actions">
+        ${!x.featured&&x.status==="active"?`<button class="btn btn-amber btn-sm" onclick="openFeature(${x.id})">⭐ Boost</button>`:""}
+        <button class="btn btn-ghost btn-sm" onclick="openEdit(${x.id})">Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="removeListing(${x.id})">Remove</button>
+      </div>
+    </div>`).join("");
+}
+
+/* ---------- add / edit ---------- */
+function openAdd(){
+  editId=null;
+  $("emTitle").textContent="New Listing";$("emSave").textContent="Publish";
+  $("emCatWrap").style.display="block";$("emStatusWrap").style.display="none";
+  $("eTitle").value="";$("eDesc").value="";$("ePrice").value="";$("eBeds").value="";$("emErr").textContent="";
+  show("editModal");
+}
+function openEdit(id){
+  const x=myListings.find(y=>y.id===id);
+  editId=id;
+  $("emTitle").textContent="Edit Listing";$("emSave").textContent="Save Changes";
+  $("emCatWrap").style.display="none";$("emStatusWrap").style.display="block";
+  $("eTitle").value=x.title;$("eDesc").value=x.description||"";$("ePrice").value=x.price;
+  $("eBeds").value=x.bedrooms==null?"":x.bedrooms;$("eStatus").value=x.status;$("emErr").textContent="";
+  show("editModal");
+}
+async function saveListing(){
+  $("emErr").textContent="";
+  try{
+    if(editId==null){
+      await api("/api/listings",{method:"POST",body:JSON.stringify({
+        category:$("eCat").value,title:$("eTitle").value,description:$("eDesc").value,
+        areaId:+$("eArea").value,price:+$("ePrice").value,
+        bedrooms:$("eBeds").value===""?null:+$("eBeds").value
+      })});
+      toast("🎉 Listing published!");
+    }else{
+      await api("/api/listings/"+editId,{method:"PATCH",body:JSON.stringify({
+        title:$("eTitle").value,description:$("eDesc").value,price:+$("ePrice").value,
+        bedrooms:$("eBeds").value===""?null:+$("eBeds").value,status:$("eStatus").value
+      })});
+      toast("✅ Listing updated");
+    }
+    hide("editModal");await refresh();
+  }catch(e){$("emErr").textContent=e.message}
+}
+async function removeListing(id){
+  if(!confirm("Remove this listing? It will disappear from the site."))return;
+  try{await api("/api/listings/"+id,{method:"DELETE"});toast("Listing removed");await refresh()}
+  catch(e){toast("⚠️ "+e.message)}
+}
+
+/* ---------- feature / boost ---------- */
+function openFeature(id){
+  featId=id;plan=null;
+  document.querySelectorAll(".plan").forEach(p=>p.classList.remove("sel"));
+  $("fmErr").textContent="";
+  const x=myListings.find(y=>y.id===id);
+  $("fmSub").textContent=`"${x.title}" will appear above all other listings.`;
+  show("featModal");
+}
+function selPlan(el){
+  plan=el.dataset.plan;
+  document.querySelectorAll(".plan").forEach(p=>p.classList.remove("sel"));
+  el.classList.add("sel");
+}
+async function payFeature(){
+  if(!plan){$("fmErr").textContent="Choose a boost plan first";return}
+  try{
+    const r=await api(`/api/listings/${featId}/feature`,{method:"POST",body:JSON.stringify({plan})});
+    hide("featModal");
+    toast(`✅ Paid ${fmt(r.amount)} (${r.providerRef}) — listing boosted!`);
+    await refresh();
+  }catch(e){$("fmErr").textContent=e.message}
+}
+
+/* ---------- init ---------- */
+(async function(){
+  if(token){
+    try{const me=await api("/api/auth/me");userName=me.name;await enterDash();return}
+    catch{token=null;localStorage.removeItem("pb_token")}
+  }
+  $("authView").style.display="block";
+})();
+</script>
+</body>
+</html>
