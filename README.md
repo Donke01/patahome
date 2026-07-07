@@ -54,3 +54,14 @@ Other:
 - SQLite is fine to thousands of listings; migrate to Postgres when needed.
 - Add rate limiting and HTTPS via a reverse proxy (Caddy/nginx) before going live.
 - Free/cheap hosting options: Railway, Render, Fly.io, or a KES ~500/mo VPS.
+
+## SEO
+
+Server-rendered, crawlable pages (set `BASE_URL=https://patahome.co.ke` in production):
+
+- `/listing/:id/:slug` — per-listing page with meta tags + schema.org JSON-LD
+- `/rentals/:area`, `/for-sale/:area`, `/land/:area`, `/vehicles/:area` — landing pages matching real search queries ("bedsitter kitale", "plots for sale ruiru")
+- `/browse` — crawl entry point linking every area page
+- `/sitemap.xml` (dynamic) and `/robots.txt`
+
+Launch checklist: verify the domain in Google Search Console and submit /sitemap.xml, create a Google Business Profile, and share area pages in local Facebook housing groups for first backlinks.

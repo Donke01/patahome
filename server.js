@@ -292,6 +292,176 @@ router.add("GET", "/api/health", (req, res) => {
   send(res, 200, { ok: true, listings: db.prepare("SELECT COUNT(*) n FROM listings WHERE status='active'").get().n });
 });
 
+/* ============================================================
+   SEO: server-rendered pages, sitemap.xml, robots.txt
+   ============================================================ */
+const BASE_URL = (process.env.BASE_URL || "http://localhost:3000").replace(/\/$/, "");
+const CATS = {
+  rentals:  { db: "rent",    label: "Houses & Rooms for Rent", unit: "/month" },
+  "for-sale":{ db: "sale",   label: "Houses for Sale",         unit: "" },
+  land:     { db: "land",    label: "Land & Plots for Sale",   unit: "" },
+  vehicles: { db: "vehicle", label: "Vehicles for Sale",       unit: "" }
+};
+const CAT_SLUG = { rent: "rentals", sale: "for-sale", land: "land", vehicle: "vehicles" };
+const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const escapeHtml = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmtKes = (n) => "KES " + Number(n).toLocaleString("en-KE");
+
+function areaBySlug(slug) {
+  return db.prepare("SELECT * FROM areas").all().find((a) => slugify(a.name) === slug) || null;
+}
+
+function pageShell({ title, description, canonical, jsonLd, bodyHtml }) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${escapeHtml(title)}</title>
+<meta name="description" content="${escapeHtml(description)}">
+<link rel="canonical" href="${canonical}">
+<meta property="og:title" content="${escapeHtml(title)}">
+<meta property="og:description" content="${escapeHtml(description)}">
+<meta property="og:url" content="${canonical}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="PataHome">
+${jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>` : ""}
+<style>
+  body{font-family:'Segoe UI',system-ui,sans-serif;margin:0;background:#f7faf8;color:#1c2320;line-height:1.6}
+  a{color:#0e7c5a}
+  header{background:#fff;border-bottom:1px solid #e3e8e5;padding:12px 20px}
+  header a.logo{font-size:1.2rem;font-weight:800;color:#0e7c5a;text-decoration:none}
+  header a.logo b{color:#e8a13a}
+  .wrap{max-width:900px;margin:0 auto;padding:24px 20px 50px}
+  h1{font-size:1.5rem;color:#0a5c43}
+  .card{background:#fff;border:1px solid #e3e8e5;border-radius:12px;padding:16px 18px;margin:12px 0;box-shadow:0 2px 10px rgba(20,40,30,.06)}
+  .card a{font-weight:700;text-decoration:none;font-size:1.02rem}
+  .price{font-weight:800;color:#0a5c43}
+  .meta{font-size:.85rem;color:#5f6b66}
+  .links{font-size:.85rem;color:#5f6b66;margin-top:30px;border-top:1px solid #e3e8e5;padding-top:16px}
+  .links a{margin-right:12px;white-space:nowrap;display:inline-block}
+  .cta{display:inline-block;background:#0e7c5a;color:#fff;border-radius:10px;padding:10px 20px;text-decoration:none;font-weight:700;margin-top:10px}
+  footer{text-align:center;color:#5f6b66;font-size:.8rem;padding:20px}
+</style>
+</head>
+<body>
+<header><a class="logo" href="/">Pata<b>Home</b></a></header>
+<div class="wrap">${bodyHtml}</div>
+<footer>PataHome · Homes, land &amp; vehicles across Kenya</footer>
+</body>
+</html>`;
+}
+
+function areaLinksHtml() {
+  const areas = db.prepare("SELECT * FROM areas ORDER BY county, name").all();
+  return `<div class="links"><strong>Browse by area:</strong><br>` +
+    Object.keys(CATS).map((cs) =>
+      areas.map((a) => `<a href="/${cs}/${slugify(a.name)}">${escapeHtml(CATS[cs].label.split(" ")[0])} ${escapeHtml(a.name)}</a>`).join(" ")
+    ).join("<br>") + `</div>`;
+}
+
+function sendHtml(res, code, html) {
+  res.writeHead(code, { "Content-Type": "text/html; charset=utf-8" });
+  res.end(html);
+}
+
+/* ---- per-listing page: /listing/:id/:slug? ---- */
+function listingPage(req, res, p) {
+  const row = db.prepare(`${LISTING_SQL} WHERE l.id=? AND l.status='active'`).get(p.id);
+  if (!row) return sendHtml(res, 404, pageShell({
+    title: "Listing not found — PataHome", description: "This listing is no longer available.",
+    canonical: `${BASE_URL}/`, bodyHtml: `<h1>Listing not found</h1><p>It may have been rented or sold. <a href="/">Browse current listings</a>.</p>` }));
+  const catSlug = CAT_SLUG[row.category];
+  const unit = row.category === "rent" ? "/month" : "";
+  const canonical = `${BASE_URL}/listing/${row.id}/${slugify(row.title)}`;
+  const desc = `${row.title} in ${row.area_name}, ${row.county} County — ${fmtKes(row.price)}${unit}. Contact the verified owner directly on PataHome. No middlemen, no viewing fees.`;
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: row.title,
+    description: desc,
+    offers: { "@type": "Offer", price: row.price, priceCurrency: "KES", availability: "https://schema.org/InStock", url: canonical },
+    ...(row.category !== "vehicle" ? { additionalType: "https://schema.org/RealEstateListing" } : {})
+  };
+  const bodyHtml = `
+    <h1>${escapeHtml(row.title)}</h1>
+    <div class="card">
+      <div class="price">${fmtKes(row.price)}${unit}</div>
+      <div class="meta">📍 ${escapeHtml(row.area_name)}, ${escapeHtml(row.county)} County
+        ${row.bedrooms != null ? ` · 🛏 ${row.bedrooms === 0 ? "Bedsitter" : row.bedrooms + " bedroom(s)"}` : ""}
+        · Listed by ${escapeHtml(row.owner_name)}${row.owner_verified ? " ✓ verified owner" : ""}</div>
+      ${row.description ? `<p>${escapeHtml(row.description)}</p>` : ""}
+      <a class="cta" href="/#listing-${row.id}">View on PataHome &amp; contact owner</a>
+    </div>
+    <p><a href="/${catSlug}/${slugify(row.area_name)}">More ${escapeHtml(CATS[catSlug].label.toLowerCase())} in ${escapeHtml(row.area_name)} →</a></p>
+    ${areaLinksHtml()}`;
+  sendHtml(res, 200, pageShell({ title: `${row.title} — ${row.area_name} | PataHome`, description: desc, canonical, jsonLd, bodyHtml }));
+}
+router.add("GET", "/listing/:id", listingPage);
+router.add("GET", "/listing/:id/:slug", listingPage);
+
+/* ---- category+area landing pages: /rentals/kitale-town-cbd etc ---- */
+router.add("GET", "/:catSlug/:areaSlug", (req, res, p) => {
+  const cat = CATS[p.catSlug];
+  const area = cat ? areaBySlug(p.areaSlug) : null;
+  if (!cat || !area) return send(res, 404, { error: "Not found" });
+  const rows = db.prepare(`${LISTING_SQL} WHERE l.status='active' AND l.category=? AND l.area_id=? ORDER BY l.featured_until DESC, l.id DESC`)
+    .all(cat.db, area.id);
+  const canonical = `${BASE_URL}/${p.catSlug}/${p.areaSlug}`;
+  const minPrice = rows.length ? Math.min(...rows.map((r) => r.price)) : null;
+  const title = `${cat.label} in ${area.name}, ${area.county} | PataHome`;
+  const desc = rows.length
+    ? `${rows.length} ${cat.label.toLowerCase()} in ${area.name}, ${area.county} County from ${fmtKes(minPrice)}${cat.unit}. Deal directly with verified owners on PataHome.`
+    : `Find ${cat.label.toLowerCase()} in ${area.name}, ${area.county} County on PataHome. New listings added daily by verified owners.`;
+  const jsonLd = {
+    "@context": "https://schema.org", "@type": "ItemList",
+    name: title,
+    itemListElement: rows.map((r, i) => ({ "@type": "ListItem", position: i + 1, url: `${BASE_URL}/listing/${r.id}/${slugify(r.title)}` }))
+  };
+  const bodyHtml = `
+    <h1>${escapeHtml(cat.label)} in ${escapeHtml(area.name)}, ${escapeHtml(area.county)} County</h1>
+    <p class="meta">${rows.length} listing(s)${minPrice ? ` · from ${fmtKes(minPrice)}${cat.unit}` : ""} · updated daily</p>
+    ${rows.length ? rows.map((r) => `
+      <div class="card">
+        <a href="/listing/${r.id}/${slugify(r.title)}">${escapeHtml(r.title)}</a>
+        <div class="price">${fmtKes(r.price)}${cat.unit}</div>
+        <div class="meta">📍 ${escapeHtml(r.area_name)}${r.bedrooms != null ? ` · 🛏 ${r.bedrooms === 0 ? "Bedsitter" : r.bedrooms + " BR"}` : ""}</div>
+      </div>`).join("") : `<div class="card">No listings here yet — <a href="/dashboard.html">be the first to post</a>.</div>`}
+    <a class="cta" href="/">Search all listings on PataHome</a>
+    ${areaLinksHtml()}`;
+  sendHtml(res, 200, pageShell({ title, description: desc, canonical, jsonLd, bodyHtml }));
+});
+
+/* ---- browse index (crawl entry point) ---- */
+router.add("GET", "/browse", (req, res) => {
+  sendHtml(res, 200, pageShell({
+    title: "Browse Homes, Land & Vehicles by Area | PataHome",
+    description: "Browse rentals, houses for sale, land and vehicles across Kenyan counties on PataHome — direct from verified owners.",
+    canonical: `${BASE_URL}/browse`,
+    bodyHtml: `<h1>Browse by area</h1>${areaLinksHtml()}`
+  }));
+});
+
+/* ---- sitemap.xml + robots.txt ---- */
+router.add("GET", "/sitemap.xml", (req, res) => {
+  const areas = db.prepare("SELECT * FROM areas").all();
+  const listings = db.prepare("SELECT id, title FROM listings WHERE status='active'").all();
+  const urls = [`${BASE_URL}/`, `${BASE_URL}/browse`]
+    .concat(Object.keys(CATS).flatMap((cs) => areas.map((a) => `${BASE_URL}/${cs}/${slugify(a.name)}`)))
+    .concat(listings.map((l) => `${BASE_URL}/listing/${l.id}/${slugify(l.title)}`));
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls.map((u) => `  <url><loc>${u}</loc></url>`).join("\n")}
+</urlset>`;
+  res.writeHead(200, { "Content-Type": "application/xml" });
+  res.end(xml);
+});
+
+router.add("GET", "/robots.txt", (req, res) => {
+  res.writeHead(200, { "Content-Type": "text/plain" });
+  res.end(`User-agent: *\nAllow: /\nDisallow: /dashboard.html\nDisallow: /api/\n\nSitemap: ${BASE_URL}/sitemap.xml\n`);
+});
+
 /* ================= server ================= */
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".png": "image/png", ".svg": "image/svg+xml", ".ico": "image/x-icon" };
 
