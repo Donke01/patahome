@@ -288,6 +288,72 @@ router.add("GET", "/api/my/listings", (req, res) => {
   send(res, 200, rows.map(r => ({ ...listingView(r), leads: leadCount[r.id] || 0 })));
 });
 
+/* ================= admin (role: admin only) ================= */
+function requireAdmin(req, res) {
+  const u = requireAuth(req, res);
+  if (!u) return null;
+  if (u.role !== "admin") { send(res, 403, { error: "Admin access only" }); return null; }
+  return u;
+}
+
+router.add("GET", "/api/admin/overview", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const one = (sql) => Object.values(db.prepare(sql).get())[0];
+  send(res, 200, {
+    users: one("SELECT COUNT(*) FROM users WHERE role='user'"),
+    verifiedOwners: one("SELECT COUNT(*) FROM users WHERE role='user' AND verified=1"),
+    activeListings: one("SELECT COUNT(*) FROM listings WHERE status='active'"),
+    totalLeads: one("SELECT COUNT(*) FROM leads"),
+    inquiries: one("SELECT COUNT(*) FROM inquiries"),
+    unrepliedInquiries: one("SELECT COUNT(*) FROM inquiries WHERE owner_reply IS NULL"),
+    revenue: one("SELECT COALESCE(SUM(amount),0) FROM payments WHERE status='completed'"),
+    featuredNow: one("SELECT COUNT(*) FROM listings WHERE featured_until > datetime('now')"),
+    byCategory: Object.fromEntries(db.prepare("SELECT category, COUNT(*) n FROM listings WHERE status='active' GROUP BY category").all().map(r => [r.category, r.n]))
+  });
+});
+
+router.add("GET", "/api/admin/listings", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const leads = {};
+  for (const r of db.prepare("SELECT listing_id, COUNT(*) n FROM leads GROUP BY listing_id").all()) leads[r.listing_id] = r.n;
+  const rows = db.prepare(`SELECT l.*, a.name AS area_name, a.county, u.name AS owner_name, u.phone AS owner_phone
+    FROM listings l JOIN areas a ON a.id=l.area_id JOIN users u ON u.id=l.owner_id
+    WHERE l.status != 'removed' ORDER BY l.id DESC`).all();
+  send(res, 200, rows.map(r => ({
+    id: r.id, category: r.category, title: r.title, area: r.area_name, county: r.county,
+    price: r.price, status: r.status, featured: !!(r.featured_until && r.featured_until > new Date().toISOString()),
+    ownerName: r.owner_name, ownerPhone: r.owner_phone, leads: leads[r.id] || 0, createdAt: r.created_at
+  })));
+});
+
+router.add("GET", "/api/admin/users", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const rows = db.prepare(`SELECT u.id, u.name, u.phone, u.verified, u.role, u.created_at,
+      (SELECT COUNT(*) FROM listings l WHERE l.owner_id=u.id AND l.status!='removed') AS listings
+    FROM users u ORDER BY u.id`).all();
+  send(res, 200, rows);
+});
+
+router.add("PATCH", "/api/admin/users/:id", (req, res, p) => {
+  if (!requireAdmin(req, res)) return;
+  const row = db.prepare("SELECT id FROM users WHERE id=?").get(p.id);
+  if (!row) return send(res, 404, { error: "User not found" });
+  if (req.body.verified !== undefined)
+    db.prepare("UPDATE users SET verified=? WHERE id=?").run(req.body.verified ? 1 : 0, p.id);
+  send(res, 200, { ok: true });
+});
+
+router.add("GET", "/api/admin/payments", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const rows = db.prepare(`SELECT p.*, u.name AS user_name, l.title AS listing_title
+    FROM payments p JOIN users u ON u.id=p.user_id LEFT JOIN listings l ON l.id=p.listing_id
+    ORDER BY p.id DESC`).all();
+  send(res, 200, rows.map(r => ({
+    id: r.id, amount: r.amount, purpose: r.purpose, status: r.status, ref: r.provider_ref,
+    user: r.user_name, listing: r.listing_title, at: r.created_at
+  })));
+});
+
 router.add("GET", "/api/health", (req, res) => {
   send(res, 200, { ok: true, listings: db.prepare("SELECT COUNT(*) n FROM listings WHERE status='active'").get().n });
 });
@@ -459,7 +525,7 @@ ${urls.map((u) => `  <url><loc>${u}</loc></url>`).join("\n")}
 
 router.add("GET", "/robots.txt", (req, res) => {
   res.writeHead(200, { "Content-Type": "text/plain" });
-  res.end(`User-agent: *\nAllow: /\nDisallow: /dashboard.html\nDisallow: /api/\n\nSitemap: ${BASE_URL}/sitemap.xml\n`);
+  res.end(`User-agent: *\nAllow: /\nDisallow: /dashboard.html\nDisallow: /admin.html\nDisallow: /api/\n\nSitemap: ${BASE_URL}/sitemap.xml\n`);
 });
 
 /* ================= server ================= */

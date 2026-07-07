@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Admin — PataHome</title>
+<style>
+  :root{
+    --violet:#7c3aed; --violet-dark:#5b21b6; --violet-light:#f3ecff;
+    --ink:#241b33; --muted:#6e6482; --line:#e9e2f5; --bg:#faf8ff;
+    --orange:#ff7a1a; --card:#fff; --red:#c0392b;
+    --shadow:0 3px 14px rgba(90,40,180,.10);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5}
+  button{font-family:inherit;cursor:pointer}
+  input{font-family:inherit}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+  header{position:sticky;top:0;z-index:100;background:#1d1430;color:#fff;padding:12px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .logo{font-weight:800;font-size:1.2rem}
+  .logo b{color:var(--orange)}
+  .logo .tag{font-size:.7rem;background:var(--orange);border-radius:999px;padding:2px 10px;font-weight:800;margin-left:8px;vertical-align:middle}
+  .header-right{margin-left:auto;display:flex;gap:10px;align-items:center;font-size:.85rem}
+  .btn{border:none;border-radius:10px;padding:8px 15px;font-weight:700;font-size:.85rem;transition:.15s}
+  .btn-primary{background:var(--violet);color:#fff}
+  .btn-primary:hover{background:var(--violet-dark)}
+  .btn-ghost{background:transparent;color:var(--violet);border:1.5px solid var(--violet)}
+  .btn-danger{background:transparent;color:var(--red);border:1.5px solid #e5b9b3}
+  .btn-sm{padding:5px 11px;font-size:.76rem;border-radius:8px}
+  .btn-white{background:#fff;color:#1d1430}
+
+  .wrap{max-width:1100px;margin:0 auto;padding:24px 20px 60px}
+  .auth-card{max-width:380px;margin:10vh auto;background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px;box-shadow:var(--shadow);animation:fadeUp .4s both}
+  .auth-card h1{font-size:1.2rem;color:var(--violet-dark)}
+  .auth-card .sub{font-size:.84rem;color:var(--muted);margin-bottom:12px}
+  label{display:block;font-size:.78rem;font-weight:700;color:var(--muted);margin:11px 0 4px}
+  input{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;font-size:.9rem;outline:none}
+  input:focus{border-color:var(--violet)}
+  .err{color:var(--red);font-size:.82rem;margin-top:10px;min-height:1.2em}
+
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:22px}
+  .stat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow);animation:fadeUp .4s both}
+  .stat .num{font-size:1.45rem;font-weight:800;color:var(--violet-dark)}
+  .stat .lbl{font-size:.74rem;color:var(--muted)}
+  .stat.rev .num{color:var(--orange)}
+
+  .tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+  .tab{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:8px 18px;font-weight:700;font-size:.85rem;color:var(--muted)}
+  .tab.on{background:var(--violet);border-color:var(--violet);color:#fff}
+
+  .panel{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+  table{width:100%;border-collapse:collapse;font-size:.85rem}
+  th{background:var(--violet-light);color:var(--violet-dark);text-align:left;padding:10px 14px;font-size:.72rem;text-transform:uppercase;letter-spacing:.5px}
+  td{padding:10px 14px;border-top:1px solid var(--line);vertical-align:top}
+  .muted{color:var(--muted);font-size:.78rem}
+  .pill{display:inline-block;font-size:.68rem;font-weight:800;border-radius:999px;padding:2px 9px}
+  .pill.ok{background:var(--violet-light);color:var(--violet-dark)}
+  .pill.warn{background:#fff3e6;color:#b45309}
+  .pill.feat{background:var(--orange);color:#fff}
+  .table-scroll{overflow-x:auto}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--ink);color:#fff;padding:12px 22px;border-radius:12px;font-size:.9rem;z-index:3000;opacity:0;transition:.3s}
+  .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+</style>
+</head>
+<body>
+
+<header>
+  <span class="logo">Pata<b>Home</b><span class="tag">ADMIN</span></span>
+  <div class="header-right" id="hdr" style="display:none">
+    <span id="who"></span>
+    <a class="btn btn-white" href="/" style="text-decoration:none">View Site</a>
+    <button class="btn btn-primary" onclick="logout()">Log Out</button>
+  </div>
+</header>
+
+<div id="authView">
+  <div class="auth-card">
+    <h1>🔐 Admin Access</h1>
+    <div class="sub">This area is for the PataHome administrator only.</div>
+    <label>Phone</label>
+    <input id="aPhone" placeholder="07XXXXXXXX">
+    <label>Password</label>
+    <input id="aPass" type="password">
+    <div class="err" id="authErr"></div>
+    <button class="btn btn-primary" style="width:100%;padding:11px" onclick="login()">Log In</button>
+  </div>
+</div>
+
+<div id="dash" class="wrap" style="display:none">
+  <div class="stats" id="stats"></div>
+  <div class="tabs">
+    <button class="tab on" id="tabL" onclick="setTab('listings')">📋 Listings</button>
+    <button class="tab" id="tabU" onclick="setTab('users')">👥 Users</button>
+    <button class="tab" id="tabP" onclick="setTab('payments')">💰 Payments</button>
+  </div>
+  <div class="panel table-scroll" id="panel"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let token=localStorage.getItem("ph_admin")||null, tab="listings", cache={};
+const $=id=>document.getElementById(id);
+const fmt=n=>"KES "+Number(n).toLocaleString("en-KE");
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function toast(m){const t=$("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("show"),2600)}
+
+async function api(path,opts={}){
+  const r=await fetch(path,{...opts,headers:{"Content-Type":"application/json",...(token?{Authorization:"Bearer "+token}:{})}});
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(d.error||"Request failed");
+  return d;
+}
+async function login(){
+  $("authErr").textContent="";
+  try{
+    const r=await api("/api/auth/login",{method:"POST",body:JSON.stringify({phone:$("aPhone").value.trim(),password:$("aPass").value})});
+    token=r.token;
+    await api("/api/admin/overview"); // verifies admin role
+    localStorage.setItem("ph_admin",token);
+    enter(r.user.name);
+  }catch(e){token=null;$("authErr").textContent=e.message==="Admin access only"?"This account is not an admin.":e.message}
+}
+function logout(){token=null;localStorage.removeItem("ph_admin");location.reload()}
+
+async function enter(name){
+  $("authView").style.display="none";$("dash").style.display="block";$("hdr").style.display="flex";
+  $("who").textContent="👤 "+(name||"Admin");
+  await refresh();
+}
+async function refresh(){
+  const [o,listings,users,payments]=await Promise.all([
+    api("/api/admin/overview"),api("/api/admin/listings"),api("/api/admin/users"),api("/api/admin/payments")]);
+  cache={listings,users,payments};
+  $("stats").innerHTML=`
+    <div class="stat rev"><div class="num">${fmt(o.revenue)}</div><div class="lbl">Revenue (boosts)</div></div>
+    <div class="stat"><div class="num">${o.activeListings}</div><div class="lbl">Active listings</div></div>
+    <div class="stat"><div class="num">${o.featuredNow}</div><div class="lbl">Featured now</div></div>
+    <div class="stat"><div class="num">${o.users}</div><div class="lbl">Registered users</div></div>
+    <div class="stat"><div class="num">${o.totalLeads}</div><div class="lbl">Total leads</div></div>
+    <div class="stat"><div class="num">${o.unrepliedInquiries}</div><div class="lbl">Unreplied inquiries</div></div>`;
+  renderTab();
+}
+function setTab(t){
+  tab=t;
+  $("tabL").classList.toggle("on",t==="listings");
+  $("tabU").classList.toggle("on",t==="users");
+  $("tabP").classList.toggle("on",t==="payments");
+  renderTab();
+}
+function renderTab(){
+  const CAT={rent:"🏠",sale:"🏡",land:"🌍",vehicle:"🚗"};
+  if(tab==="listings"){
+    $("panel").innerHTML=`<table><tr><th>Listing</th><th>Owner</th><th>Price</th><th>Leads</th><th>Status</th><th></th></tr>`+
+      cache.listings.map(x=>`<tr>
+        <td>${CAT[x.category]||""} <b>${esc(x.title)}</b><div class="muted">📍 ${esc(x.area)}, ${esc(x.county)} · #${x.id}</div></td>
+        <td>${esc(x.ownerName)}<div class="muted">${esc(x.ownerPhone)}</div></td>
+        <td>${fmt(x.price)}</td>
+        <td><b>${x.leads}</b></td>
+        <td>${x.featured?`<span class="pill feat">⭐ FEATURED</span>`:`<span class="pill ok">${x.status}</span>`}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="removeListing(${x.id})">Remove</button></td>
+      </tr>`).join("")+`</table>`;
+  }else if(tab==="users"){
+    $("panel").innerHTML=`<table><tr><th>User</th><th>Phone</th><th>Listings</th><th>Verified</th><th>Joined</th><th></th></tr>`+
+      cache.users.map(u=>`<tr>
+        <td><b>${esc(u.name)}</b>${u.role==="admin"?' <span class="pill feat">ADMIN</span>':""}</td>
+        <td>${esc(u.phone)}</td>
+        <td>${u.listings}</td>
+        <td>${u.verified?`<span class="pill ok">✓ verified</span>`:`<span class="pill warn">unverified</span>`}</td>
+        <td class="muted">${esc(u.created_at)}</td>
+        <td>${u.role!=="admin"?`<button class="btn btn-ghost btn-sm" onclick="setVerified(${u.id},${u.verified?0:1})">${u.verified?"Unverify":"Verify ✓"}</button>`:""}</td>
+      </tr>`).join("")+`</table>`;
+  }else{
+    $("panel").innerHTML=cache.payments.length?`<table><tr><th>Ref</th><th>User</th><th>Listing</th><th>Purpose</th><th>Amount</th><th>Status</th><th>When</th></tr>`+
+      cache.payments.map(p=>`<tr>
+        <td class="muted">${esc(p.ref||"—")}</td>
+        <td>${esc(p.user)}</td>
+        <td>${esc(p.listing||"—")}</td>
+        <td>${esc(p.purpose)}</td>
+        <td><b>${fmt(p.amount)}</b></td>
+        <td><span class="pill ${p.status==="completed"?"ok":"warn"}">${p.status}</span></td>
+        <td class="muted">${esc(p.at)}</td>
+      </tr>`).join("")+`</table>`:`<div style="padding:40px;text-align:center;color:var(--muted)">No payments yet — revenue from ⭐ boosts will appear here.</div>`;
+  }
+}
+async function removeListing(id){
+  if(!confirm("Remove listing #"+id+" from the site?"))return;
+  try{await api("/api/listings/"+id,{method:"DELETE"});toast("Listing removed");await refresh()}
+  catch(e){toast("⚠️ "+e.message)}
+}
+async function setVerified(id,v){
+  try{await api("/api/admin/users/"+id,{method:"PATCH",body:JSON.stringify({verified:v})});toast(v?"Owner verified ✓":"Verification removed");await refresh()}
+  catch(e){toast("⚠️ "+e.message)}
+}
+
+(async function(){
+  if(token){
+    try{const me=await api("/api/auth/me");await api("/api/admin/overview");return enter(me.name)}
+    catch{token=null;localStorage.removeItem("ph_admin")}
+  }
+  $("authView").style.display="block";
+})();
+</script>
+</body>
+</html>

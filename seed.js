@@ -88,6 +88,12 @@ for (const [name, county, lat, lng] of AREAS) {
 const hash = hashPassword("demo1234"); // all demo owners share this password
 const ownerIds = OWNERS.map(([name, phone]) => insUser.run(name, phone, hash).lastInsertRowid);
 
+// Admin account — CHANGE THE PASSWORD before going live (or set ADMIN_PHONE / ADMIN_PASSWORD env vars)
+const adminPhone = process.env.ADMIN_PHONE || "0700000001";
+const adminPass = process.env.ADMIN_PASSWORD || "admin1234";
+db.prepare("INSERT INTO users (name,phone,password_hash,role,verified) VALUES (?,?,?,'admin',1)")
+  .run("Site Admin", adminPhone, hashPassword(adminPass));
+
 LISTINGS.forEach((x, i) => {
   const [cat, title, areaName, price, beds] = x;
   const area = getArea.get(areaIds[areaName]);

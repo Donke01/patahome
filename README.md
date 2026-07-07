@@ -65,3 +65,7 @@ Server-rendered, crawlable pages (set `BASE_URL=https://patahome.co.ke` in produ
 - `/sitemap.xml` (dynamic) and `/robots.txt`
 
 Launch checklist: verify the domain in Google Search Console and submit /sitemap.xml, create a Google Business Profile, and share area pages in local Facebook housing groups for first backlinks.
+
+## Admin panel
+
+`/admin.html` — private admin view (revenue, all listings with owner contacts, users with verify/unverify, payment log). Login: the seeded admin account is phone `0700000001` / password `admin1234` — **change this** by setting `ADMIN_PHONE` and `ADMIN_PASSWORD` env vars before seeding in production. Regular owner accounts get 403 on all `/api/admin/*` endpoints. The page is noindex + blocked in robots.txt.
