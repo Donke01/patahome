@@ -113,7 +113,18 @@
   .insight-card .lbl{font-size:.75rem;color:var(--muted);margin-top:2px}
 
   .main{display:grid;grid-template-columns:1fr 380px;gap:20px;padding-bottom:50px;align-items:start}
-  @media(max-width:900px){.main{grid-template-columns:1fr}.map-panel{order:-1;position:static}}
+  .map-fab{display:none}
+  .map-close{display:none}
+  @media(max-width:900px){
+    .main{grid-template-columns:1fr}
+    /* Map hidden on mobile — opens full-screen via the floating button, so it never hijacks page scrolling */
+    .map-panel{display:none}
+    .map-panel.mobile-open{display:block;position:fixed;inset:0;z-index:1500;background:var(--bg);padding:14px}
+    .map-panel.mobile-open #map{height:calc(100vh - 96px);height:calc(100dvh - 96px)}
+    .map-fab{display:flex;position:fixed;bottom:20px;right:20px;z-index:1400;background:var(--green);color:#fff;border:none;border-radius:999px;padding:14px 22px;font-weight:800;font-size:.95rem;box-shadow:0 6px 20px rgba(0,0,0,.3);align-items:center;gap:8px}
+    .map-panel.mobile-open ~ .map-fab, body.map-open .map-fab{display:none}
+    .map-close{display:flex;position:absolute;top:22px;right:22px;z-index:1600;background:var(--ink);color:var(--bg);border:none;border-radius:50%;width:42px;height:42px;font-size:1.1rem;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.3)}
+  }
   .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
   .card{background:var(--card);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);transition:transform .18s, box-shadow .18s;cursor:pointer;border:1px solid var(--line);animation:fadeUp .5s both}
   .card:hover{transform:translateY(-4px);box-shadow:0 10px 26px rgba(20,40,30,.16)}
@@ -261,12 +272,15 @@
 
   <div class="main">
     <div class="cards" id="cards"></div>
-    <div class="map-panel">
+    <div class="map-panel" id="mapPanel">
+      <button class="map-close" onclick="toggleMobileMap(false)">✕</button>
       <div id="map"></div>
       <div class="map-hint">🟢 you · 📍 listings — click a pin for details</div>
     </div>
   </div>
 </div>
+
+<button class="map-fab" onclick="toggleMobileMap(true)">🗺 Map</button>
 
 <footer><b>PataHome</b> · Houses for rent &amp; sale, direct from verified owners · Kenya 🇰🇪</footer>
 
@@ -589,11 +603,20 @@ function renderMarkers(list){
     markers.push(m);
   });
 }
+function toggleMobileMap(open){
+  const panel=document.getElementById("mapPanel");
+  panel.classList.toggle("mobile-open",open);
+  document.body.classList.toggle("map-open",open);
+  document.body.style.overflow=open?"hidden":"";
+  if(open&&map)setTimeout(()=>{map.invalidateSize();if(userLoc)map.setView(userLoc,12)},150);
+}
 function focusOnMap(id){
   const x=LISTINGS.find(y=>y.id===id);
   closeModal("detailModal");
-  if(map){map.setView([x.lat,x.lng],14);markers.forEach(m=>{const p=m.getLatLng();if(Math.abs(p.lat-x.lat)<1e-6)m.openPopup()})}
-  window.scrollTo({top:document.getElementById("map").getBoundingClientRect().top+window.scrollY-90,behavior:"smooth"});
+  const isMobile=window.innerWidth<=900;
+  if(isMobile)toggleMobileMap(true);
+  if(map)setTimeout(()=>{map.invalidateSize();map.setView([x.lat,x.lng],14);markers.forEach(m=>{const p=m.getLatLng();if(Math.abs(p.lat-x.lat)<1e-6)m.openPopup()})},isMobile?200:0);
+  if(!isMobile)window.scrollTo({top:document.getElementById("map").getBoundingClientRect().top+window.scrollY-90,behavior:"smooth"});
 }
 
 /* ================= DETAIL / CONTACT ================= */
