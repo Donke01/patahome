@@ -375,7 +375,7 @@ ${jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script
 <body>
 <header><a class="logo" href="/">Pata<b>Home</b></a></header>
 <div class="wrap">${bodyHtml}</div>
-<footer>PataHome · Homes, land &amp; vehicles across Kenya</footer>
+<footer>PataHome · Houses for rent &amp; sale across Kenya</footer>
 </body>
 </html>`;
 }
