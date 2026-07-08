@@ -93,7 +93,6 @@
   <div class="tabs">
     <button class="tab on" id="tabL" onclick="setTab('listings')">📋 Listings</button>
     <button class="tab" id="tabU" onclick="setTab('users')">👥 Users</button>
-    <button class="tab" id="tabP" onclick="setTab('payments')">💰 Payments</button>
   </div>
   <div class="panel table-scroll" id="panel"></div>
 </div>
@@ -131,14 +130,13 @@ async function enter(name){
   await refresh();
 }
 async function refresh(){
-  const [o,listings,users,payments]=await Promise.all([
-    api("/api/admin/overview"),api("/api/admin/listings"),api("/api/admin/users"),api("/api/admin/payments")]);
-  cache={listings,users,payments};
+  const [o,listings,users]=await Promise.all([
+    api("/api/admin/overview"),api("/api/admin/listings"),api("/api/admin/users")]);
+  cache={listings,users};
   $("stats").innerHTML=`
-    <div class="stat rev"><div class="num">${fmt(o.revenue)}</div><div class="lbl">Revenue (boosts)</div></div>
     <div class="stat"><div class="num">${o.activeListings}</div><div class="lbl">Active listings</div></div>
-    <div class="stat"><div class="num">${o.featuredNow}</div><div class="lbl">Featured now</div></div>
     <div class="stat"><div class="num">${o.users}</div><div class="lbl">Registered users</div></div>
+    <div class="stat"><div class="num">${o.verifiedOwners}</div><div class="lbl">Verified owners</div></div>
     <div class="stat"><div class="num">${o.totalLeads}</div><div class="lbl">Total leads</div></div>
     <div class="stat"><div class="num">${o.unrepliedInquiries}</div><div class="lbl">Unreplied inquiries</div></div>`;
   renderTab();
@@ -147,11 +145,10 @@ function setTab(t){
   tab=t;
   $("tabL").classList.toggle("on",t==="listings");
   $("tabU").classList.toggle("on",t==="users");
-  $("tabP").classList.toggle("on",t==="payments");
   renderTab();
 }
 function renderTab(){
-  const CAT={rent:"🏠",sale:"🏡",land:"🌍",vehicle:"🚗"};
+  const CAT={rent:"🏠",sale:"🏡"};
   if(tab==="listings"){
     $("panel").innerHTML=`<table><tr><th>Listing</th><th>Owner</th><th>Price</th><th>Leads</th><th>Status</th><th></th></tr>`+
       cache.listings.map(x=>`<tr>
@@ -159,7 +156,7 @@ function renderTab(){
         <td>${esc(x.ownerName)}<div class="muted">${esc(x.ownerPhone)}</div></td>
         <td>${fmt(x.price)}</td>
         <td><b>${x.leads}</b></td>
-        <td>${x.featured?`<span class="pill feat">⭐ FEATURED</span>`:`<span class="pill ok">${x.status}</span>`}</td>
+        <td><span class="pill ok">${x.status}</span></td>
         <td><button class="btn btn-danger btn-sm" onclick="removeListing(${x.id})">Remove</button></td>
       </tr>`).join("")+`</table>`;
   }else if(tab==="users"){
@@ -172,17 +169,6 @@ function renderTab(){
         <td class="muted">${esc(u.created_at)}</td>
         <td>${u.role!=="admin"?`<button class="btn btn-ghost btn-sm" onclick="setVerified(${u.id},${u.verified?0:1})">${u.verified?"Unverify":"Verify ✓"}</button>`:""}</td>
       </tr>`).join("")+`</table>`;
-  }else{
-    $("panel").innerHTML=cache.payments.length?`<table><tr><th>Ref</th><th>User</th><th>Listing</th><th>Purpose</th><th>Amount</th><th>Status</th><th>When</th></tr>`+
-      cache.payments.map(p=>`<tr>
-        <td class="muted">${esc(p.ref||"—")}</td>
-        <td>${esc(p.user)}</td>
-        <td>${esc(p.listing||"—")}</td>
-        <td>${esc(p.purpose)}</td>
-        <td><b>${fmt(p.amount)}</b></td>
-        <td><span class="pill ${p.status==="completed"?"ok":"warn"}">${p.status}</span></td>
-        <td class="muted">${esc(p.at)}</td>
-      </tr>`).join("")+`</table>`:`<div style="padding:40px;text-align:center;color:var(--muted)">No payments yet — revenue from ⭐ boosts will appear here.</div>`;
   }
 }
 async function removeListing(id){

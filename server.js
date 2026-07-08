@@ -8,7 +8,6 @@ const db = require("./db");
 const { hashPassword, verifyPassword, signToken, verifyToken, km, makeRouter } = require("./lib");
 
 const PORT = process.env.PORT || 3000;
-const FEATURE_PRICES = { feature_7d: { amount: 300, days: 7 }, feature_30d: { amount: 1000, days: 30 } };
 const router = makeRouter();
 
 /* ================= helpers ================= */
@@ -134,7 +133,7 @@ router.add("GET", "/api/listings/:id", (req, res, p) => {
 router.add("POST", "/api/listings", (req, res) => {
   const u = requireAuth(req, res); if (!u) return;
   const { category, title, description, areaId, price, bedrooms } = req.body || {};
-  if (!["rent", "sale", "land", "vehicle"].includes(category)) return send(res, 400, { error: "Invalid category" });
+  if (!["rent", "sale"].includes(category)) return send(res, 400, { error: "Invalid category" });
   if (!title || !areaId || !price) return send(res, 400, { error: "title, areaId and price are required" });
   const area = db.prepare("SELECT * FROM areas WHERE id=?").get(areaId);
   if (!area) return send(res, 400, { error: "Unknown areaId — see GET /api/areas" });
@@ -232,9 +231,8 @@ router.add("GET", "/api/insights", (req, res) => {
     totalNearby: rows.length,
     avgRent: rents.length ? Math.round(rents.reduce((s, x) => s + x, 0) / rents.length) : null,
     cheapestRent: rents.length ? Math.min(...rents) : null,
-    plotsForSale: rows.filter(r => r.category === "land").length,
-    vehicles: rows.filter(r => r.category === "vehicle").length,
-    byCategory: Object.fromEntries(["rent", "sale", "land", "vehicle"].map(c => [c, rows.filter(r => r.category === c).length]))
+    forSaleNearby: rows.filter(r => r.category === "sale").length,
+    byCategory: Object.fromEntries(["rent", "sale"].map(c => [c, rows.filter(r => r.category === c).length]))
   });
 });
 
@@ -255,27 +253,6 @@ router.add("DELETE", "/api/favorites/:listingId", (req, res, p) => {
   const u = requireAuth(req, res); if (!u) return;
   db.prepare("DELETE FROM favorites WHERE user_id=? AND listing_id=?").run(u.id, p.listingId);
   send(res, 200, { ok: true });
-});
-
-/* ---- feature a listing (mock M-Pesa STK push) — monetization ---- */
-router.add("POST", "/api/listings/:id/feature", (req, res, p) => {
-  const u = requireAuth(req, res); if (!u) return;
-  const { plan } = req.body || {};
-  const price = FEATURE_PRICES[plan];
-  if (!price) return send(res, 400, { error: "plan must be feature_7d (KES 300) or feature_30d (KES 1000)" });
-  const row = db.prepare("SELECT * FROM listings WHERE id=?").get(p.id);
-  if (!row) return send(res, 404, { error: "Listing not found" });
-  if (row.owner_id !== u.id) return send(res, 403, { error: "Not your listing" });
-
-  // MOCK: in production, trigger a real M-Pesa STK push (Daraja API) here and
-  // complete the payment in the callback webhook instead of immediately.
-  const ref = "MPESA-MOCK-" + Date.now();
-  const until = new Date(Date.now() + price.days * 86400000).toISOString();
-  db.prepare(`INSERT INTO payments (user_id,listing_id,amount,purpose,provider_ref,status)
-    VALUES (?,?,?,?,?,'completed')`).run(u.id, row.id, price.amount, plan, ref);
-  db.prepare("UPDATE listings SET featured_until=? WHERE id=?").run(until, row.id);
-  send(res, 200, { ok: true, amount: price.amount, providerRef: ref, featuredUntil: until,
-    note: "Mock payment. Wire up M-Pesa Daraja STK push + callback for production." });
 });
 
 /* ================= owner dashboard ================= */
@@ -306,8 +283,6 @@ router.add("GET", "/api/admin/overview", (req, res) => {
     totalLeads: one("SELECT COUNT(*) FROM leads"),
     inquiries: one("SELECT COUNT(*) FROM inquiries"),
     unrepliedInquiries: one("SELECT COUNT(*) FROM inquiries WHERE owner_reply IS NULL"),
-    revenue: one("SELECT COALESCE(SUM(amount),0) FROM payments WHERE status='completed'"),
-    featuredNow: one("SELECT COUNT(*) FROM listings WHERE featured_until > datetime('now')"),
     byCategory: Object.fromEntries(db.prepare("SELECT category, COUNT(*) n FROM listings WHERE status='active' GROUP BY category").all().map(r => [r.category, r.n]))
   });
 });
@@ -343,17 +318,6 @@ router.add("PATCH", "/api/admin/users/:id", (req, res, p) => {
   send(res, 200, { ok: true });
 });
 
-router.add("GET", "/api/admin/payments", (req, res) => {
-  if (!requireAdmin(req, res)) return;
-  const rows = db.prepare(`SELECT p.*, u.name AS user_name, l.title AS listing_title
-    FROM payments p JOIN users u ON u.id=p.user_id LEFT JOIN listings l ON l.id=p.listing_id
-    ORDER BY p.id DESC`).all();
-  send(res, 200, rows.map(r => ({
-    id: r.id, amount: r.amount, purpose: r.purpose, status: r.status, ref: r.provider_ref,
-    user: r.user_name, listing: r.listing_title, at: r.created_at
-  })));
-});
-
 router.add("GET", "/api/health", (req, res) => {
   send(res, 200, { ok: true, listings: db.prepare("SELECT COUNT(*) n FROM listings WHERE status='active'").get().n });
 });
@@ -364,11 +328,9 @@ router.add("GET", "/api/health", (req, res) => {
 const BASE_URL = (process.env.BASE_URL || "http://localhost:3000").replace(/\/$/, "");
 const CATS = {
   rentals:  { db: "rent",    label: "Houses & Rooms for Rent", unit: "/month" },
-  "for-sale":{ db: "sale",   label: "Houses for Sale",         unit: "" },
-  land:     { db: "land",    label: "Land & Plots for Sale",   unit: "" },
-  vehicles: { db: "vehicle", label: "Vehicles for Sale",       unit: "" }
+  "for-sale":{ db: "sale",   label: "Houses for Sale",         unit: "" }
 };
-const CAT_SLUG = { rent: "rentals", sale: "for-sale", land: "land", vehicle: "vehicles" };
+const CAT_SLUG = { rent: "rentals", sale: "for-sale" };
 const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const escapeHtml = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const fmtKes = (n) => "KES " + Number(n).toLocaleString("en-KE");
@@ -447,7 +409,7 @@ function listingPage(req, res, p) {
     name: row.title,
     description: desc,
     offers: { "@type": "Offer", price: row.price, priceCurrency: "KES", availability: "https://schema.org/InStock", url: canonical },
-    ...(row.category !== "vehicle" ? { additionalType: "https://schema.org/RealEstateListing" } : {})
+    additionalType: "https://schema.org/RealEstateListing"
   };
   const bodyHtml = `
     <h1>${escapeHtml(row.title)}</h1>

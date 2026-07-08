@@ -53,20 +53,6 @@ const LISTINGS = [
   ["sale","4BR maisonette on 1/4 acre","Milimani, Kitale",12500000,4],
   ["sale","2BR starter home, ready title","Bikeke",2900000,2],
   ["sale","3BR farmhouse on 1 acre","Endebess",7500000,3],
-  ["land","50x100 plot, ready title deed","Ruiru",2400000,null],
-  ["land","1/8 acre, water & power on site","Syokimau",3900000,null],
-  ["land","1 acre agricultural, red soil","Thika Town",5200000,null],
-  ["land","50x100 near tarmac","Eldoret Town",1450000,null],
-  ["land","Beach-side 1/4 acre","Nyali",12500000,null],
-  ["land","50x100 plot, ready title deed","Bikeke",550000,null],
-  ["land","5 acres maize land, fertile loam","Kwanza",5500000,null],
-  ["land","Prime 50x100 commercial plot","Kitale Town CBD",3500000,null],
-  ["vehicle","Toyota Probox 2017, clean, local use","Kasarani, Nairobi",890000,null],
-  ["vehicle","Mazda Demio 2016, lady-owned","Westlands, Nairobi",980000,null],
-  ["vehicle","Toyota Hilux 2015 single cab","Nakuru Town",2350000,null],
-  ["vehicle","Nissan Note 2017, just arrived","Nyali",1150000,null],
-  ["vehicle","Massey Ferguson 375 tractor, working","Kwanza",1850000,null],
-  ["vehicle","Boda TVS 2023, 8k km","Kisumu CBD",145000,null]
 ];
 
 const already = db.prepare("SELECT COUNT(*) n FROM listings").get().n;
@@ -109,8 +95,8 @@ const INQUIRIES = [
   [1,"Wambui Kariuki","0733221144","What's included in the rent — water and garbage? Any deposit terms?"],
   [4,"Mutua Musyoka","0744556677","Interested in the 3BR. Is the DSQ separate metered? Kindly share more photos."],
   [10,"Zawadi Atieno","0755667788","Naomba kujua kama hii nyumba iko karibu na stage? Asante."],
-  [22,"Kiptoo Rono","0766778899","What's your last price for the plot? I'm a serious cash buyer."],
-  [30,"Neema Wafula","0777889900","Is the Probox accident-free? Can my mechanic inspect it this week?"]
+  [15,"Kiptoo Rono","0766778899","What's your last price for the maisonette? I'm a serious cash buyer."],
+  [16,"Neema Wafula","0777889900","Is the title ready for transfer? Can my lawyer do due diligence this week?"]
 ];
 const insInq = db.prepare("INSERT INTO inquiries (listing_id,from_name,from_phone,message) VALUES (?,?,?,?)");
 const insLead = db.prepare("INSERT INTO leads (listing_id) VALUES (?)");

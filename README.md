@@ -1,13 +1,13 @@
 # PataHome API
 
-Backend for PataHome — homes, land & vehicles marketplace with location-based discovery.
+Backend for PataHome — houses for rent & sale across Kenya, with location-based discovery.
 
 **Zero dependencies** — uses Node's built-in `node:sqlite`, `node:http`, and `node:crypto`. Requires **Node 22.5+**. No `npm install` needed.
 
 ## Quick start
 
 ```bash
-node seed.js     # creates patahome.db with 18 areas, 8 demo owners, 35 listings
+node seed.js     # seeds areas, demo owners and house listings
 node server.js   # http://localhost:3000
 ```
 
@@ -25,13 +25,12 @@ Auth (returns a JWT — send as `Authorization: Bearer <token>`):
 
 Listings:
 
-- `GET /api/listings` — filters: `category`, `county`, `minPrice`, `maxPrice`, `bedrooms` (or `3+`), `q`, `lat`+`lng` (adds `distanceKm`, defaults sort to nearest), `radiusKm`, `sort` (`distance|price-asc|price-desc|newest`), `page`, `perPage`. Featured listings always rank first.
+- `GET /api/listings` — filters: `category`, `county`, `minPrice`, `maxPrice`, `bedrooms` (or `3+`), `q`, `lat`+`lng` (adds `distanceKm`, defaults sort to nearest), `radiusKm`, `sort` (`distance|price-asc|price-desc|newest`), `page`, `perPage`. 
 - `GET /api/listings/:id`
 - `POST /api/listings` (auth) — `{category, title, description?, areaId, price, bedrooms?}`
 - `PATCH /api/listings/:id` (owner) — update `title/description/price/bedrooms/status`
 - `DELETE /api/listings/:id` (owner) — soft-delete
 - `POST /api/listings/:id/contact` — records a lead, returns owner name+phone
-- `POST /api/listings/:id/feature` (owner) — `{plan: "feature_7d"|"feature_30d"}`, mock M-Pesa
 
 Location insights:
 
@@ -50,7 +49,6 @@ Other:
 ## Production notes
 
 - Set `JWT_SECRET` and `DB_PATH` env vars.
-- Swap the mock payment in `/feature` for M-Pesa Daraja STK push + callback webhook.
 - SQLite is fine to thousands of listings; migrate to Postgres when needed.
 - Add rate limiting and HTTPS via a reverse proxy (Caddy/nginx) before going live.
 - Free/cheap hosting options: Railway, Render, Fly.io, or a KES ~500/mo VPS.

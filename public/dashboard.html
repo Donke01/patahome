@@ -156,7 +156,7 @@
   <div class="stats">
     <div class="stat"><div class="num" id="sActive">–</div><div class="lbl">Active listings</div></div>
     <div class="stat"><div class="num" id="sLeads">–</div><div class="lbl">Total leads (contact requests)</div></div>
-    <div class="stat"><div class="num" id="sFeatured">–</div><div class="lbl">Currently featured</div></div>
+    <div class="stat"><div class="num" id="sTotal">–</div><div class="lbl">Total listings</div></div>
     <div class="stat"><div class="num" id="sInq">–</div><div class="lbl">Messages awaiting your reply</div></div>
   </div>
 
@@ -180,7 +180,7 @@
     <div class="sub">Your listing goes live immediately.</div>
     <div id="emCatWrap">
       <label>Category</label>
-      <select id="eCat"><option value="rent">House — For Rent</option><option value="sale">House — For Sale</option><option value="land">Land / Plot</option><option value="vehicle">Vehicle</option></select>
+      <select id="eCat"><option value="rent">House — For Rent</option><option value="sale">House — For Sale</option></select>
       <label>Area</label>
       <select id="eArea"></select>
     </div>
@@ -204,35 +204,13 @@
   </div>
 </div>
 
-<!-- ============ FEATURE MODAL ============ -->
-<div class="overlay" id="featModal" onclick="if(event.target===this)hide('featModal')">
-  <div class="modal">
-    <button class="close-x" onclick="hide('featModal')">✕</button>
-    <h2>⭐ Feature this listing</h2>
-    <div class="sub" id="fmSub">Featured listings appear above all others in search results and on the map.</div>
-    <div class="plan" data-plan="feature_7d" onclick="selPlan(this)">
-      <div><div class="p-name">7-day boost</div><div class="p-sub">Great for rentals</div></div>
-      <div class="p-price">KES 300</div>
-    </div>
-    <div class="plan" data-plan="feature_30d" onclick="selPlan(this)">
-      <div><div class="p-name">30-day boost</div><div class="p-sub">Best for land & vehicles</div></div>
-      <div class="p-price">KES 1,000</div>
-    </div>
-    <div class="err" id="fmErr"></div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="hide('featModal')">Cancel</button>
-      <button class="btn btn-amber" onclick="payFeature()">Pay with M-Pesa</button>
-    </div>
-  </div>
-</div>
-
 <div class="toast" id="toast"></div>
 
 <script>
 const API = ""; // same origin
 let token = localStorage.getItem("pb_token") || null;
 let userName = localStorage.getItem("pb_name") || "";
-let mode = "login", areas = [], myListings = [], myInquiries = [], editId = null, featId = null, plan = null;
+let mode = "login", areas = [], myListings = [], myInquiries = [], editId = null;
 
 /* ---------- helpers ---------- */
 const $ = (id) => document.getElementById(id);
@@ -297,13 +275,13 @@ async function refresh(){
   const totalLeads=myListings.reduce((s,x)=>s+x.leads,0);
   $("sActive").textContent=active.length;
   $("sLeads").textContent=totalLeads;
-  $("sFeatured").textContent=myListings.filter(x=>x.featured).length;
+  $("sTotal").textContent=myListings.length;
   $("sInq").textContent=myInquiries.filter(x=>!x.reply).length;
   renderTable();
   renderInbox();
 }
 function renderInbox(){
-  const CAT={rent:"🏠",sale:"🏡",land:"🌍",vehicle:"🚗"};
+  const CAT={rent:"🏠",sale:"🏡"};
   if(!myInquiries.length){$("inbox").innerHTML=`<div class="inq" style="text-align:center;color:var(--muted)">No messages yet — they'll appear here when tenants and buyers reach out. 📭</div>`;return}
   $("inbox").innerHTML=myInquiries.map(q=>`
     <div class="inq ${q.reply?"":"unreplied"}">
@@ -333,7 +311,7 @@ async function sendReply(id){
   }catch(e){toast("⚠️ "+e.message)}
 }
 function renderTable(){
-  const CAT={rent:"🏠 Rent",sale:"🏡 Sale",land:"🌍 Land",vehicle:"🚗 Vehicle"};
+  const CAT={rent:"🏠 Rent",sale:"🏡 Sale"};
   if(!myListings.length){$("table").innerHTML=`<div class="empty">No listings yet — post your first one! 🎉</div>`;return}
   $("table").innerHTML=`
     <div class="row head"><div>Listing</div><div>Category</div><div>Price</div><div>Leads</div><div>Status</div><div style="text-align:right">Actions</div></div>`+
@@ -343,9 +321,8 @@ function renderTable(){
       <div>${CAT[x.category]||x.category}</div>
       <div>${fmt(x.price)}${x.category==="rent"?"<span style='color:var(--muted);font-size:.75rem'>/mo</span>":""}</div>
       <div class="leads-badge">${x.leads} 📞</div>
-      <div>${x.featured?`<span class="pill featured">⭐ Featured</span>`:`<span class="pill ${x.status}">${x.status}</span>`}</div>
+      <div><span class="pill ${x.status}">${x.status}</span></div>
       <div class="actions">
-        ${!x.featured&&x.status==="active"?`<button class="btn btn-amber btn-sm" onclick="openFeature(${x.id})">⭐ Boost</button>`:""}
         <button class="btn btn-ghost btn-sm" onclick="openEdit(${x.id})">Edit</button>
         <button class="btn btn-danger btn-sm" onclick="removeListing(${x.id})">Remove</button>
       </div>
@@ -393,30 +370,6 @@ async function removeListing(id){
   if(!confirm("Remove this listing? It will disappear from the site."))return;
   try{await api("/api/listings/"+id,{method:"DELETE"});toast("Listing removed");await refresh()}
   catch(e){toast("⚠️ "+e.message)}
-}
-
-/* ---------- feature / boost ---------- */
-function openFeature(id){
-  featId=id;plan=null;
-  document.querySelectorAll(".plan").forEach(p=>p.classList.remove("sel"));
-  $("fmErr").textContent="";
-  const x=myListings.find(y=>y.id===id);
-  $("fmSub").textContent=`"${x.title}" will appear above all other listings.`;
-  show("featModal");
-}
-function selPlan(el){
-  plan=el.dataset.plan;
-  document.querySelectorAll(".plan").forEach(p=>p.classList.remove("sel"));
-  el.classList.add("sel");
-}
-async function payFeature(){
-  if(!plan){$("fmErr").textContent="Choose a boost plan first";return}
-  try{
-    const r=await api(`/api/listings/${featId}/feature`,{method:"POST",body:JSON.stringify({plan})});
-    hide("featModal");
-    toast(`✅ Paid ${fmt(r.amount)} (${r.providerRef}) — listing boosted!`);
-    await refresh();
-  }catch(e){$("fmErr").textContent=e.message}
 }
 
 /* ---------- init ---------- */
