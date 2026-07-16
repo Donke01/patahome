@@ -55,6 +55,22 @@
   .reveal.in{opacity:1;transform:none}
   .reveal.d1{transition-delay:.08s}.reveal.d2{transition-delay:.16s}
 
+  /* ---------- Lively bits: word rotator, sentence crossfade, micro-motion ---------- */
+  @keyframes rotOut{to{opacity:0;transform:translateY(-115%)}}
+  @keyframes rotIn{from{opacity:0;transform:translateY(115%)}to{opacity:1;transform:none}}
+  .rot-wrap{display:inline-block;overflow:hidden;vertical-align:bottom}
+  #rotWord{display:inline-block}
+  #rotWord.out{animation:rotOut .3s ease both}
+  #rotWord.in{animation:rotIn .36s cubic-bezier(.16,1,.3,1) both}
+  #heroSub{transition:opacity .5s ease}
+  #heroSub.fade{opacity:0!important}
+  @keyframes heroGlow{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(36px,-24px) scale(1.06)}}
+  .hero::before{animation:heroGlow 15s ease-in-out infinite}
+  .btn:active,.quick:active,.tab:active,.loc-btn:active{transform:scale(.96)}
+  @keyframes modalIn{from{opacity:0;transform:translateY(24px) scale(.96)}to{opacity:1;transform:none}}
+  .section-title::after{content:"";display:block;width:54px;height:3px;background:var(--gold);border-radius:2px;margin-top:9px;transform:scaleX(0);transform-origin:left;transition:transform .7s cubic-bezier(.16,1,.3,1) .2s}
+  .section-title.in::after{transform:scaleX(1)}
+
   @media(prefers-reduced-motion:reduce){
     ::view-transition-old(root),::view-transition-new(root){animation:none}
     .reveal{opacity:1;transform:none;transition:none}
@@ -231,7 +247,7 @@
   /* ---------- Modals ---------- */
   .overlay{position:fixed;inset:0;background:rgba(8,18,14,.6);z-index:2000;display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)}
   .overlay.show{display:flex}
-  .modal{background:var(--card);border-radius:18px;max-width:480px;width:100%;max-height:90vh;overflow-y:auto;padding:26px;animation:fadeUp .3s both;color:var(--ink);border:1px solid var(--line)}
+  .modal{background:var(--card);border-radius:18px;max-width:480px;width:100%;max-height:90vh;overflow-y:auto;padding:26px;animation:modalIn .34s cubic-bezier(.16,1,.3,1) both;color:var(--ink);border:1px solid var(--line)}
   .modal h2{font-family:var(--serif);font-size:1.25rem;font-weight:600;margin-bottom:4px;color:var(--ink)}
   .modal .sub{font-size:.85rem;color:var(--muted);margin-bottom:16px}
   .modal label{display:block;font-size:.76rem;font-weight:700;color:var(--muted);margin:12px 0 4px;text-transform:uppercase;letter-spacing:.6px}
@@ -297,8 +313,8 @@
 
 <section class="hero">
   <div class="kicker">Kenya's Direct-From-Owner Marketplace</div>
-  <h1>Find your next home,<br>straight from <span class="hl">the owner</span>.</h1>
-  <p>Verified rentals and homes for sale across Kenya, sorted by what's nearest to you. No agents. No viewing fees. Karibu home.</p>
+  <h1>Find your next <span class="rot-wrap"><span id="rotWord" class="hl">home</span></span>,<br>straight from the owner.</h1>
+  <p id="heroSub">Verified rentals and homes for sale across Kenya, sorted by what's nearest to you. No agents. No viewing fees. Karibu home.</p>
   <div class="stats">
     <div class="stat"><div class="num" id="statListings">0</div><div class="cap">Live listings</div></div>
     <div class="stat"><div class="num" id="statAreas">0</div><div class="cap">Areas covered</div></div>
@@ -558,6 +574,33 @@ function animateStats(){
   countUp(document.getElementById("statListings"),LISTINGS.length);
   countUp(document.getElementById("statAreas"),Object.keys(AREAS).length);
   countUp(document.getElementById("statOwners"),new Set(LISTINGS.map(x=>x.owner)).size);
+}
+const reduceMotion=typeof matchMedia==="function"&&matchMedia("(prefers-reduced-motion: reduce)").matches;
+const ROT_WORDS=["home","bedsitter","1 bedroom","family house","keja"];
+let rotIdx=0;
+function rotateWord(){
+  const w=document.getElementById("rotWord");
+  w.classList.remove("in");w.classList.add("out");
+  setTimeout(()=>{
+    rotIdx=(rotIdx+1)%ROT_WORDS.length;
+    w.textContent=ROT_WORDS[rotIdx];
+    w.classList.remove("out");w.classList.add("in");
+  },300);
+}
+const HERO_SUBS=[
+  "Verified rentals and homes for sale across Kenya, sorted by what's nearest to you. No agents. No viewing fees. Karibu home.",
+  "Every owner is ID-verified and every listing is direct — chat on WhatsApp, book a viewing, move in.",
+  "From campus bedsitters to family maisonettes, see what's closest to you first — on the map or in the list."
+];
+let subIdx=0;
+function rotateSub(){
+  const p=document.getElementById("heroSub");
+  p.classList.add("fade");
+  setTimeout(()=>{
+    subIdx=(subIdx+1)%HERO_SUBS.length;
+    p.textContent=HERO_SUBS[subIdx];
+    p.classList.remove("fade");
+  },500);
 }
 const HINTS=["bedsitter in Kasarani…","1 bedroom near campus…","2 bedroom in Ruiru…","3 bedroom maisonette…","family home in Milimani…"];
 let hi=0;
@@ -841,6 +884,10 @@ async function sendInquiry(){
   render();
   initMap();
   animateStats();
+  if(inBrowser&&!reduceMotion){
+    setInterval(rotateWord,3400);
+    setInterval(rotateSub,7600);
+  }
   if("IntersectionObserver" in window){
     const io=new IntersectionObserver(es=>es.forEach(e=>{
       if(e.isIntersecting){e.target.classList.add("in");io.unobserve(e.target)}
