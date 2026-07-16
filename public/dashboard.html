@@ -198,6 +198,38 @@
   .seg button{flex:1;min-width:70px;border:1.5px solid var(--line);background:#fff;border-radius:9px;padding:9px;font-weight:600;font-size:.82rem;color:var(--muted)}
   .seg button.on{background:var(--green);border-color:var(--green);color:#fff}
 
+  /* panel tabs */
+  .pnav{display:flex;gap:8px;overflow-x:auto;padding:4px 0 16px;scrollbar-width:none;border-bottom:1px solid var(--line);margin-bottom:20px}
+  .pnav::-webkit-scrollbar{display:none}
+  .pt{white-space:nowrap;border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:9px 18px;font-size:.86rem;font-weight:600;color:var(--muted);display:flex;gap:7px;align-items:center;transition:.18s}
+  .pt:hover{border-color:var(--green);color:var(--green)}
+  .pt.on{background:var(--green);border-color:var(--green);color:#fff}
+  .pn-badge{background:var(--red);color:#fff;font-size:.66rem;font-weight:800;border-radius:999px;min-width:17px;height:17px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px}
+  .pn-badge.gold{background:var(--amber)}
+  .pt.on .pn-badge{background:rgba(255,255,255,.28)}
+  .tabpane{animation:fadeUp .35s both}
+  .pane-sub{font-size:.85rem;color:var(--muted);margin:-6px 0 14px}
+
+  /* notifications */
+  .notif-list{display:flex;flex-direction:column;gap:10px}
+  .notif{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 16px;display:flex;gap:13px;align-items:flex-start}
+  .notif.unread{border-left:3px solid var(--green);background:var(--green-light)}
+  .notif .n-ic{width:34px;height:34px;border-radius:10px;background:var(--green-light);color:var(--green);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .notif.unread .n-ic{background:#fff}
+  .notif .n-ic svg{width:17px;height:17px}
+  .notif .n-t{font-weight:700;font-size:.89rem}
+  .notif .n-b{font-size:.83rem;color:var(--muted)}
+  .notif .n-at{font-size:.72rem;color:var(--muted);margin-left:auto;white-space:nowrap}
+
+  /* help + faq */
+  .help-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);max-width:560px}
+  .faq{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:10px;overflow:hidden}
+  .faq summary{list-style:none;cursor:pointer;padding:15px 18px;font-weight:600;font-size:.92rem;display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .faq summary::-webkit-details-marker{display:none}
+  .faq summary::after{content:"+";font-size:1.2rem;color:var(--green);font-weight:400;transition:transform .2s}
+  .faq[open] summary::after{transform:rotate(45deg)}
+  .faq .fa-body{padding:0 18px 15px;font-size:.87rem;color:var(--muted);line-height:1.65}
+
   /* inquiries inbox */
   .inbox{display:flex;flex-direction:column;gap:12px}
   .inq{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);animation:fadeUp .4s both}
@@ -288,41 +320,95 @@
 
 <!-- ============ DASHBOARD ============ -->
 <div id="dashView" class="wrap" style="display:none">
-  <div class="overview-head">
-    <h2>Overview</h2>
-    <span class="live-pill"><span class="dot"></span>LIVE</span>
-    <span class="updated" id="updatedAgo"></span>
-  </div>
-  <div class="stats">
-    <div class="stat"><div class="num" id="sActive">–</div><div class="lbl">Active listings</div></div>
-    <div class="stat"><div class="num"><span id="sLeads">–</span><span id="sTrend"></span></div><div class="lbl">Total leads (contact requests)</div></div>
-    <div class="stat"><div class="num" id="sWeek">–</div><div class="lbl">Leads this week</div></div>
-    <div class="stat"><div class="num" id="sInq">–</div><div class="lbl">Messages awaiting your reply</div></div>
-  </div>
 
-  <div class="panel-grid">
-    <div class="chart-card">
-      <h3>Activity<small>leads &amp; messages, last 30 days</small></h3>
-      <div class="chart-wrap"><canvas id="actChart"></canvas></div>
+  <nav class="pnav" id="pnav">
+    <button class="pt on" data-t="listings" onclick="showTab('listings')">My Listings</button>
+    <button class="pt" data-t="feedback" onclick="showTab('feedback')">Feedback<span class="pn-badge" id="bFeedback" style="display:none">0</span></button>
+    <button class="pt" data-t="perf" onclick="showTab('perf')">Performance</button>
+    <button class="pt" data-t="followers" onclick="showTab('followers')">Followers<span class="pn-badge gold" id="bFollowers" style="display:none">0</span></button>
+    <button class="pt" data-t="notifs" onclick="showTab('notifs')">Notifications<span class="pn-badge" id="bNotifs" style="display:none">0</span></button>
+    <button class="pt" data-t="help" onclick="showTab('help')">Request Help</button>
+    <button class="pt" data-t="faq" onclick="showTab('faq')">FAQ</button>
+  </nav>
+
+  <!-- My Listings -->
+  <section class="tabpane" id="tab-listings">
+    <div class="section-head">
+      <h2>My Listings</h2>
+      <button class="btn btn-primary" onclick="openAdd()">+ New Listing</button>
     </div>
-    <div class="top-card" id="topCard">
-      <div class="tc-kick">Top Performer</div>
-      <div class="tc-title" id="tcTitle">—</div>
-      <div class="tc-sub">total leads on this listing</div>
-      <div class="tc-num" id="tcLeads">0</div>
+    <div class="table" id="table"></div>
+  </section>
+
+  <!-- Feedback -->
+  <section class="tabpane" id="tab-feedback" style="display:none">
+    <div class="section-head"><h2>Feedback from Tenants &amp; Buyers</h2></div>
+    <div class="inbox" id="inbox"></div>
+  </section>
+
+  <!-- Performance -->
+  <section class="tabpane" id="tab-perf" style="display:none">
+    <div class="overview-head">
+      <h2>Performance</h2>
+      <span class="live-pill"><span class="dot"></span>LIVE</span>
+      <span class="updated" id="updatedAgo"></span>
     </div>
-  </div>
+    <div class="stats">
+      <div class="stat"><div class="num" id="sActive">–</div><div class="lbl">Active listings</div></div>
+      <div class="stat"><div class="num"><span id="sLeads">–</span><span id="sTrend"></span></div><div class="lbl">Total leads (contact requests)</div></div>
+      <div class="stat"><div class="num" id="sWeek">–</div><div class="lbl">Leads this week</div></div>
+      <div class="stat"><div class="num" id="sInq">–</div><div class="lbl">Messages awaiting your reply</div></div>
+    </div>
+    <div class="panel-grid">
+      <div class="chart-card">
+        <h3>Activity<small>leads &amp; messages, last 30 days</small></h3>
+        <div class="chart-wrap"><canvas id="actChart"></canvas></div>
+      </div>
+      <div class="top-card" id="topCard">
+        <div class="tc-kick">Top Performer</div>
+        <div class="tc-title" id="tcTitle">—</div>
+        <div class="tc-sub">total leads on this listing</div>
+        <div class="tc-num" id="tcLeads">0</div>
+      </div>
+    </div>
+    <div class="section-head"><h2>Leads per listing</h2></div>
+    <div class="table" id="perfTable"></div>
+  </section>
 
-  <div class="section-head">
-    <h2>My Listings</h2>
-    <button class="btn btn-primary" onclick="openAdd()">+ New Listing</button>
-  </div>
-  <div class="table" id="table"></div>
+  <!-- Followers -->
+  <section class="tabpane" id="tab-followers" style="display:none">
+    <div class="section-head"><h2>Your Followers</h2></div>
+    <p class="pane-sub">People who follow you get notified about your new listings. They follow you from your listing pages.</p>
+    <div class="table" id="followersList"></div>
+  </section>
 
-  <div class="section-head" style="margin-top:28px">
-    <h2>Messages from Tenants &amp; Buyers</h2>
-  </div>
-  <div class="inbox" id="inbox"></div>
+  <!-- Notifications -->
+  <section class="tabpane" id="tab-notifs" style="display:none">
+    <div class="section-head"><h2>Notifications</h2></div>
+    <div class="notif-list" id="notifList"></div>
+  </section>
+
+  <!-- Request Help -->
+  <section class="tabpane" id="tab-help" style="display:none">
+    <div class="section-head"><h2>Request Help</h2></div>
+    <div class="help-card">
+      <label>Subject</label>
+      <input id="hSubject" placeholder="e.g. My listing isn't showing on the map">
+      <label>Describe the issue</label>
+      <textarea id="hMessage" rows="4" placeholder="Tell us what happened and what you expected…"></textarea>
+      <div class="err" id="hErr"></div>
+      <button class="btn btn-primary" style="margin-top:12px;padding:11px 24px" onclick="submitTicket()">Send request</button>
+      <p class="pane-sub" style="margin-top:10px">You can also email us directly at <a href="mailto:info@patahome.co.ke" style="color:var(--green);font-weight:600">info@patahome.co.ke</a></p>
+    </div>
+    <div class="section-head" style="margin-top:24px"><h2>Your requests</h2></div>
+    <div class="table" id="ticketList"></div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="tabpane" id="tab-faq" style="display:none">
+    <div class="section-head"><h2>Frequently Asked Questions</h2></div>
+    <div id="faqList"></div>
+  </section>
 </div>
 
 <!-- ============ ADD/EDIT MODAL ============ -->
@@ -494,21 +580,28 @@ async function enterDash(){
   }
   await refresh();
 }
-let chart=null, lastUpdated=null;
+let chart=null, lastUpdated=null, lastSeries=null, activeTab="listings";
 async function refresh(){
-  const [listings,inquiries,stats]=await Promise.all([
-    api("/api/my/listings"),api("/api/my/inquiries"),api("/api/my/stats").catch(()=>null)]);
+  const [listings,inquiries,stats,notifs]=await Promise.all([
+    api("/api/my/listings"),api("/api/my/inquiries"),
+    api("/api/my/stats").catch(()=>null),
+    api("/api/my/notifications").catch(()=>null)]);
   myListings=listings;myInquiries=inquiries;
   const active=myListings.filter(x=>x.status==="active");
   const totalLeads=myListings.reduce((s,x)=>s+x.leads,0);
   $("sActive").textContent=active.length;
   $("sLeads").textContent=totalLeads;
-  $("sInq").textContent=myInquiries.filter(x=>!x.reply).length;
+  const unreplied=myInquiries.filter(x=>!x.reply).length;
+  $("sInq").textContent=unreplied;
+  badge("bFeedback",unreplied);
+  if(notifs){window._notifs=notifs;badge("bNotifs",activeTab==="notifs"?0:notifs.unread)}
   if(stats)renderStats(stats);
   lastUpdated=Date.now();tickUpdated();
   renderTable();
   renderInbox();
+  renderPerfTable();
 }
+function badge(id,n){const b=$(id);b.textContent=n;b.style.display=n>0?"inline-flex":"none"}
 function renderStats(o){
   $("sWeek").textContent=o.thisWeek;
   const t=o.trendPct;
@@ -521,7 +614,103 @@ function renderStats(o){
     $("tcTitle").textContent="No leads yet";
     $("tcLeads").textContent="0";
   }
-  renderChart(o.series);
+  lastSeries=o.series;
+  if(activeTab==="perf")renderChart(o.series);
+}
+
+/* ---------- panel tabs ---------- */
+async function showTab(t){
+  activeTab=t;
+  document.querySelectorAll(".pt").forEach(b=>b.classList.toggle("on",b.dataset.t===t));
+  document.querySelectorAll(".tabpane").forEach(p=>p.style.display="none");
+  $("tab-"+t).style.display="block";
+  if(t==="perf"){
+    if(!chart&&lastSeries)renderChart(lastSeries);
+    else if(chart)setTimeout(()=>chart.resize(),50);
+  }
+  if(t==="followers")loadFollowers();
+  if(t==="notifs")loadNotifs();
+  if(t==="help")loadTickets();
+  if(t==="faq")renderFaq();
+}
+async function loadFollowers(){
+  const list=await api("/api/my/followers").catch(()=>[]);
+  badge("bFollowers",list.length);
+  $("followersList").innerHTML=list.length?
+    `<div class="row head"><div>Name</div><div>Phone</div><div>Following since</div></div>`+
+    list.map(f=>`<div class="row" style="grid-template-columns:1.5fr 1fr 1fr"><div class="title">${esc(f.name)}</div><div>${esc(f.phone)}</div><div class="area">${esc(f.since)}</div></div>`).join("")
+    :`<div class="empty">No followers yet — renters and buyers can follow you from your listing pages to hear about new posts.</div>`;
+}
+const N_ICONS={
+  lead:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-3 2a11 11 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>',
+  inquiry:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+  follower:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6M19 8v6M22 11h-6"/></svg>',
+  system:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>',
+  verify:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v6c0 5 3.5 8 8 11 4.5-3 8-6 8-11V5z"/><path d="m9 12 2 2 4-4"/></svg>'
+};
+async function loadNotifs(){
+  const data=window._notifs||await api("/api/my/notifications").catch(()=>({unread:0,notifications:[]}));
+  $("notifList").innerHTML=data.notifications.length?
+    data.notifications.map(n=>`
+      <div class="notif ${n.read?"":"unread"}">
+        <span class="n-ic">${N_ICONS[n.kind]||N_ICONS.system}</span>
+        <div><div class="n-t">${esc(n.title)}</div><div class="n-b">${esc(n.body)}</div></div>
+        <span class="n-at">${esc(n.at)}</span>
+      </div>`).join("")
+    :`<div class="empty" style="background:var(--card);border:1px solid var(--line);border-radius:12px">Nothing yet — leads, messages and new followers will appear here.</div>`;
+  if(data.unread>0){
+    api("/api/my/notifications/read",{method:"POST"}).catch(()=>{});
+    window._notifs={...data,unread:0};
+  }
+  badge("bNotifs",0);
+}
+async function loadTickets(){
+  const list=await api("/api/my/support").catch(()=>[]);
+  $("ticketList").innerHTML=list.length?
+    list.map(t=>`<div class="row" style="grid-template-columns:2fr 1fr 1fr"><div><div class="title">${esc(t.subject)}</div><div class="area">${esc(t.message).slice(0,120)}</div></div><div><span class="pill ${t.status==="open"?"featured":"active"}">${t.status}</span></div><div class="area">${esc(t.created_at)}</div></div>`).join("")
+    :`<div class="empty">No help requests yet.</div>`;
+}
+async function submitTicket(){
+  $("hErr").textContent="";
+  const subject=$("hSubject").value.trim(),message=$("hMessage").value.trim();
+  if(!subject||!message){$("hErr").textContent="Fill in both the subject and the description";return}
+  try{
+    await api("/api/support",{method:"POST",body:JSON.stringify({subject,message})});
+    $("hSubject").value="";$("hMessage").value="";
+    toast("Request sent — we'll get back to you soon");
+    loadTickets();
+  }catch(e){$("hErr").textContent=e.message}
+}
+const FAQS=[
+  ["How do I post a listing?","Open My Listings and click + New Listing. Fill in the category, area, price and photos, then Publish — it goes live on the site immediately."],
+  ["Is PataHome free?","Posting and receiving leads is free. Optional visibility boosts for your listings may be offered later."],
+  ["How do I get the verified badge?","Open the account menu (your name, top right) → Verify my details → Request verification. Our team confirms your ID and property ownership, then your listings show the trusted green badge."],
+  ["How do leads work?","When a renter or buyer taps Contact Owner on your listing, your phone number is shared with them and it counts as a lead. Their messages appear in your Feedback tab — reply promptly to close faster."],
+  ["Can I add photos?","Yes — up to 5 photos per listing (JPG, PNG or WebP, max 8 MB each). Listings with photos receive far more leads. Add them when creating or editing a listing."],
+  ["What are followers?","People who follow you from your listing pages. They're potential clients interested in your future posts — you can see their contacts in the Followers tab."],
+  ["How do I mark a house as rented or sold?","In My Listings, click Edit on the listing and change its Status. It stops showing on the public site but stays in your history."],
+  ["How do I contact PataHome?","Use the Request Help tab, or email info@patahome.co.ke — we respond as fast as we can."]
+];
+let faqDone=false;
+function renderFaq(){
+  if(faqDone)return;faqDone=true;
+  $("faqList").innerHTML=FAQS.map(([q,a])=>`<details class="faq"><summary>${q}</summary><div class="fa-body">${a}</div></details>`).join("");
+}
+function renderPerfTable(){
+  const el=$("perfTable");if(!el)return;
+  if(!myListings.length){el.innerHTML=`<div class="empty">Post a listing to see its performance here.</div>`;return}
+  const sorted=[...myListings].sort((a,b)=>b.leads-a.leads);
+  el.innerHTML=`<div class="row head" style="grid-template-columns:2fr 1fr 1fr 1fr"><div>Listing</div><div>Status</div><div>Leads</div><div>Share</div></div>`+
+    sorted.map(x=>{
+      const total=sorted.reduce((s,y)=>s+y.leads,0)||1;
+      const pct=Math.round(x.leads/total*100);
+      return `<div class="row" style="grid-template-columns:2fr 1fr 1fr 1fr">
+        <div><div class="title">${esc(x.title)}</div><div class="area">${esc(x.area)}</div></div>
+        <div><span class="pill ${x.status}">${x.status}</span></div>
+        <div class="leads-badge">${x.leads}</div>
+        <div class="area">${pct}%</div>
+      </div>`;
+    }).join("");
 }
 function renderChart(series){
   if(typeof Chart==="undefined")return;

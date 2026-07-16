@@ -68,6 +68,7 @@ const listingView = (row, userLat, userLng) => ({
     full: photoUrl(id, "c_limit,w_1280,q_auto:good")
   })) : [],
   featured: !!(row.featured_until && row.featured_until > new Date().toISOString()),
+  ownerId: row.owner_id,
   ownerName: row.owner_name,
   ownerVerified: !!row.owner_verified,
   createdAt: row.created_at,
@@ -354,13 +355,15 @@ router.add("POST", "/api/listings/:id/contact", (req, res, p) => {
   if (!row) return send(res, 404, { error: "Listing not found" });
   const u = getUser(req);
   db.prepare("INSERT INTO leads (listing_id,user_id) VALUES (?,?)").run(row.id, u ? u.id : null);
+  db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
+    .run(row.owner_id, "lead", "New lead", `Someone requested your contact for "${row.title}".`);
   const owner = db.prepare("SELECT name, phone, verified FROM users WHERE id=?").get(row.owner_id);
   send(res, 200, { ownerName: owner.name, ownerPhone: owner.phone, ownerVerified: !!owner.verified });
 });
 
 /* -------- inquiries: tenant/buyer feedback to the owner -------- */
 router.add("POST", "/api/listings/:id/inquire", (req, res, p) => {
-  const row = db.prepare("SELECT id FROM listings WHERE id=? AND status='active'").get(p.id);
+  const row = db.prepare("SELECT id, owner_id, title FROM listings WHERE id=? AND status='active'").get(p.id);
   if (!row) return send(res, 404, { error: "Listing not found" });
   const { name, phone, message } = req.body || {};
   if (!name || !phone || !message) return send(res, 400, { error: "name, phone and message are required" });
@@ -370,7 +373,60 @@ router.add("POST", "/api/listings/:id/inquire", (req, res, p) => {
   // an inquiry is also a lead
   const u = getUser(req);
   db.prepare("INSERT INTO leads (listing_id,user_id) VALUES (?,?)").run(row.id, u ? u.id : null);
+  db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
+    .run(row.owner_id, "inquiry", "New message", `${String(name).trim()} asked about "${row.title}".`);
   send(res, 201, { ok: true, inquiryId: info.lastInsertRowid });
+});
+
+/* -------- followers: renters/buyers follow an owner for updates -------- */
+router.add("POST", "/api/owners/:id/follow", (req, res, p) => {
+  const owner = db.prepare("SELECT id, name FROM users WHERE id=? AND role='user'").get(p.id);
+  if (!owner) return send(res, 404, { error: "Owner not found" });
+  const { name, phone } = req.body || {};
+  if (!name || !phone) return send(res, 400, { error: "name and phone are required" });
+  try {
+    db.prepare("INSERT INTO followers (owner_id,follower_name,follower_phone) VALUES (?,?,?)")
+      .run(owner.id, String(name).trim(), String(phone).trim());
+    db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
+      .run(owner.id, "follower", "New follower", `${String(name).trim()} is now following your listings.`);
+  } catch (e) { /* UNIQUE: already following — treat as success */ }
+  send(res, 200, { ok: true, following: owner.name });
+});
+
+router.add("GET", "/api/my/followers", (req, res) => {
+  const u = requireAuth(req, res); if (!u) return;
+  const rows = db.prepare("SELECT id, follower_name, follower_phone, created_at FROM followers WHERE owner_id=? ORDER BY id DESC").all(u.id);
+  send(res, 200, rows.map(r => ({ id: r.id, name: r.follower_name, phone: r.follower_phone, since: r.created_at })));
+});
+
+/* -------- notifications -------- */
+router.add("GET", "/api/my/notifications", (req, res) => {
+  const u = requireAuth(req, res); if (!u) return;
+  const rows = db.prepare("SELECT * FROM notifications WHERE user_id=? ORDER BY id DESC LIMIT 50").all(u.id);
+  const unread = db.prepare("SELECT COUNT(*) n FROM notifications WHERE user_id=? AND read=0").get(u.id).n;
+  send(res, 200, { unread, notifications: rows.map(r => ({ id: r.id, kind: r.kind, title: r.title, body: r.body, read: !!r.read, at: r.created_at })) });
+});
+
+router.add("POST", "/api/my/notifications/read", (req, res) => {
+  const u = requireAuth(req, res); if (!u) return;
+  db.prepare("UPDATE notifications SET read=1 WHERE user_id=?").run(u.id);
+  send(res, 200, { ok: true });
+});
+
+/* -------- support tickets (Request Help) -------- */
+router.add("POST", "/api/support", (req, res) => {
+  const u = requireAuth(req, res); if (!u) return;
+  const { subject, message } = req.body || {};
+  if (!subject || !message) return send(res, 400, { error: "subject and message are required" });
+  const info = db.prepare("INSERT INTO support_tickets (user_id,subject,message) VALUES (?,?,?)")
+    .run(u.id, String(subject).slice(0, 200), String(message).slice(0, 2000));
+  send(res, 201, { ok: true, ticketId: info.lastInsertRowid });
+});
+
+router.add("GET", "/api/my/support", (req, res) => {
+  const u = requireAuth(req, res); if (!u) return;
+  const rows = db.prepare("SELECT id, subject, message, status, created_at FROM support_tickets WHERE user_id=? ORDER BY id DESC").all(u.id);
+  send(res, 200, rows);
 });
 
 router.add("GET", "/api/my/inquiries", (req, res) => {
