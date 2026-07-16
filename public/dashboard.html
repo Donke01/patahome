@@ -4,21 +4,25 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Owner Dashboard — PataHome</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --green:#0e7c5a; --green-dark:#0a5c43; --green-light:#e6f4ef;
-    --ink:#1c2320; --muted:#5f6b66; --line:#e3e8e5; --bg:#f7faf8;
-    --amber:#e8a13a; --card:#fff; --red:#c0392b; --radius:14px;
-    --shadow:0 2px 10px rgba(20,40,30,.08);
+    --green:#0d5c44; --green-dark:#093f2f; --green-light:#ecf4f0;
+    --ink:#1a2420; --muted:#5f6d66; --line:#e3e9e5; --bg:#fbfcfb;
+    --amber:#c19a4b; --card:#fff; --red:#b3413a; --radius:14px;
+    --shadow:0 1px 3px rgba(16,40,30,.06), 0 6px 20px rgba(16,40,30,.06);
+    --serif:'Fraunces',Georgia,serif;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5;min-height:100vh}
+  body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);line-height:1.55;min-height:100vh;-webkit-font-smoothing:antialiased}
   button{font-family:inherit;cursor:pointer}
   input,select,textarea{font-family:inherit}
   @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 
-  header{position:sticky;top:0;z-index:100;background:#fff;border-bottom:1px solid var(--line);padding:10px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-  .logo{font-size:1.25rem;font-weight:800;color:var(--green);display:flex;align-items:center;gap:8px;text-decoration:none}
+  header{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding:12px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .logo{font-size:1.25rem;font-weight:800;color:var(--green);display:flex;align-items:center;gap:8px;text-decoration:none;font-family:var(--serif)}
   .logo svg{width:24px;height:24px}
   .logo b{color:var(--amber)}
   .logo .tag{font-size:.7rem;background:var(--green-light);color:var(--green-dark);border-radius:999px;padding:2px 10px;font-weight:700;margin-left:4px}
@@ -37,8 +41,8 @@
   .wrap{max-width:1050px;margin:0 auto;padding:24px 20px 60px}
 
   /* auth card */
-  .auth-card{max-width:400px;margin:8vh auto;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:28px;box-shadow:var(--shadow);animation:fadeUp .4s both}
-  .auth-card h1{font-size:1.25rem;color:var(--green-dark);margin-bottom:4px}
+  .auth-card{max-width:400px;margin:8vh auto;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:30px;box-shadow:var(--shadow);animation:fadeUp .4s both}
+  .auth-card h1{font-family:var(--serif);font-size:1.35rem;font-weight:600;color:var(--green-dark);margin-bottom:4px}
   .auth-card .sub{font-size:.85rem;color:var(--muted);margin-bottom:14px}
   .auth-tabs{display:flex;gap:6px;margin-bottom:14px}
   .auth-tabs button{flex:1;border:1.5px solid var(--line);background:#fff;border-radius:10px;padding:8px;font-weight:700;font-size:.85rem;color:var(--muted)}
@@ -52,11 +56,11 @@
   /* stats */
   .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:22px}
   .stat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);animation:fadeUp .4s both}
-  .stat .num{font-size:1.6rem;font-weight:800;color:var(--green-dark)}
+  .stat .num{font-family:var(--serif);font-size:1.7rem;font-weight:600;color:var(--green-dark)}
   .stat .lbl{font-size:.78rem;color:var(--muted)}
 
   .section-head{display:flex;align-items:center;gap:12px;margin:8px 0 14px}
-  .section-head h2{font-size:1.05rem;color:var(--green-dark)}
+  .section-head h2{font-family:var(--serif);font-size:1.2rem;font-weight:600;color:var(--ink)}
   .section-head .btn{margin-left:auto}
 
   /* listings table */
@@ -83,7 +87,7 @@
   .overlay{position:fixed;inset:0;background:rgba(10,25,18,.55);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px)}
   .overlay.show{display:flex}
   .modal{background:#fff;border-radius:16px;max-width:440px;width:100%;max-height:90vh;overflow-y:auto;padding:24px;animation:fadeUp .3s both}
-  .modal h2{font-size:1.1rem;color:var(--green-dark);margin-bottom:4px}
+  .modal h2{font-family:var(--serif);font-size:1.2rem;font-weight:600;color:var(--ink);margin-bottom:4px}
   .modal .sub{font-size:.83rem;color:var(--muted);margin-bottom:10px}
   .modal-actions{display:flex;gap:10px;margin-top:18px}
   .modal-actions .btn{flex:1;padding:10px 0}
@@ -131,7 +135,7 @@
 <!-- ============ AUTH ============ -->
 <div id="authView">
   <div class="auth-card">
-    <h1>Karibu, Property Owner 👋</h1>
+    <h1>Karibu, Property Owner</h1>
     <div class="sub">Manage your listings, track leads, and boost visibility.</div>
     <div class="auth-tabs">
       <button id="tabLogin" class="on" onclick="setMode('login')">Log In</button>
@@ -166,7 +170,7 @@
   <div class="table" id="table"></div>
 
   <div class="section-head" style="margin-top:28px">
-    <h2>📬 Messages from Tenants & Buyers</h2>
+    <h2>Messages from Tenants &amp; Buyers</h2>
   </div>
   <div class="inbox" id="inbox"></div>
 </div>
@@ -260,7 +264,7 @@ async function enterDash(){
   $("authView").style.display="none";
   $("dashView").style.display="block";
   $("headerRight").style.display="flex";
-  $("who").textContent="👤 "+userName;
+  $("who").textContent=userName;
   if(!areas.length){
     areas=await api("/api/areas");
     $("eArea").innerHTML=areas.map(a=>`<option value="${a.id}">${esc(a.name)} — ${esc(a.county)}</option>`).join("");
@@ -280,14 +284,13 @@ async function refresh(){
   renderInbox();
 }
 function renderInbox(){
-  const CAT={rent:"🏠",sale:"🏡"};
-  if(!myInquiries.length){$("inbox").innerHTML=`<div class="inq" style="text-align:center;color:var(--muted)">No messages yet — they'll appear here when tenants and buyers reach out. 📭</div>`;return}
+  if(!myInquiries.length){$("inbox").innerHTML=`<div class="inq" style="text-align:center;color:var(--muted)">No messages yet — they'll appear here when tenants and buyers reach out.</div>`;return}
   $("inbox").innerHTML=myInquiries.map(q=>`
     <div class="inq ${q.reply?"":"unreplied"}">
       <div class="inq-top">
         <span class="inq-from">${esc(q.fromName)}</span>
-        <span class="inq-phone">📞 ${esc(q.fromPhone)}</span>
-        <span class="inq-listing">${CAT[q.category]||""} ${esc(q.listingTitle)}</span>
+        <span class="inq-phone">${esc(q.fromPhone)}</span>
+        <span class="inq-listing">${esc(q.listingTitle)}</span>
         ${q.reply?"":`<span class="badge-new">NEEDS REPLY</span>`}
         <span class="inq-time">${esc(q.createdAt)}</span>
       </div>
@@ -305,21 +308,21 @@ async function sendReply(id){
   if(!box.value.trim()){toast("Type a reply first");return}
   try{
     await api(`/api/inquiries/${id}/reply`,{method:"POST",body:JSON.stringify({reply:box.value.trim()})});
-    toast("✅ Reply sent");
+    toast("Reply sent");
     await refresh();
-  }catch(e){toast("⚠️ "+e.message)}
+  }catch(e){toast(e.message)}
 }
 function renderTable(){
-  const CAT={rent:"🏠 Rent",sale:"🏡 Sale"};
-  if(!myListings.length){$("table").innerHTML=`<div class="empty">No listings yet — post your first one! 🎉</div>`;return}
+  const CAT={rent:"Rent",sale:"Sale"};
+  if(!myListings.length){$("table").innerHTML=`<div class="empty">No listings yet — publish your first one to start receiving leads.</div>`;return}
   $("table").innerHTML=`
     <div class="row head"><div>Listing</div><div>Category</div><div>Price</div><div>Leads</div><div>Status</div><div style="text-align:right">Actions</div></div>`+
     myListings.map(x=>`
     <div class="row">
-      <div><div class="title">${esc(x.title)}</div><div class="area">📍 ${esc(x.area)}, ${esc(x.county)}</div></div>
+      <div><div class="title">${esc(x.title)}</div><div class="area">${esc(x.area)}, ${esc(x.county)}</div></div>
       <div>${CAT[x.category]||x.category}</div>
       <div>${fmt(x.price)}${x.category==="rent"?"<span style='color:var(--muted);font-size:.75rem'>/mo</span>":""}</div>
-      <div class="leads-badge">${x.leads} 📞</div>
+      <div class="leads-badge">${x.leads}</div>
       <div><span class="pill ${x.status}">${x.status}</span></div>
       <div class="actions">
         <button class="btn btn-ghost btn-sm" onclick="openEdit(${x.id})">Edit</button>
@@ -354,13 +357,13 @@ async function saveListing(){
         areaId:+$("eArea").value,price:+$("ePrice").value,
         bedrooms:$("eBeds").value===""?null:+$("eBeds").value
       })});
-      toast("🎉 Listing published!");
+      toast("Listing published — it's now live on the site.");
     }else{
       await api("/api/listings/"+editId,{method:"PATCH",body:JSON.stringify({
         title:$("eTitle").value,description:$("eDesc").value,price:+$("ePrice").value,
         bedrooms:$("eBeds").value===""?null:+$("eBeds").value,status:$("eStatus").value
       })});
-      toast("✅ Listing updated");
+      toast("Listing updated");
     }
     hide("editModal");await refresh();
   }catch(e){$("emErr").textContent=e.message}
@@ -368,7 +371,7 @@ async function saveListing(){
 async function removeListing(id){
   if(!confirm("Remove this listing? It will disappear from the site."))return;
   try{await api("/api/listings/"+id,{method:"DELETE"});toast("Listing removed");await refresh()}
-  catch(e){toast("⚠️ "+e.message)}
+  catch(e){toast(e.message)}
 }
 
 /* ---------- init ---------- */

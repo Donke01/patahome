@@ -5,21 +5,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>Admin — PataHome</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --violet:#7c3aed; --violet-dark:#5b21b6; --violet-light:#f3ecff;
-    --ink:#241b33; --muted:#6e6482; --line:#e9e2f5; --bg:#faf8ff;
-    --orange:#ff7a1a; --card:#fff; --red:#c0392b;
-    --shadow:0 3px 14px rgba(90,40,180,.10);
+    --violet:#0d5c44; --violet-dark:#093f2f; --violet-light:#ecf4f0;
+    --ink:#1a2420; --muted:#5f6d66; --line:#e3e9e5; --bg:#fbfcfb;
+    --orange:#c19a4b; --card:#fff; --red:#b3413a;
+    --shadow:0 1px 3px rgba(16,40,30,.06), 0 6px 20px rgba(16,40,30,.06);
+    --serif:'Fraunces',Georgia,serif;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5}
+  body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.55;-webkit-font-smoothing:antialiased}
   button{font-family:inherit;cursor:pointer}
   input{font-family:inherit}
   @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 
-  header{position:sticky;top:0;z-index:100;background:#1d1430;color:#fff;padding:12px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-  .logo{font-weight:800;font-size:1.2rem}
+  header{position:sticky;top:0;z-index:100;background:#0d1512;color:#fff;padding:12px 24px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .logo{font-weight:800;font-size:1.2rem;font-family:var(--serif)}
   .logo b{color:var(--orange)}
   .logo .tag{font-size:.7rem;background:var(--orange);border-radius:999px;padding:2px 10px;font-weight:800;margin-left:8px;vertical-align:middle}
   .header-right{margin-left:auto;display:flex;gap:10px;align-items:center;font-size:.85rem}
@@ -29,11 +33,11 @@
   .btn-ghost{background:transparent;color:var(--violet);border:1.5px solid var(--violet)}
   .btn-danger{background:transparent;color:var(--red);border:1.5px solid #e5b9b3}
   .btn-sm{padding:5px 11px;font-size:.76rem;border-radius:8px}
-  .btn-white{background:#fff;color:#1d1430}
+  .btn-white{background:#fff;color:#0d1512}
 
   .wrap{max-width:1100px;margin:0 auto;padding:24px 20px 60px}
   .auth-card{max-width:380px;margin:10vh auto;background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px;box-shadow:var(--shadow);animation:fadeUp .4s both}
-  .auth-card h1{font-size:1.2rem;color:var(--violet-dark)}
+  .auth-card h1{font-family:var(--serif);font-size:1.3rem;font-weight:600;color:var(--violet-dark)}
   .auth-card .sub{font-size:.84rem;color:var(--muted);margin-bottom:12px}
   label{display:block;font-size:.78rem;font-weight:700;color:var(--muted);margin:11px 0 4px}
   input{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;font-size:.9rem;outline:none}
@@ -42,7 +46,7 @@
 
   .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:22px}
   .stat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow);animation:fadeUp .4s both}
-  .stat .num{font-size:1.45rem;font-weight:800;color:var(--violet-dark)}
+  .stat .num{font-family:var(--serif);font-size:1.55rem;font-weight:600;color:var(--violet-dark)}
   .stat .lbl{font-size:.74rem;color:var(--muted)}
   .stat.rev .num{color:var(--orange)}
 
@@ -77,7 +81,7 @@
 
 <div id="authView">
   <div class="auth-card">
-    <h1>🔐 Admin Access</h1>
+    <h1>Admin Access</h1>
     <div class="sub">This area is for the PataHome administrator only.</div>
     <label>Phone</label>
     <input id="aPhone" placeholder="07XXXXXXXX">
@@ -91,8 +95,8 @@
 <div id="dash" class="wrap" style="display:none">
   <div class="stats" id="stats"></div>
   <div class="tabs">
-    <button class="tab on" id="tabL" onclick="setTab('listings')">📋 Listings</button>
-    <button class="tab" id="tabU" onclick="setTab('users')">👥 Users</button>
+    <button class="tab on" id="tabL" onclick="setTab('listings')">Listings</button>
+    <button class="tab" id="tabU" onclick="setTab('users')">Users</button>
   </div>
   <div class="panel table-scroll" id="panel"></div>
 </div>
@@ -126,7 +130,7 @@ function logout(){token=null;localStorage.removeItem("ph_admin");location.reload
 
 async function enter(name){
   $("authView").style.display="none";$("dash").style.display="block";$("hdr").style.display="flex";
-  $("who").textContent="👤 "+(name||"Admin");
+  $("who").textContent=name||"Admin";
   await refresh();
 }
 async function refresh(){
@@ -148,11 +152,11 @@ function setTab(t){
   renderTab();
 }
 function renderTab(){
-  const CAT={rent:"🏠",sale:"🏡"};
+  const CAT={rent:"Rent",sale:"Sale"};
   if(tab==="listings"){
     $("panel").innerHTML=`<table><tr><th>Listing</th><th>Owner</th><th>Price</th><th>Leads</th><th>Status</th><th></th></tr>`+
       cache.listings.map(x=>`<tr>
-        <td>${CAT[x.category]||""} <b>${esc(x.title)}</b><div class="muted">📍 ${esc(x.area)}, ${esc(x.county)} · #${x.id}</div></td>
+        <td><b>${esc(x.title)}</b> <span class="pill ok">${CAT[x.category]||x.category}</span><div class="muted">${esc(x.area)}, ${esc(x.county)} · #${x.id}</div></td>
         <td>${esc(x.ownerName)}<div class="muted">${esc(x.ownerPhone)}</div></td>
         <td>${fmt(x.price)}</td>
         <td><b>${x.leads}</b></td>
@@ -174,11 +178,11 @@ function renderTab(){
 async function removeListing(id){
   if(!confirm("Remove listing #"+id+" from the site?"))return;
   try{await api("/api/listings/"+id,{method:"DELETE"});toast("Listing removed");await refresh()}
-  catch(e){toast("⚠️ "+e.message)}
+  catch(e){toast(e.message)}
 }
 async function setVerified(id,v){
   try{await api("/api/admin/users/"+id,{method:"PATCH",body:JSON.stringify({verified:v})});toast(v?"Owner verified ✓":"Verification removed");await refresh()}
-  catch(e){toast("⚠️ "+e.message)}
+  catch(e){toast(e.message)}
 }
 
 (async function(){
