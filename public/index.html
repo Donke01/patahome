@@ -43,6 +43,24 @@
   @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
   @keyframes heartPop{0%{transform:scale(1)}40%{transform:scale(1.4)}100%{transform:scale(1)}}
 
+  /* ---------- Page slide transitions (View Transitions API) ---------- */
+  @view-transition{navigation:auto}
+  @keyframes vtOut{to{opacity:0;transform:translateX(-26px)}}
+  @keyframes vtIn{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:none}}
+  ::view-transition-old(root){animation:vtOut .26s ease both}
+  ::view-transition-new(root){animation:vtIn .34s cubic-bezier(.16,1,.3,1) both}
+
+  /* ---------- Scroll reveal ---------- */
+  .reveal{opacity:0;transform:translateY(26px);transition:opacity .65s ease,transform .65s cubic-bezier(.16,1,.3,1)}
+  .reveal.in{opacity:1;transform:none}
+  .reveal.d1{transition-delay:.08s}.reveal.d2{transition-delay:.16s}
+
+  @media(prefers-reduced-motion:reduce){
+    ::view-transition-old(root),::view-transition-new(root){animation:none}
+    .reveal{opacity:1;transform:none;transition:none}
+    *{animation-duration:.01ms!important}
+  }
+
   /* ---------- Header ---------- */
   header{position:sticky;top:0;z-index:1000;background:var(--header-bg);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding:12px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;transition:background .3s}
   .logo{font-size:1.3rem;font-weight:800;color:var(--brand);display:flex;align-items:center;gap:9px;letter-spacing:-.4px;font-family:var(--serif)}
@@ -300,7 +318,7 @@
   <div id="locStatus"></div>
 </section>
 
-<div class="trust-wrap">
+<div class="trust-wrap reveal">
   <div class="trust">
     <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>ID-verified owners</span>
     <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Zero agent fees</span>
@@ -310,8 +328,8 @@
 </div>
 
 <div class="wrap">
-  <div class="section-title">Browse listings</div>
-  <div class="section-sub">Every listing is posted directly by a verified property owner.</div>
+  <div class="section-title reveal">Browse listings</div>
+  <div class="section-sub reveal d1">Every listing is posted directly by a verified property owner.</div>
   <div class="tabs" id="tabs"></div>
 
   <div class="filters">
@@ -363,7 +381,7 @@
 </button>
 
 <footer>
-  <div class="foot-inner">
+  <div class="foot-inner reveal">
     <div>
       <div class="foot-brand">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg>
@@ -814,6 +832,14 @@ async function sendInquiry(){
   render();
   initMap();
   animateStats();
+  if("IntersectionObserver" in window){
+    const io=new IntersectionObserver(es=>es.forEach(e=>{
+      if(e.isIntersecting){e.target.classList.add("in");io.unobserve(e.target)}
+    }),{threshold:.12,rootMargin:"0px 0px -30px 0px"});
+    document.querySelectorAll(".reveal").forEach(el=>io.observe(el));
+  }else{
+    document.querySelectorAll(".reveal").forEach(el=>el.classList.add("in"));
+  }
   if(inBrowser)typewriter();
   if(inBrowser&&navigator.geolocation){
     document.getElementById("locStatus").textContent="Detecting your location for nearby listings…";
