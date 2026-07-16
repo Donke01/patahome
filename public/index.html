@@ -1089,9 +1089,31 @@ async function paintAccount(){
     chip.style.display="flex";
   }catch(e){/* stay logged-out visually */}
 }
+/* Scroll-reveal is armed FIRST and independently — if anything else fails
+   (map CDN, data load), sections must still become visible. */
+(function armReveal(){
+  try{
+    if("IntersectionObserver" in window){
+      const io=new IntersectionObserver(es=>es.forEach(e=>{
+        if(e.isIntersecting){e.target.classList.add("in");io.unobserve(e.target)}
+      }),{threshold:.12,rootMargin:"0px 0px -30px 0px"});
+      document.querySelectorAll(".reveal").forEach(el=>io.observe(el));
+    }else{
+      document.querySelectorAll(".reveal").forEach(el=>el.classList.add("in"));
+    }
+  }catch(e){document.querySelectorAll(".reveal").forEach(el=>el.classList.add("in"))}
+  // absolute safety net: anything on screen becomes visible within 2.5s no matter what
+  setTimeout(()=>{
+    document.querySelectorAll(".reveal:not(.in)").forEach(el=>{
+      const r=el.getBoundingClientRect();
+      if(r.top<innerHeight&&r.bottom>0)el.classList.add("in");
+    });
+  },2500);
+})();
+
 (async function(){
   document.getElementById("footYear").textContent=new Date().getFullYear();
-  paintAccount();
+  try{paintAccount()}catch(e){}
   try{
     await loadData();
   }catch(e){
@@ -1103,25 +1125,23 @@ async function paintAccount(){
   const n=favs.size,pill=document.getElementById("favCount");
   pill.textContent=n;pill.style.display=n?"flex":"none";
   render();
-  initMap();
-  animateStats();
+  try{initMap()}catch(e){
+    // Map library unavailable (slow/blocked CDN) — hide the map gracefully, keep the site working
+    document.getElementById("mapPanel").style.display="none";
+    const fab=document.querySelector(".map-fab");if(fab)fab.style.display="none";
+  }
+  try{animateStats()}catch(e){}
   if(inBrowser&&!reduceMotion){
-    const lockAll=()=>{lockSubHeight();lockHeadHeight()};
-    lockAll();
-    let rsz;addEventListener("resize",()=>{clearTimeout(rsz);rsz=setTimeout(lockAll,200)});
-    if(document.fonts&&document.fonts.ready)document.fonts.ready.then(lockAll);
-    setInterval(rotateWord,3600);
-    setInterval(rotateSub,7900);
+    try{
+      const lockAll=()=>{lockSubHeight();lockHeadHeight()};
+      lockAll();
+      let rsz;addEventListener("resize",()=>{clearTimeout(rsz);rsz=setTimeout(lockAll,200)});
+      if(document.fonts&&document.fonts.ready)document.fonts.ready.then(lockAll);
+      setInterval(rotateWord,3600);
+      setInterval(rotateSub,7900);
+    }catch(e){}
   }
-  if("IntersectionObserver" in window){
-    const io=new IntersectionObserver(es=>es.forEach(e=>{
-      if(e.isIntersecting){e.target.classList.add("in");io.unobserve(e.target)}
-    }),{threshold:.12,rootMargin:"0px 0px -30px 0px"});
-    document.querySelectorAll(".reveal").forEach(el=>io.observe(el));
-  }else{
-    document.querySelectorAll(".reveal").forEach(el=>el.classList.add("in"));
-  }
-  if(inBrowser)typewriter();
+  try{if(inBrowser)typewriter()}catch(e){}
   if(inBrowser&&navigator.geolocation){
     document.getElementById("locStatus").textContent="Detecting your location for nearby listings…";
     useMyLocation();
