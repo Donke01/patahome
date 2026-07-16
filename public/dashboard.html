@@ -54,10 +54,35 @@
   .hint{font-size:.75rem;color:var(--muted);margin-top:10px;background:var(--green-light);border-radius:8px;padding:8px 10px}
 
   /* stats */
-  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:22px}
-  .stat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);animation:fadeUp .4s both}
+  .overview-head{display:flex;align-items:center;gap:14px;margin-bottom:14px;flex-wrap:wrap}
+  .overview-head h2{font-family:var(--serif);font-size:1.35rem;font-weight:600}
+  @keyframes livePulse{0%,100%{box-shadow:0 0 0 0 rgba(13,92,68,.45)}50%{box-shadow:0 0 0 6px rgba(13,92,68,0)}}
+  .live-pill{display:inline-flex;align-items:center;gap:7px;background:var(--green-light);color:var(--green);font-size:.72rem;font-weight:800;letter-spacing:1.2px;border-radius:999px;padding:5px 13px}
+  .live-pill .dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:livePulse 1.8s infinite}
+  .updated{font-size:.76rem;color:var(--muted);margin-left:auto}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:16px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);animation:fadeUp .4s both;position:relative;overflow:hidden}
+  .stat::after{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--green),var(--amber));opacity:0;transition:opacity .2s}
+  .stat:hover::after{opacity:1}
   .stat .num{font-family:var(--serif);font-size:1.7rem;font-weight:600;color:var(--green-dark)}
   .stat .lbl{font-size:.78rem;color:var(--muted)}
+  .trend{display:inline-flex;align-items:center;gap:4px;font-size:.72rem;font-weight:800;border-radius:999px;padding:2px 9px;margin-left:8px;vertical-align:middle}
+  .trend.up{background:var(--green-light);color:var(--green)}
+  .trend.down{background:#faeeed;color:var(--red)}
+  .trend.flat{background:#f0f2f1;color:var(--muted)}
+
+  /* chart + top listing */
+  .panel-grid{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:24px}
+  @media(max-width:800px){.panel-grid{grid-template-columns:1fr}}
+  .chart-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow);animation:fadeUp .4s both}
+  .chart-card h3{font-family:var(--serif);font-size:1rem;font-weight:600;margin-bottom:12px}
+  .chart-card h3 small{font-family:'Inter',sans-serif;font-weight:500;color:var(--muted);font-size:.76rem;margin-left:8px}
+  .chart-wrap{position:relative;height:210px}
+  .top-card{background:linear-gradient(150deg,#07281e,#0d5c44);color:#fff;border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);animation:fadeUp .4s both;display:flex;flex-direction:column;justify-content:center}
+  .top-card .tc-kick{font-size:.68rem;font-weight:800;letter-spacing:1.8px;text-transform:uppercase;color:#d9c390;margin-bottom:8px}
+  .top-card .tc-title{font-family:var(--serif);font-size:1.12rem;font-weight:600;line-height:1.3}
+  .top-card .tc-sub{font-size:.82rem;opacity:.8;margin-top:8px}
+  .top-card .tc-num{font-family:var(--serif);font-size:2rem;color:#e3c98c;font-weight:600;margin-top:4px}
 
   .section-head{display:flex;align-items:center;gap:12px;margin:8px 0 14px}
   .section-head h2{font-family:var(--serif);font-size:1.2rem;font-weight:600;color:var(--ink)}
@@ -156,11 +181,29 @@
 
 <!-- ============ DASHBOARD ============ -->
 <div id="dashView" class="wrap" style="display:none">
+  <div class="overview-head">
+    <h2>Overview</h2>
+    <span class="live-pill"><span class="dot"></span>LIVE</span>
+    <span class="updated" id="updatedAgo"></span>
+  </div>
   <div class="stats">
     <div class="stat"><div class="num" id="sActive">–</div><div class="lbl">Active listings</div></div>
-    <div class="stat"><div class="num" id="sLeads">–</div><div class="lbl">Total leads (contact requests)</div></div>
-    <div class="stat"><div class="num" id="sTotal">–</div><div class="lbl">Total listings</div></div>
+    <div class="stat"><div class="num"><span id="sLeads">–</span><span id="sTrend"></span></div><div class="lbl">Total leads (contact requests)</div></div>
+    <div class="stat"><div class="num" id="sWeek">–</div><div class="lbl">Leads this week</div></div>
     <div class="stat"><div class="num" id="sInq">–</div><div class="lbl">Messages awaiting your reply</div></div>
+  </div>
+
+  <div class="panel-grid">
+    <div class="chart-card">
+      <h3>Activity<small>leads &amp; messages, last 30 days</small></h3>
+      <div class="chart-wrap"><canvas id="actChart"></canvas></div>
+    </div>
+    <div class="top-card" id="topCard">
+      <div class="tc-kick">Top Performer</div>
+      <div class="tc-title" id="tcTitle">—</div>
+      <div class="tc-sub">total leads on this listing</div>
+      <div class="tc-num" id="tcLeads">0</div>
+    </div>
   </div>
 
   <div class="section-head">
@@ -209,6 +252,7 @@
 
 <div class="toast" id="toast"></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
 const API = ""; // same origin
 let token = localStorage.getItem("pb_token") || null;
@@ -271,18 +315,74 @@ async function enterDash(){
   }
   await refresh();
 }
+let chart=null, lastUpdated=null;
 async function refresh(){
-  const [listings,inquiries]=await Promise.all([api("/api/my/listings"),api("/api/my/inquiries")]);
+  const [listings,inquiries,stats]=await Promise.all([
+    api("/api/my/listings"),api("/api/my/inquiries"),api("/api/my/stats").catch(()=>null)]);
   myListings=listings;myInquiries=inquiries;
   const active=myListings.filter(x=>x.status==="active");
   const totalLeads=myListings.reduce((s,x)=>s+x.leads,0);
   $("sActive").textContent=active.length;
   $("sLeads").textContent=totalLeads;
-  $("sTotal").textContent=myListings.length;
   $("sInq").textContent=myInquiries.filter(x=>!x.reply).length;
+  if(stats)renderStats(stats);
+  lastUpdated=Date.now();tickUpdated();
   renderTable();
   renderInbox();
 }
+function renderStats(o){
+  $("sWeek").textContent=o.thisWeek;
+  const t=o.trendPct;
+  $("sTrend").innerHTML=t>0?`<span class="trend up">▲ ${t}%</span>`:t<0?`<span class="trend down">▼ ${Math.abs(t)}%</span>`:`<span class="trend flat">— 0%</span>`;
+  if(o.topListing){
+    $("tcTitle").textContent=o.topListing.title;
+    $("tcLeads").textContent=o.topListing.leads;
+    $("topCard").style.display="flex";
+  }else{
+    $("tcTitle").textContent="No leads yet";
+    $("tcLeads").textContent="0";
+  }
+  renderChart(o.series);
+}
+function renderChart(series){
+  if(typeof Chart==="undefined")return;
+  const labels=series.map(x=>x.date.slice(5).replace("-","/"));
+  const leads=series.map(x=>x.leads), inqs=series.map(x=>x.inquiries);
+  if(chart){
+    chart.data.labels=labels;
+    chart.data.datasets[0].data=leads;
+    chart.data.datasets[1].data=inqs;
+    chart.update("none");
+    return;
+  }
+  const ctx=$("actChart").getContext("2d");
+  const grad=ctx.createLinearGradient(0,0,0,210);
+  grad.addColorStop(0,"rgba(13,92,68,.28)");grad.addColorStop(1,"rgba(13,92,68,0)");
+  chart=new Chart(ctx,{
+    type:"line",
+    data:{labels,datasets:[
+      {label:"Leads",data:leads,borderColor:"#0d5c44",backgroundColor:grad,fill:true,tension:.35,borderWidth:2.5,pointRadius:0,pointHoverRadius:5,pointBackgroundColor:"#0d5c44"},
+      {label:"Messages",data:inqs,borderColor:"#c19a4b",backgroundColor:"transparent",fill:false,tension:.35,borderWidth:2,pointRadius:0,pointHoverRadius:5,pointBackgroundColor:"#c19a4b",borderDash:[5,4]}
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},
+      plugins:{legend:{position:"top",align:"end",labels:{boxWidth:10,boxHeight:10,usePointStyle:true,pointStyle:"circle",font:{family:"'Inter',sans-serif",size:11},color:"#5f6d66"}},
+        tooltip:{backgroundColor:"#12201a",titleFont:{family:"'Inter',sans-serif"},bodyFont:{family:"'Inter',sans-serif"},padding:10,cornerRadius:8}},
+      scales:{
+        x:{grid:{display:false},ticks:{maxTicksLimit:8,font:{family:"'Inter',sans-serif",size:10},color:"#8a968f"}},
+        y:{beginAtZero:true,grid:{color:"rgba(0,0,0,.05)"},ticks:{precision:0,font:{family:"'Inter',sans-serif",size:10},color:"#8a968f"}}
+      }
+    }
+  });
+}
+function tickUpdated(){
+  if(!lastUpdated)return;
+  const s=Math.round((Date.now()-lastUpdated)/1000);
+  $("updatedAgo").textContent=s<5?"Updated just now":s<60?`Updated ${s}s ago`:`Updated ${Math.floor(s/60)}m ago`;
+}
+setInterval(tickUpdated,5000);
+setInterval(()=>{if(token&&$("dashView").style.display!=="none"&&!document.hidden)refresh().catch(()=>{})},30000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&token&&$("dashView").style.display!=="none")refresh().catch(()=>{})});
 function renderInbox(){
   if(!myInquiries.length){$("inbox").innerHTML=`<div class="inq" style="text-align:center;color:var(--muted)">No messages yet — they'll appear here when tenants and buyers reach out.</div>`;return}
   $("inbox").innerHTML=myInquiries.map(q=>`

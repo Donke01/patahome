@@ -265,6 +265,42 @@ router.add("GET", "/api/my/listings", (req, res) => {
   send(res, 200, rows.map(r => ({ ...listingView(r), leads: leadCount[r.id] || 0 })));
 });
 
+/* -------- owner stats: daily leads/inquiries for the live dashboard -------- */
+router.add("GET", "/api/my/stats", (req, res) => {
+  const u = requireAuth(req, res); if (!u) return;
+  const days = Math.min(90, Math.max(7, +req.query.days || 30));
+  const leadRows = db.prepare(`
+    SELECT date(le.created_at) d, COUNT(*) n
+    FROM leads le JOIN listings l ON l.id = le.listing_id
+    WHERE l.owner_id = ? AND le.created_at >= datetime('now', ?)
+    GROUP BY date(le.created_at)`).all(u.id, `-${days} days`);
+  const inqRows = db.prepare(`
+    SELECT date(i.created_at) d, COUNT(*) n
+    FROM inquiries i JOIN listings l ON l.id = i.listing_id
+    WHERE l.owner_id = ? AND i.created_at >= datetime('now', ?)
+    GROUP BY date(i.created_at)`).all(u.id, `-${days} days`);
+  const leadMap = Object.fromEntries(leadRows.map(r => [r.d, r.n]));
+  const inqMap = Object.fromEntries(inqRows.map(r => [r.d, r.n]));
+  const series = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+    series.push({ date: d, leads: leadMap[d] || 0, inquiries: inqMap[d] || 0 });
+  }
+  const week = arr => arr.reduce((s, x) => s + x.leads + x.inquiries, 0);
+  const thisWeek = week(series.slice(-7));
+  const prevWeek = week(series.slice(-14, -7));
+  const top = db.prepare(`
+    SELECT l.id, l.title, COUNT(le.id) n
+    FROM listings l LEFT JOIN leads le ON le.listing_id = l.id
+    WHERE l.owner_id = ? AND l.status = 'active'
+    GROUP BY l.id ORDER BY n DESC, l.id DESC LIMIT 1`).get(u.id);
+  send(res, 200, {
+    days, series, thisWeek, prevWeek,
+    trendPct: prevWeek ? Math.round(((thisWeek - prevWeek) / prevWeek) * 100) : (thisWeek ? 100 : 0),
+    topListing: top && top.n > 0 ? { id: top.id, title: top.title, leads: top.n } : null
+  });
+});
+
 /* ================= admin (role: admin only) ================= */
 function requireAdmin(req, res) {
   const u = requireAuth(req, res);
