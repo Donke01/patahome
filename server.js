@@ -93,17 +93,31 @@ function send(res, code, obj) {
 }
 
 /* ================= auth ================= */
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
+const publicUser = (u) => ({
+  id: u.id, name: u.name, phone: u.phone, email: u.email,
+  verified: !!u.verified, verifyStatus: u.verify_status || "none",
+  businessName: u.business_name || "", businessType: u.business_type || "",
+  bio: u.bio || "", language: u.language || "en", avatarUrl: u.avatar_url || "",
+  hasPassword: !!u.password_hash, needsSetup: !u.phone,   // Google users must add a phone before posting
+  role: u.role
+});
+const authResponse = (res, code, u) =>
+  send(res, code, { token: signToken({ id: u.id, name: u.name, role: u.role }), user: publicUser(u) });
+
 router.add("POST", "/api/auth/register", (req, res) => {
   const { name, phone, email, password } = req.body || {};
   if (!name || !phone || !password) return send(res, 400, { error: "name, phone and password are required" });
   if (!/^0[17]\d{8}$/.test(phone)) return send(res, 400, { error: "Enter a valid Kenyan phone e.g. 0712345678" });
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return send(res, 400, { error: "Enter a valid email address" });
   if (password.length < 8) return send(res, 400, { error: "Password must be at least 8 characters" });
   try {
     const info = db.prepare("INSERT INTO users (name,phone,email,password_hash) VALUES (?,?,?,?)")
       .run(name.trim(), phone, email || null, hashPassword(password));
     const user = db.prepare("SELECT * FROM users WHERE id=?").get(info.lastInsertRowid);
-    send(res, 201, { token: signToken({ id: user.id, name: user.name, role: user.role }),
-      user: { id: user.id, name: user.name, phone: user.phone, verified: !!user.verified } });
+    db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
+      .run(user.id, "system", "Karibu to PataHome", "Your account is ready. Post your first listing to start receiving leads.");
+    authResponse(res, 201, user);
   } catch (e) {
     if (String(e).includes("UNIQUE")) return send(res, 409, { error: "Phone or email already registered" });
     throw e;
@@ -111,17 +125,113 @@ router.add("POST", "/api/auth/register", (req, res) => {
 });
 
 router.add("POST", "/api/auth/login", (req, res) => {
-  const { phone, password } = req.body || {};
-  const user = db.prepare("SELECT * FROM users WHERE phone=?").get(phone || "");
-  if (!user || !verifyPassword(password || "", user.password_hash))
-    return send(res, 401, { error: "Wrong phone or password" });
-  send(res, 200, { token: signToken({ id: user.id, name: user.name, role: user.role }),
-    user: { id: user.id, name: user.name, phone: user.phone, verified: !!user.verified } });
+  const { phone, email, password } = req.body || {};
+  const id = (phone || email || "").trim();
+  const user = db.prepare("SELECT * FROM users WHERE phone=? OR (email IS NOT NULL AND email=?)").get(id, id.toLowerCase());
+  if (!user || !user.password_hash || !verifyPassword(password || "", user.password_hash))
+    return send(res, 401, { error: "Wrong phone/email or password" });
+  authResponse(res, 200, user);
+});
+
+/* Google Sign-In: browser sends the Google ID token; we verify it via Google's tokeninfo. */
+router.add("POST", "/api/auth/google", async (req, res) => {
+  if (!GOOGLE_CLIENT_ID) return send(res, 503, { error: "Google sign-in is not configured yet" });
+  const { credential } = req.body || {};
+  if (!credential) return send(res, 400, { error: "Missing Google credential" });
+  try {
+    const r = await fetch("https://oauth2.googleapis.com/tokeninfo?id_token=" + encodeURIComponent(credential));
+    const p = await r.json();
+    if (!r.ok || p.aud !== GOOGLE_CLIENT_ID || !p.email_verified) return send(res, 401, { error: "Google sign-in failed" });
+    let user = db.prepare("SELECT * FROM users WHERE google_id=? OR email=?").get(p.sub, (p.email || "").toLowerCase());
+    if (user) {
+      if (!user.google_id) db.prepare("UPDATE users SET google_id=?, avatar_url=COALESCE(avatar_url,?) WHERE id=?").run(p.sub, p.picture || null, user.id);
+    } else {
+      const info = db.prepare("INSERT INTO users (name,phone,email,password_hash,google_id,avatar_url) VALUES (?,?,?,?,?,?)")
+        .run(p.name || "PataHome User", null, (p.email || "").toLowerCase(), "", p.sub, p.picture || null);
+      user = db.prepare("SELECT * FROM users WHERE id=?").get(info.lastInsertRowid);
+      db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
+        .run(user.id, "system", "Karibu to PataHome", "Add your phone number in Settings to start posting listings.");
+    }
+    authResponse(res, 200, user);
+  } catch (e) { send(res, 502, { error: "Could not verify Google sign-in" }); }
 });
 
 router.add("GET", "/api/auth/me", (req, res) => {
   const u = requireAuth(req, res); if (!u) return;
-  send(res, 200, db.prepare("SELECT id,name,phone,email,verified,created_at FROM users WHERE id=?").get(u.id));
+  const row = db.prepare("SELECT * FROM users WHERE id=?").get(u.id);
+  if (!row) return send(res, 404, { error: "Account not found" });
+  send(res, 200, publicUser(row));
+});
+
+/* ================= account settings ================= */
+router.add("PATCH", "/api/account", (req, res) => {
+  const u = requireAuth(req, res); if (!u) return;
+  const map = { name: "name", businessName: "business_name", businessType: "business_type", bio: "bio", language: "language" };
+  const sets = [], params = [];
+  for (const [k, col] of Object.entries(map)) if (req.body[k] !== undefined) {
+    sets.push(`${col}=?`); params.push(String(req.body[k]).slice(0, 400));
+  }
+  if (!sets.length) return send(res, 400, { error: "Nothing to update" });
+  db.prepare(`UPDATE users SET ${sets.join(",")} WHERE id=?`).run(...params, u.id);
+  send(res, 200, publicUser(db.prepare("SELECT * FROM users WHERE id=?").get(u.id)));
+});
+
+router.add("POST", "/api/account/change-phone", (req, res) => {
+  const u = requireAuth(req, res); if (!u) return;
+  const phone = (req.body.phone || "").trim();
+  if (!/^0[17]\d{8}$/.test(phone)) return send(res, 400, { error: "Enter a valid Kenyan phone e.g. 0712345678" });
+  try {
+    db.prepare("UPDATE users SET phone=? WHERE id=?").run(phone, u.id);
+    send(res, 200, publicUser(db.prepare("SELECT * FROM users WHERE id=?").get(u.id)));
+  } catch (e) { send(res, 409, { error: "That phone is already registered" }); }
+});
+
+router.add("POST", "/api/account/change-email", (req, res) => {
+  const u = requireAuth(req, res); if (!u) return;
+  const email = (req.body.email || "").trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return send(res, 400, { error: "Enter a valid email address" });
+  try {
+    db.prepare("UPDATE users SET email=? WHERE id=?").run(email, u.id);
+    send(res, 200, publicUser(db.prepare("SELECT * FROM users WHERE id=?").get(u.id)));
+  } catch (e) { send(res, 409, { error: "That email is already registered" }); }
+});
+
+router.add("POST", "/api/account/change-password", (req, res) => {
+  const u = requireAuth(req, res); if (!u) return;
+  const { currentPassword, newPassword } = req.body || {};
+  if (!newPassword || newPassword.length < 8) return send(res, 400, { error: "New password must be at least 8 characters" });
+  const row = db.prepare("SELECT * FROM users WHERE id=?").get(u.id);
+  if (row.password_hash) {
+    if (!verifyPassword(currentPassword || "", row.password_hash)) return send(res, 401, { error: "Current password is wrong" });
+  }
+  db.prepare("UPDATE users SET password_hash=? WHERE id=?").run(hashPassword(newPassword), u.id);
+  send(res, 200, { ok: true });
+});
+
+router.add("POST", "/api/account/request-verification", (req, res) => {
+  const u = requireAuth(req, res); if (!u) return;
+  db.prepare("UPDATE users SET verify_status='pending' WHERE id=? AND verified=0").run(u.id);
+  db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
+    .run(u.id, "verify", "Verification submitted", "Our team will review your details and verify your account shortly.");
+  send(res, 200, publicUser(db.prepare("SELECT * FROM users WHERE id=?").get(u.id)));
+});
+
+router.add("DELETE", "/api/account", (req, res) => {
+  const u = requireAuth(req, res); if (!u) return;
+  const row = db.prepare("SELECT * FROM users WHERE id=?").get(u.id);
+  if (row.role === "admin") return send(res, 403, { error: "Admin accounts can't be self-deleted" });
+  if (row.password_hash && !verifyPassword((req.body && req.body.password) || "", row.password_hash))
+    return send(res, 401, { error: "Enter your current password to delete your account" });
+  // reclaim listing photos, then remove the account (cascades to listings/followers/notifications)
+  for (const l of db.prepare("SELECT photos FROM listings WHERE owner_id=?").all(u.id))
+    for (const id of parsePhotos(l.photos)) cldDestroy(id);
+  db.prepare("DELETE FROM users WHERE id=?").run(u.id);
+  send(res, 200, { ok: true });
+});
+
+/* ================= public config ================= */
+router.add("GET", "/api/config", (req, res) => {
+  send(res, 200, { googleClientId: GOOGLE_CLIENT_ID || null, cloudinary: cldEnabled() });
 });
 
 /* ================= areas ================= */

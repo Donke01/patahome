@@ -89,5 +89,44 @@ CREATE TABLE IF NOT EXISTS payments (
 /* -------- migrations (idempotent) -------- */
 // photos: JSON array of Cloudinary public_ids (max 5 per listing)
 try { db.exec("ALTER TABLE listings ADD COLUMN photos TEXT"); } catch (e) { /* column exists */ }
+// richer user profiles for the account system
+for (const col of [
+  "business_name TEXT", "business_type TEXT", "bio TEXT",
+  "language TEXT DEFAULT 'en'", "avatar_url TEXT", "google_id TEXT",
+  "verify_status TEXT DEFAULT 'none'"   // none | pending | verified
+]) {
+  try { db.exec(`ALTER TABLE users ADD COLUMN ${col}`); } catch (e) { /* exists */ }
+}
+
+// followers: a renter/buyer follows an owner to get notified of new listings
+db.exec(`
+CREATE TABLE IF NOT EXISTS followers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  follower_name TEXT NOT NULL,
+  follower_phone TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(owner_id, follower_phone)
+);
+CREATE TABLE IF NOT EXISTS notifications (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,                          -- lead | inquiry | follower | system | verify
+  title TEXT NOT NULL,
+  body TEXT DEFAULT '',
+  read INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS support_tickets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  subject TEXT NOT NULL,
+  message TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'open',         -- open | resolved
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, read);
+CREATE INDEX IF NOT EXISTS idx_followers_owner ON followers(owner_id);
+`);
 
 module.exports = db;
