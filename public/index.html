@@ -104,6 +104,12 @@
   .icon-btn svg{width:17px;height:17px}
   .icon-btn .pill{position:absolute;top:-6px;right:-6px;background:var(--gold);color:#fff;font-size:.63rem;font-weight:800;border-radius:999px;min-width:17px;height:17px;display:flex;align-items:center;justify-content:center;padding:0 4px}
   .icon-btn.active-filter{border-color:var(--gold);background:var(--gold-soft);color:var(--gold)}
+  .acct-chip{display:flex;align-items:center;gap:8px;border:1.5px solid var(--line);border-radius:999px;padding:4px 12px 4px 5px;transition:.15s}
+  .acct-chip:hover{border-color:var(--brand)}
+  .acct-av{width:29px;height:29px;border-radius:50%;background:var(--brand);color:#fff;font-family:var(--serif);font-weight:600;font-size:.82rem;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .acct-av img{width:100%;height:100%;object-fit:cover}
+  .acct-name{font-size:.85rem;font-weight:600;color:var(--ink);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  @media(max-width:640px){.acct-name{display:none}}
 
   /* ---------- Hero ---------- */
   .hero{background:linear-gradient(150deg,#07281e 0%,#0b3f2f 45%,#0d5c44 100%);color:#fff;padding:64px 24px 72px;text-align:center;position:relative;overflow:hidden}
@@ -318,8 +324,11 @@
     <button class="icon-btn" id="darkBtn" title="Dark mode" onclick="toggleDark()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
     </button>
-    <a class="btn btn-ghost" href="/dashboard.html" style="text-decoration:none">List Your Property</a>
-    <a class="btn btn-primary" href="/dashboard.html" style="text-decoration:none">Owner Dashboard</a>
+    <a class="btn btn-primary" href="/dashboard.html" style="text-decoration:none">List Your Property</a>
+    <a class="acct-chip" id="acctChip" href="/dashboard.html" style="display:none;text-decoration:none">
+      <span class="acct-av" id="acctAv">U</span>
+      <span class="acct-name" id="acctName"></span>
+    </a>
   </div>
 </header>
 
@@ -937,8 +946,23 @@ async function sendInquiry(){
 }
 
 /* ================= INIT ================= */
+async function paintAccount(){
+  const tok=localStorage.getItem("pb_token");
+  if(!tok)return;
+  try{
+    const r=await fetch("/api/auth/me",{headers:{Authorization:"Bearer "+tok}});
+    if(!r.ok){localStorage.removeItem("pb_token");return}
+    const me=await r.json();
+    const chip=document.getElementById("acctChip"),av=document.getElementById("acctAv");
+    if(me.avatarUrl)av.innerHTML=`<img src="${esc(me.avatarUrl)}" alt="">`;
+    else av.textContent=(me.name||"U").trim().split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase();
+    document.getElementById("acctName").textContent=me.name;
+    chip.style.display="flex";
+  }catch(e){/* stay logged-out visually */}
+}
 (async function(){
   document.getElementById("footYear").textContent=new Date().getFullYear();
+  paintAccount();
   try{
     await loadData();
   }catch(e){

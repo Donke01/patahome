@@ -160,6 +160,44 @@
   .photo-add span{font-size:1.15rem;line-height:1}
   .photo-note{font-size:.72rem;color:var(--muted);margin-top:6px}
 
+  /* header user menu */
+  .user-menu{position:relative}
+  .avatar-btn{display:flex;align-items:center;gap:9px;background:transparent;border:1.5px solid var(--line);border-radius:999px;padding:5px 12px 5px 6px;transition:.15s;max-width:220px}
+  .avatar-btn:hover{border-color:var(--green)}
+  .avatar-c{width:32px;height:32px;border-radius:50%;background:var(--green);color:#fff;font-family:var(--serif);font-weight:600;font-size:.9rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
+  .avatar-c img{width:100%;height:100%;object-fit:cover}
+  .avatar-btn .u-name{font-size:.86rem;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .avatar-btn .u-caret{color:var(--muted);font-size:.7rem}
+  .menu-pop{position:absolute;right:0;top:calc(100% + 8px);width:266px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 40px rgba(16,40,30,.18);padding:8px;z-index:200;display:none;animation:modalIn .2s ease both}
+  .menu-pop.show{display:block}
+  .menu-head{padding:10px 12px 12px;border-bottom:1px solid var(--line);margin-bottom:6px}
+  .menu-head .mh-name{font-weight:700;font-size:.95rem}
+  .menu-head .mh-sub{font-size:.78rem;color:var(--muted);word-break:break-word}
+  .menu-head .mh-badge{display:inline-flex;align-items:center;gap:4px;font-size:.68rem;font-weight:700;border-radius:999px;padding:2px 9px;margin-top:7px}
+  .mh-badge.ok{background:var(--green-light);color:var(--green-dark)}
+  .mh-badge.pending{background:#fff3e6;color:#b45309}
+  .mh-badge.none{background:#f0f2f1;color:var(--muted)}
+  .menu-item{display:flex;align-items:center;gap:11px;width:100%;background:none;border:none;text-align:left;padding:9px 12px;border-radius:9px;font-size:.87rem;color:var(--ink);transition:.12s}
+  .menu-item:hover{background:var(--green-light)}
+  .menu-item svg{width:17px;height:17px;color:var(--muted);flex-shrink:0}
+  .menu-item.danger{color:var(--red)}.menu-item.danger svg{color:var(--red)}
+  .menu-sep{height:1px;background:var(--line);margin:6px 4px}
+  .menu-label{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);padding:6px 12px 2px}
+
+  /* settings modal shared */
+  .set-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
+  .set-row:last-child{border-bottom:none}
+  .set-row .sr-k{font-size:.82rem;color:var(--muted)}
+  .set-row .sr-v{font-size:.9rem;font-weight:600;text-align:right;word-break:break-word}
+  .g-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;background:#fff;border:1.5px solid var(--line);border-radius:10px;padding:11px;font-weight:600;font-size:.9rem;color:#3c4043;transition:.15s}
+  .g-btn:hover{background:#f7faf8;border-color:var(--muted)}
+  .g-btn svg{width:18px;height:18px}
+  .or-div{display:flex;align-items:center;gap:12px;margin:16px 0 4px;color:var(--muted);font-size:.76rem}
+  .or-div::before,.or-div::after{content:"";flex:1;height:1px;background:var(--line)}
+  .seg{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+  .seg button{flex:1;min-width:70px;border:1.5px solid var(--line);background:#fff;border-radius:9px;padding:9px;font-weight:600;font-size:.82rem;color:var(--muted)}
+  .seg button.on{background:var(--green);border-color:var(--green);color:#fff}
+
   /* inquiries inbox */
   .inbox{display:flex;flex-direction:column;gap:12px}
   .inq{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);animation:fadeUp .4s both}
@@ -185,9 +223,33 @@
     <span>Pata<b>Home</b></span><span class="tag">Owner Dashboard</span>
   </a>
   <div class="header-right" id="headerRight" style="display:none">
-    <span class="who" id="who"></span>
     <a class="btn btn-ghost" href="/" style="text-decoration:none">View Site</a>
-    <button class="btn btn-primary" onclick="logout()">Log Out</button>
+    <div class="user-menu">
+      <button class="avatar-btn" id="avatarBtn" onclick="toggleMenu(event)" aria-label="Account menu">
+        <span class="avatar-c" id="avatarC">U</span>
+        <span class="u-name" id="uName">User</span>
+        <span class="u-caret">▾</span>
+      </button>
+      <div class="menu-pop" id="menuPop">
+        <div class="menu-head">
+          <div class="mh-name" id="mhName">User</div>
+          <div class="mh-sub" id="mhSub"></div>
+          <span class="mh-badge none" id="mhBadge">Unverified</span>
+        </div>
+        <button class="menu-item" onclick="openSettings('personal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Personal details</button>
+        <button class="menu-item" onclick="openSettings('business')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V8l9-5 9 5v13"/><path d="M9 21v-6h6v6"/></svg>Business details</button>
+        <button class="menu-item" onclick="openSettings('verify')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v6c0 5 3.5 8 8 11 4.5-3 8-6 8-11V5z"/><path d="m9 12 2 2 4-4"/></svg>Verify my details</button>
+        <div class="menu-sep"></div>
+        <div class="menu-label">Account</div>
+        <button class="menu-item" onclick="openSettings('phone')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-3 2a11 11 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>Change phone number</button>
+        <button class="menu-item" onclick="openSettings('email')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>Change email</button>
+        <button class="menu-item" onclick="openSettings('password')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Change password</button>
+        <button class="menu-item" onclick="openSettings('language')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>Change language</button>
+        <div class="menu-sep"></div>
+        <button class="menu-item danger" onclick="openSettings('delete')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M6 7l1 13h10l1-13"/></svg>Delete my account</button>
+        <button class="menu-item" onclick="logout()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 12H3M9 6l-6 6 6 6M15 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/></svg>Log out</button>
+      </div>
+    </div>
   </div>
 </header>
 
@@ -200,12 +262,23 @@
       <button id="tabLogin" class="on" onclick="setMode('login')">Log In</button>
       <button id="tabReg" onclick="setMode('register')">Register</button>
     </div>
+
+    <button class="g-btn" id="googleBtn" onclick="googleSignIn()" style="display:none">
+      <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.15-4.53H2.18v2.84A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.85 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.18a11 11 0 0 0 0 9.88z"/><path fill="#EA4335" d="M12 4.75c1.62 0 3.06.56 4.2 1.64l3.15-3.15C17.45 1.46 14.97.5 12 .5A11 11 0 0 0 2.18 6.99l3.67 2.85C6.71 6.68 9.14 4.75 12 4.75z"/></svg>
+      Continue with Google
+    </button>
+    <div class="or-div" id="orDiv" style="display:none">or</div>
+
     <div id="regName" style="display:none">
       <label>Full name</label>
       <input id="aName" placeholder="e.g. Grace Wanjiru">
     </div>
-    <label>Phone</label>
-    <input id="aPhone" placeholder="07XXXXXXXX" inputmode="numeric">
+    <label id="phoneLbl">Phone or email</label>
+    <input id="aPhone" placeholder="07XXXXXXXX or you@email.com">
+    <div id="regEmailWrap" style="display:none">
+      <label>Email (optional)</label>
+      <input id="aEmail" type="email" placeholder="you@email.com">
+    </div>
     <label>Password</label>
     <input id="aPass" type="password" placeholder="At least 8 characters">
     <div class="err" id="authErr"></div>
@@ -290,14 +363,29 @@
   </div>
 </div>
 
+<!-- ============ SETTINGS MODAL ============ -->
+<div class="overlay" id="setModal" onclick="if(event.target===this)hide('setModal')">
+  <div class="modal">
+    <button class="close-x" onclick="hide('setModal')">✕</button>
+    <h2 id="setTitle">Settings</h2>
+    <div class="sub" id="setSub"></div>
+    <div id="setBody"></div>
+    <div class="err" id="setErr"></div>
+    <div class="modal-actions" id="setActions"></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
 const API = ""; // same origin
 let token = localStorage.getItem("pb_token") || null;
 let userName = localStorage.getItem("pb_name") || "";
 let mode = "login", areas = [], myListings = [], myInquiries = [], editId = null;
+let ME = null, CONFIG = null;
+const LANGS = { en: "English", sw: "Kiswahili" };
 
 /* ---------- helpers ---------- */
 const $ = (id) => document.getElementById(id);
@@ -323,24 +411,74 @@ function setMode(m){
   $("tabLogin").classList.toggle("on",m==="login");
   $("tabReg").classList.toggle("on",m==="register");
   $("regName").style.display=m==="register"?"block":"none";
+  $("regEmailWrap").style.display=m==="register"?"block":"none";
+  $("phoneLbl").textContent=m==="register"?"Phone":"Phone or email";
+  $("aPhone").placeholder=m==="register"?"07XXXXXXXX":"07XXXXXXXX or you@email.com";
   $("authBtn").textContent=m==="login"?"Log In":"Create Account";
   $("authErr").textContent="";
 }
 async function submitAuth(){
   $("authErr").textContent="";
   try{
-    const body={phone:$("aPhone").value.trim(),password:$("aPass").value};
-    if(mode==="register")body.name=$("aName").value.trim();
-    const r=await api("/api/auth/"+(mode==="login"?"login":"register"),{method:"POST",body:JSON.stringify(body)});
-    token=r.token;userName=r.user.name;
-    localStorage.setItem("pb_token",token);localStorage.setItem("pb_name",userName);
-    enterDash();
+    const idField=$("aPhone").value.trim();
+    let body,path;
+    if(mode==="login"){
+      body=/@/.test(idField)?{email:idField}:{phone:idField};
+      body.password=$("aPass").value;path="/api/auth/login";
+    }else{
+      body={name:$("aName").value.trim(),phone:idField,email:$("aEmail").value.trim()||undefined,password:$("aPass").value};
+      path="/api/auth/register";
+    }
+    const r=await api(path,{method:"POST",body:JSON.stringify(body)});
+    saveSession(r);enterDash();
   }catch(e){$("authErr").textContent=e.message}
 }
+function saveSession(r){
+  token=r.token;ME=r.user;userName=r.user.name;
+  localStorage.setItem("pb_token",token);localStorage.setItem("pb_name",userName);
+}
+/* Google Identity Services */
+let gsiInited=false;
+function initGoogle(){
+  if(!CONFIG||!CONFIG.googleClientId||gsiInited||typeof google==="undefined")return;
+  gsiInited=true;
+  google.accounts.id.initialize({client_id:CONFIG.googleClientId,callback:onGoogleCredential});
+  $("googleBtn").style.display="flex";$("orDiv").style.display="flex";
+}
+async function onGoogleCredential(resp){
+  try{
+    const r=await api("/api/auth/google",{method:"POST",body:JSON.stringify({credential:resp.credential})});
+    saveSession(r);enterDash();
+    if(r.user.needsSetup){setTimeout(()=>{toast("Add your phone number to start posting");openSettings("phone")},600)}
+  }catch(e){$("authErr").textContent=e.message}
+}
+function googleSignIn(){
+  if(typeof google==="undefined"||!gsiInited){toast("Google sign-in still loading…");return}
+  google.accounts.id.prompt();
+}
 function logout(){
-  token=null;localStorage.removeItem("pb_token");localStorage.removeItem("pb_name");
+  token=null;ME=null;localStorage.removeItem("pb_token");localStorage.removeItem("pb_name");
+  closeMenu();
   $("dashView").style.display="none";$("headerRight").style.display="none";
   $("authView").style.display="block";
+}
+
+/* ---------- header user menu ---------- */
+function toggleMenu(e){e.stopPropagation();$("menuPop").classList.toggle("show")}
+function closeMenu(){$("menuPop").classList.remove("show")}
+document.addEventListener("click",e=>{if(!e.target.closest(".user-menu"))closeMenu()});
+function initials(name){return (name||"U").trim().split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase()}
+function paintUser(){
+  if(!ME)return;
+  const av=$("avatarC");
+  if(ME.avatarUrl){av.innerHTML=`<img src="${esc(ME.avatarUrl)}" alt="">`}else{av.textContent=initials(ME.name)}
+  $("uName").textContent=ME.name;
+  $("mhName").textContent=ME.name;
+  $("mhSub").textContent=ME.phone||ME.email||"";
+  const b=$("mhBadge");
+  if(ME.verified){b.className="mh-badge ok";b.textContent="✓ Verified owner"}
+  else if(ME.verifyStatus==="pending"){b.className="mh-badge pending";b.textContent="Verification pending"}
+  else{b.className="mh-badge none";b.textContent="Unverified"}
 }
 
 /* ---------- dashboard ---------- */
@@ -348,7 +486,8 @@ async function enterDash(){
   $("authView").style.display="none";
   $("dashView").style.display="block";
   $("headerRight").style.display="flex";
-  $("who").textContent=userName;
+  if(!ME){try{ME=await api("/api/auth/me")}catch(e){}}
+  paintUser();
   if(!areas.length){
     areas=await api("/api/areas");
     $("eArea").innerHTML=areas.map(a=>`<option value="${a.id}">${esc(a.name)} — ${esc(a.county)}</option>`).join("");
@@ -578,10 +717,90 @@ async function removeListing(id){
   catch(e){toast(e.message)}
 }
 
+/* ---------- account settings ---------- */
+const inp=(id,ph,val,type)=>`<label>${ph}</label><input id="${id}" ${type?`type="${type}"`:""} value="${esc(val||"")}" placeholder="${esc(ph)}">`;
+function openSettings(kind){
+  closeMenu();
+  $("setErr").textContent="";
+  const body=$("setBody"),acts=$("setActions");
+  let title="",sub="",html="",save=null;
+  if(kind==="personal"){
+    title="Personal details";sub="Shown to tenants and buyers who contact you.";
+    html=inp("sName","Full name",ME.name)+inp("sBio","Short bio (optional)",ME.bio);
+    save=()=>saveAccount({name:$("sName").value.trim(),bio:$("sBio").value.trim()},"Details saved");
+  }else if(kind==="business"){
+    title="Business details";sub="Optional — helps build trust with clients.";
+    html=inp("sBiz","Business name",ME.businessName)+
+      `<label>Business type</label><select id="sBizType"><option value="">Choose…</option>`+
+      ["Individual landlord","Property agency","Developer","Caretaker / Manager"].map(t=>`<option ${ME.businessType===t?"selected":""}>${t}</option>`).join("")+`</select>`;
+    save=()=>saveAccount({businessName:$("sBiz").value.trim(),businessType:$("sBizType").value},"Business details saved");
+  }else if(kind==="verify"){
+    title="Verify my details";
+    if(ME.verified){sub="";html=`<div class="set-row"><span class="sr-k">Status</span><span class="sr-v" style="color:var(--green)">✓ Verified owner</span></div><p style="font-size:.85rem;color:var(--muted);margin-top:10px">Your account is verified — listings show a verified badge.</p>`;acts.innerHTML=`<button class="btn btn-ghost" onclick="hide('setModal')" style="flex:1;padding:11px">Close</button>`;
+      $("setTitle").textContent=title;$("setSub").textContent=sub;body.innerHTML=html;show("setModal");return;}
+    if(ME.verifyStatus==="pending"){sub="";html=`<div class="set-row"><span class="sr-k">Status</span><span class="sr-v" style="color:#b45309">Pending review</span></div><p style="font-size:.85rem;color:var(--muted);margin-top:10px">We've received your request. Our team will verify your account shortly.</p>`;acts.innerHTML=`<button class="btn btn-ghost" onclick="hide('setModal')" style="flex:1;padding:11px">Close</button>`;
+      $("setTitle").textContent=title;$("setSub").textContent=sub;body.innerHTML=html;show("setModal");return;}
+    sub="Get the verified badge that renters trust.";
+    html=`<p style="font-size:.86rem;color:var(--muted);line-height:1.6">Verification confirms your identity and that you own or manage the properties you list. Submit a request and our team will contact you on your registered phone to complete ID and ownership checks.</p>`;
+    save=()=>doVerify();acts._label="Request verification";
+  }else if(kind==="phone"){
+    title="Change phone number";sub=ME.phone?("Current: "+ME.phone):"You haven't set a phone yet — add one to start posting.";
+    html=inp("sPhone","New phone (07XXXXXXXX)",ME.phone);
+    save=()=>saveField("/api/account/change-phone",{phone:$("sPhone").value.trim()},"Phone updated");
+  }else if(kind==="email"){
+    title="Change email";sub=ME.email?("Current: "+ME.email):"Add an email to your account.";
+    html=inp("sEmail","New email",ME.email,"email");
+    save=()=>saveField("/api/account/change-email",{email:$("sEmail").value.trim()},"Email updated");
+  }else if(kind==="password"){
+    title="Change password";sub=ME.hasPassword?"":"You signed up with Google — set a password to also log in manually.";
+    html=(ME.hasPassword?inp("sCur","Current password","","password"):"")+inp("sNew","New password (min 8 chars)","","password");
+    save=()=>saveField("/api/account/change-password",{currentPassword:ME.hasPassword?$("sCur").value:"",newPassword:$("sNew").value},"Password changed",true);
+  }else if(kind==="language"){
+    title="Change language";sub="Choose your preferred language.";
+    html=`<div class="seg" id="langSeg">`+Object.entries(LANGS).map(([k,v])=>`<button type="button" class="${ME.language===k?"on":""}" data-l="${k}" onclick="pickLang('${k}')">${v}</button>`).join("")+`</div>`;
+    save=()=>saveAccount({language:window._lang||ME.language},"Language updated");window._lang=ME.language;
+  }else if(kind==="delete"){
+    title="Delete my account";sub="This permanently removes your account, listings and messages.";
+    html=`<p style="font-size:.86rem;color:var(--red);line-height:1.6;margin-bottom:6px">This can't be undone. All your listings will disappear from the site.</p>`+(ME.hasPassword?inp("sDelPw","Confirm your password","","password"):"");
+    save=()=>doDelete();acts._label="Delete permanently";acts._danger=true;
+  }
+  $("setTitle").textContent=title;$("setSub").textContent=sub;body.innerHTML=html;
+  acts.innerHTML=`<button class="btn btn-ghost" onclick="hide('setModal')">Cancel</button>
+    <button class="btn ${acts._danger?"btn-danger":"btn-primary"}" onclick="_setSave()">${acts._label||"Save"}</button>`;
+  window._setSave=()=>{$("setErr").textContent="";save()};
+  acts._label=null;acts._danger=false;
+  show("setModal");
+}
+function pickLang(l){window._lang=l;document.querySelectorAll("#langSeg button").forEach(b=>b.classList.toggle("on",b.dataset.l===l))}
+async function saveAccount(patch,msg){
+  try{ME=await api("/api/account",{method:"PATCH",body:JSON.stringify(patch)});userName=ME.name;localStorage.setItem("pb_name",userName);paintUser();hide("setModal");toast(msg)}
+  catch(e){$("setErr").textContent=e.message}
+}
+async function saveField(path,body,msg,noUser){
+  try{const r=await api(path,{method:"POST",body:JSON.stringify(body)});if(!noUser&&r.id)ME=r;paintUser();hide("setModal");toast(msg)}
+  catch(e){$("setErr").textContent=e.message}
+}
+async function doVerify(){
+  try{ME=await api("/api/account/request-verification",{method:"POST"});paintUser();hide("setModal");toast("Verification requested")}
+  catch(e){$("setErr").textContent=e.message}
+}
+async function doDelete(){
+  if(!confirm("Delete your account permanently? This cannot be undone."))return;
+  try{
+    await api("/api/account",{method:"DELETE",body:JSON.stringify({password:ME.hasPassword?$("sDelPw").value:""})});
+    hide("setModal");toast("Account deleted");
+    setTimeout(logout,800);
+  }catch(e){$("setErr").textContent=e.message}
+}
+
 /* ---------- init ---------- */
 (async function(){
+  try{CONFIG=await api("/api/config")}catch(e){CONFIG={}}
+  window.onload=initGoogle;initGoogle();
+  const gsiPoll=setInterval(()=>{if(typeof google!=="undefined"){initGoogle();clearInterval(gsiPoll)}},400);
+  setTimeout(()=>clearInterval(gsiPoll),8000);
   if(token){
-    try{const me=await api("/api/auth/me");userName=me.name;await enterDash();return}
+    try{ME=await api("/api/auth/me");userName=ME.name;await enterDash();return}
     catch{token=null;localStorage.removeItem("pb_token")}
   }
   $("authView").style.display="block";
