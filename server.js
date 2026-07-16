@@ -323,6 +323,37 @@ router.add("GET", "/api/admin/overview", (req, res) => {
   });
 });
 
+/* -------- platform-wide daily stats for the live admin dashboard -------- */
+router.add("GET", "/api/admin/stats", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const days = Math.min(90, Math.max(7, +req.query.days || 30));
+  const daily = (table) => Object.fromEntries(
+    db.prepare(`SELECT date(created_at) d, COUNT(*) n FROM ${table}
+                WHERE created_at >= datetime('now', ?) GROUP BY date(created_at)`)
+      .all(`-${days} days`).map(r => [r.d, r.n]));
+  const leads = daily("leads"), inqs = daily("inquiries"),
+        lst = daily("listings"), usr = daily("users");
+  const series = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+    series.push({ date: d, leads: leads[d] || 0, inquiries: inqs[d] || 0, listings: lst[d] || 0, users: usr[d] || 0 });
+  }
+  const week = arr => arr.reduce((s, x) => s + x.leads + x.inquiries, 0);
+  const thisWeek = week(series.slice(-7)), prevWeek = week(series.slice(-14, -7));
+  const rev = db.prepare("SELECT COALESCE(SUM(amount),0) t FROM payments WHERE status='completed'").get().t;
+  const hot = db.prepare(`
+    SELECT l.id, l.title, l.area_id, COUNT(le.id) n
+    FROM listings l JOIN leads le ON le.listing_id = l.id
+    WHERE l.status='active' AND le.created_at >= datetime('now', '-7 days')
+    GROUP BY l.id ORDER BY n DESC LIMIT 1`).get();
+  send(res, 200, {
+    days, series, thisWeek, prevWeek,
+    trendPct: prevWeek ? Math.round(((thisWeek - prevWeek) / prevWeek) * 100) : (thisWeek ? 100 : 0),
+    revenue: rev,
+    hotListing: hot ? { id: hot.id, title: hot.title, leads: hot.n } : null
+  });
+});
+
 router.add("GET", "/api/admin/listings", (req, res) => {
   if (!requireAdmin(req, res)) return;
   const leads = {};
