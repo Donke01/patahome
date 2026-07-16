@@ -862,23 +862,74 @@ function renderTabs(){
   t.innerHTML=[["all","All Listings"],...Object.entries(CAT).map(([k,v])=>[k,v.label])]
     .map(([k,lab])=>`<button class="tab ${activeCat===k?"active":""}" onclick="activeCat='${k}';render()">${lab}<span class="count">${counts[k]}</span></button>`).join("");
 }
+/* ---- keyword search: every word must match a field; synonyms + price shorthand; relevance-ranked ---- */
+const STOPWORDS=new Set(["in","near","at","the","a","an","for","and","with","to","of","under","below","max","na","ya","kwa","karibu","house","houses","home","homes","nyumba","property","kenya"]);
+const EXPAND={
+  keja:["for rent"],kejas:["for rent"],rent:["for rent"],rental:["for rent"],rentals:["for rent"],kukodi:["for rent"],
+  sale:["for sale"],buy:["for sale"],buying:["for sale"],sell:["for sale"],selling:["for sale"],kununua:["for sale"],
+  bedsitter:["bedsitter","studio"],bedsitters:["bedsitter","studio"],studio:["bedsitter","studio"],
+  "1br":["1 bedroom"],one:["1 bedroom"],"2br":["2 bedroom"],two:["2 bedroom"],"3br":["3 bedroom"],three:["3 bedroom"],
+  flat:["apartment"],apt:["apartment"]
+};
+function parseQuery(q){
+  const tokens=[],caps=[];
+  for(const raw of q.toLowerCase().split(/[\s,]+/).filter(Boolean)){
+    const k=raw.match(/^(\d+(?:\.\d+)?)k$/);          // "10k"
+    if(k){caps.push(+k[1]*1000);continue}
+    if(/^\d{4,}$/.test(raw)){caps.push(+raw);continue} // "15000"
+    if(STOPWORDS.has(raw))continue;
+    tokens.push(raw);
+  }
+  return {tokens,priceCap:caps.length?Math.min(...caps):null};
+}
+function searchScore(x,tokens){
+  const title=x.title.toLowerCase(),area=x.area.toLowerCase(),desc=(x.desc||"").toLowerCase();
+  const catL=CAT[x.cat].label.toLowerCase();
+  const bedsStr=x.beds===0?"bedsitter studio 0 bedroom":x.beds!=null?`${x.beds} bedroom ${x.beds} br ${x.beds}br`:"";
+  let score=0;
+  for(const t of tokens){
+    const forms=EXPAND[t]||[t];
+    let s=0;
+    for(const f of forms){
+      if(title.includes(f))s=Math.max(s,3);
+      if(area.includes(f))s=Math.max(s,2.5);
+      if(bedsStr.includes(f))s=Math.max(s,2.2);
+      if(desc.includes(f))s=Math.max(s,1.5);
+      if(catL.includes(f))s=Math.max(s,1);
+    }
+    if(!s)return 0;      // every keyword must match somewhere
+    score+=s;
+  }
+  return score;
+}
 function filtered(){
-  const q=document.getElementById("searchInput").value.trim().toLowerCase();
+  const q=document.getElementById("searchInput").value.trim();
   const pr=document.getElementById("priceFilter").value;
   const bd=document.getElementById("bedFilter").value;
+  const {tokens,priceCap}=q?parseQuery(q):{tokens:[],priceCap:null};
+  const scores=new Map();
   let list=LISTINGS.filter(x=>{
     if(favView&&!favs.has(x.id))return false;
     if(activeCat!=="all"&&x.cat!==activeCat)return false;
-    if(q&&!(x.title+" "+x.area+" "+CAT[x.cat].label).toLowerCase().includes(q))return false;
+    if(priceCap!==null&&x.price>priceCap)return false;
+    if(tokens.length){
+      const s=searchScore(x,tokens);
+      if(!s)return false;
+      scores.set(x.id,s);
+    }
     if(pr){const[lo,hiP]=pr.split("-").map(Number);if(x.price<lo||x.price>hiP)return false}
     if(bd!==""){if(x.beds===null)return false;if(bd==="3"?x.beds<3:x.beds!==+bd)return false}
     return true;
   });
   const sort=document.getElementById("sortSelect").value;
-  if(sort==="distance"&&userLoc)list.sort((a,b)=>dist(userLoc[0],userLoc[1],a.lat,a.lng)-dist(userLoc[0],userLoc[1],b.lat,b.lng));
-  else if(sort==="price-asc")list.sort((a,b)=>a.price-b.price);
-  else if(sort==="price-desc")list.sort((a,b)=>b.price-a.price);
-  else if(sort==="newest")list.sort((a,b)=>b.id-a.id);
+  const base=(a,b)=>{
+    if(sort==="distance"&&userLoc)return dist(userLoc[0],userLoc[1],a.lat,a.lng)-dist(userLoc[0],userLoc[1],b.lat,b.lng);
+    if(sort==="price-asc")return a.price-b.price;
+    if(sort==="price-desc")return b.price-a.price;
+    if(sort==="newest")return b.id-a.id;
+    return 0;
+  };
+  list.sort((a,b)=>tokens.length?((scores.get(b.id)-scores.get(a.id))||base(a,b)):base(a,b));
   return list;
 }
 const PIN_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11a7 7 0 0 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>';
@@ -917,7 +968,7 @@ function render(){
         </div>
       </div>
     </div>`;
-  }).join(""):`<div class="empty">No listings match your filters. Try widening your search.</div>`;
+  }).join(""):`<div class="empty">${document.getElementById("searchInput").value.trim()?`No matches for “${esc(document.getElementById("searchInput").value.trim())}” — try fewer or different keywords.`:"No listings match your filters. Try widening your search."}</div>`;
   renderMarkers(list);
 }
 
