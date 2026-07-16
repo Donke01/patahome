@@ -99,12 +99,15 @@ function send(res, code, obj) {
 
 /* ================= auth ================= */
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
+// Google-only accounts get a placeholder phone ("g.<googleid>") until they add a real one,
+// because the phone column is NOT NULL UNIQUE. A "real" phone matches the Kenyan format.
+const realPhone = (p) => /^0[17]\d{8}$/.test(p || "") ? p : "";
 const publicUser = (u) => ({
-  id: u.id, name: u.name, phone: u.phone, email: u.email,
+  id: u.id, name: u.name, phone: realPhone(u.phone), email: u.email,
   verified: !!u.verified, verifyStatus: u.verify_status || "none",
   businessName: u.business_name || "", businessType: u.business_type || "",
   bio: u.bio || "", language: u.language || "en", avatarUrl: u.avatar_url || "",
-  hasPassword: !!u.password_hash, needsSetup: !u.phone,   // Google users must add a phone before posting
+  hasPassword: !!u.password_hash, needsSetup: !realPhone(u.phone),
   role: u.role
 });
 const authResponse = (res, code, u) =>
@@ -153,13 +156,17 @@ router.add("POST", "/api/auth/google", async (req, res) => {
       if (!user.google_id) db.prepare("UPDATE users SET google_id=?, avatar_url=COALESCE(avatar_url,?) WHERE id=?").run(p.sub, p.picture || null, user.id);
     } else {
       const info = db.prepare("INSERT INTO users (name,phone,email,password_hash,google_id,avatar_url) VALUES (?,?,?,?,?,?)")
-        .run(p.name || "PataHome User", null, (p.email || "").toLowerCase(), "", p.sub, p.picture || null);
+        .run(p.name || "PataHome User", "g." + p.sub, (p.email || "").toLowerCase(), "", p.sub, p.picture || null);
       user = db.prepare("SELECT * FROM users WHERE id=?").get(info.lastInsertRowid);
       db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
         .run(user.id, "system", "Karibu to PataHome", "Add your phone number in Settings to start posting listings.");
     }
     authResponse(res, 200, user);
-  } catch (e) { send(res, 502, { error: "Could not verify Google sign-in" }); }
+  } catch (e) {
+    console.error("google auth error:", e.message);
+    // 401 (not 502) — Cloudflare replaces 502 responses with its own HTML page
+    send(res, 401, { error: "Could not verify Google sign-in — please try again" });
+  }
 });
 
 router.add("GET", "/api/auth/me", (req, res) => {
@@ -288,6 +295,9 @@ router.add("GET", "/api/listings/:id", (req, res, p) => {
 
 router.add("POST", "/api/listings", (req, res) => {
   const u = requireAuth(req, res); if (!u) return;
+  const me = db.prepare("SELECT phone FROM users WHERE id=?").get(u.id);
+  if (!me || !realPhone(me.phone))
+    return send(res, 400, { error: "Add your phone number first (account menu → Change phone number) so tenants can reach you" });
   const { category, title, description, areaId, price, bedrooms } = req.body || {};
   if (!["rent", "sale"].includes(category)) return send(res, 400, { error: "Invalid category" });
   if (!title || !areaId || !price) return send(res, 400, { error: "title, areaId and price are required" });
