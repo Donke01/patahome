@@ -58,7 +58,7 @@
   /* ---------- Lively bits: word rotator, sentence crossfade, micro-motion ---------- */
   @keyframes rotOut{to{opacity:0;transform:translateY(-115%)}}
   @keyframes rotIn{from{opacity:0;transform:translateY(115%)}to{opacity:1;transform:none}}
-  .rot-wrap{display:inline-block;overflow:hidden;vertical-align:bottom}
+  .rot-wrap{display:inline-block;overflow:hidden;vertical-align:bottom;white-space:nowrap;transition:width .38s cubic-bezier(.16,1,.3,1);text-align:center}
   #rotWord{display:inline-block}
   #rotWord.out{animation:rotOut .3s ease both}
   #rotWord.in{animation:rotIn .36s cubic-bezier(.16,1,.3,1) both}
@@ -133,7 +133,8 @@
     .header-actions .btn-ghost{display:none}
     .icon-btn{width:35px;height:35px}
     .hero{padding:26px 16px 34px}
-    .hero .kicker{font-size:.6rem;letter-spacing:2px;margin-bottom:10px}
+    .hero .kicker{font-size:.6rem;letter-spacing:1.4px;margin-bottom:10px}
+    .hero .kicker::before,.hero .kicker::after{display:none}
     .hero h1{font-size:1.6rem;margin-bottom:10px}
     .hero h1 br{display:none}
     .hero p{font-size:.88rem;margin-bottom:18px}
@@ -578,14 +579,36 @@ function animateStats(){
 const reduceMotion=typeof matchMedia==="function"&&matchMedia("(prefers-reduced-motion: reduce)").matches;
 const ROT_WORDS=["home","bedsitter","1 bedroom","family house","keja"];
 let rotIdx=0;
-function rotateWord(){
+function measureWord(text){
   const w=document.getElementById("rotWord");
+  const c=w.cloneNode();
+  c.textContent=text;c.className="";c.style.cssText="position:absolute;visibility:hidden;white-space:nowrap";
+  w.parentElement.appendChild(c);
+  const px=c.offsetWidth;c.remove();
+  return px;
+}
+function rotateWord(){
+  const w=document.getElementById("rotWord"),wrap=w.parentElement;
+  if(!wrap.style.width)wrap.style.width=w.offsetWidth+"px";
+  const next=ROT_WORDS[(rotIdx+1)%ROT_WORDS.length];
+  wrap.style.width=measureWord(next)+"px";
   w.classList.remove("in");w.classList.add("out");
   setTimeout(()=>{
     rotIdx=(rotIdx+1)%ROT_WORDS.length;
     w.textContent=ROT_WORDS[rotIdx];
     w.classList.remove("out");w.classList.add("in");
   },300);
+}
+function lockSubHeight(){
+  const p=document.getElementById("heroSub");
+  const probe=p.cloneNode();
+  probe.classList.remove("fade");
+  probe.style.cssText="position:absolute;visibility:hidden;width:"+p.offsetWidth+"px";
+  p.parentElement.appendChild(probe);
+  let max=0;
+  for(const s of HERO_SUBS){probe.textContent=s;max=Math.max(max,probe.offsetHeight)}
+  probe.remove();
+  p.style.minHeight=max+"px";
 }
 const HERO_SUBS=[
   "Verified rentals and homes for sale across Kenya, sorted by what's nearest to you. No agents. No viewing fees. Karibu home.",
@@ -885,6 +908,9 @@ async function sendInquiry(){
   initMap();
   animateStats();
   if(inBrowser&&!reduceMotion){
+    lockSubHeight();
+    let rsz;addEventListener("resize",()=>{clearTimeout(rsz);rsz=setTimeout(lockSubHeight,200)});
+    if(document.fonts&&document.fonts.ready)document.fonts.ready.then(lockSubHeight);
     setInterval(rotateWord,3400);
     setInterval(rotateSub,7600);
   }
