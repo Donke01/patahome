@@ -64,6 +64,8 @@
   #rotWord.in{animation:rotIn .36s cubic-bezier(.16,1,.3,1) both}
   #heroSub{transition:opacity .5s ease}
   #heroSub.fade{opacity:0!important}
+  #heroHead{transition:opacity .42s ease}
+  #heroHead.fade{opacity:0!important}
   @keyframes heroGlow{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(36px,-24px) scale(1.06)}}
   .hero::before{animation:heroGlow 15s ease-in-out infinite}
   .btn:active,.quick:active,.tab:active,.loc-btn:active{transform:scale(.96)}
@@ -314,7 +316,7 @@
 
 <section class="hero">
   <div class="kicker">Kenya's Direct-From-Owner Marketplace</div>
-  <h1>Find your next <span class="rot-wrap"><span id="rotWord" class="hl">home</span></span>,<br>straight from the owner.</h1>
+  <h1 id="heroHead"><span id="hlPre">Find your next </span><span class="rot-wrap"><span id="rotWord" class="hl">home</span></span><span id="hlPost">,<br>straight from the owner.</span></h1>
   <p id="heroSub">Verified rentals and homes for sale across Kenya, sorted by what's nearest to you. No agents. No viewing fees. Karibu home.</p>
   <div class="stats">
     <div class="stat"><div class="num" id="statListings">0</div><div class="cap">Live listings</div></div>
@@ -577,7 +579,13 @@ function animateStats(){
   countUp(document.getElementById("statOwners"),new Set(LISTINGS.map(x=>x.owner)).size);
 }
 const reduceMotion=typeof matchMedia==="function"&&matchMedia("(prefers-reduced-motion: reduce)").matches;
-const ROT_WORDS=["home","bedsitter","1 bedroom","family house","keja"];
+const HEADS=[
+  {pre:"Find your next ",w:"home",post:",<br>straight from the owner."},
+  {pre:"Find your next ",w:"bedsitter",post:",<br>straight from the owner."},
+  {pre:"Find your next ",w:"1 bedroom",post:",<br>straight from the owner."},
+  {pre:"",w:"Pata keja leo",post:",<br>at the comfort of your home."},
+  {pre:"Find your next ",w:"family house",post:",<br>straight from the owner."}
+];
 let rotIdx=0;
 function measureWord(text){
   const w=document.getElementById("rotWord");
@@ -587,17 +595,45 @@ function measureWord(text){
   const px=c.offsetWidth;c.remove();
   return px;
 }
+function setWrapWidth(px,instant){
+  const wrap=document.getElementById("rotWord").parentElement;
+  if(instant){wrap.style.transition="none";wrap.style.width=px+"px";void wrap.offsetWidth;wrap.style.transition="";}
+  else wrap.style.width=px+"px";
+}
 function rotateWord(){
-  const w=document.getElementById("rotWord"),wrap=w.parentElement;
-  if(!wrap.style.width)wrap.style.width=w.offsetWidth+"px";
-  const next=ROT_WORDS[(rotIdx+1)%ROT_WORDS.length];
-  wrap.style.width=measureWord(next)+"px";
-  w.classList.remove("in");w.classList.add("out");
-  setTimeout(()=>{
-    rotIdx=(rotIdx+1)%ROT_WORDS.length;
-    w.textContent=ROT_WORDS[rotIdx];
-    w.classList.remove("out");w.classList.add("in");
-  },300);
+  const w=document.getElementById("rotWord"),h=document.getElementById("heroHead");
+  const cur=HEADS[rotIdx],next=HEADS[(rotIdx+1)%HEADS.length];
+  if(!w.parentElement.style.width)setWrapWidth(w.offsetWidth,true);
+  rotIdx=(rotIdx+1)%HEADS.length;
+  if(next.pre===cur.pre&&next.post===cur.post){
+    setWrapWidth(measureWord(next.w));
+    w.classList.remove("in");w.classList.add("out");
+    setTimeout(()=>{
+      w.textContent=next.w;
+      w.classList.remove("out");w.classList.add("in");
+    },300);
+  }else{
+    h.classList.add("fade");
+    setTimeout(()=>{
+      document.getElementById("hlPre").textContent=next.pre;
+      document.getElementById("hlPost").innerHTML=next.post;
+      w.classList.remove("in","out");
+      w.textContent=next.w;
+      setWrapWidth(measureWord(next.w),true);
+      h.classList.remove("fade");
+    },430);
+  }
+}
+function lockHeadHeight(){
+  const h=document.getElementById("heroHead");
+  const probe=h.cloneNode();
+  probe.classList.remove("fade");probe.removeAttribute("id");
+  probe.style.cssText="position:absolute;visibility:hidden;width:"+h.offsetWidth+"px;animation:none";
+  h.parentElement.appendChild(probe);
+  let max=0;
+  for(const x of HEADS){probe.innerHTML=x.pre+x.w+x.post;max=Math.max(max,probe.offsetHeight)}
+  probe.remove();
+  h.style.minHeight=max+"px";
 }
 function lockSubHeight(){
   const p=document.getElementById("heroSub");
@@ -908,11 +944,12 @@ async function sendInquiry(){
   initMap();
   animateStats();
   if(inBrowser&&!reduceMotion){
-    lockSubHeight();
-    let rsz;addEventListener("resize",()=>{clearTimeout(rsz);rsz=setTimeout(lockSubHeight,200)});
-    if(document.fonts&&document.fonts.ready)document.fonts.ready.then(lockSubHeight);
-    setInterval(rotateWord,3400);
-    setInterval(rotateSub,7600);
+    const lockAll=()=>{lockSubHeight();lockHeadHeight()};
+    lockAll();
+    let rsz;addEventListener("resize",()=>{clearTimeout(rsz);rsz=setTimeout(lockAll,200)});
+    if(document.fonts&&document.fonts.ready)document.fonts.ready.then(lockAll);
+    setInterval(rotateWord,3600);
+    setInterval(rotateSub,7900);
   }
   if("IntersectionObserver" in window){
     const io=new IntersectionObserver(es=>es.forEach(e=>{
