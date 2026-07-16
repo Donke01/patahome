@@ -135,14 +135,19 @@
   .filters select:focus{border-color:var(--brand)}
   .sort-label{font-size:.84rem;color:var(--muted);margin-left:auto;font-weight:500}
 
-  .insights{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:var(--radius);padding:18px 20px;margin:10px 0 18px;display:none;animation:fadeUp .5s both;box-shadow:var(--shadow)}
+  .insights{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:var(--radius);padding:16px 18px 18px;margin:10px 0 18px;display:none;animation:fadeUp .5s both;box-shadow:var(--shadow)}
   .insights.show{display:block}
-  .insights h3{font-family:var(--serif);font-size:1.02rem;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:8px;margin-bottom:12px}
-  .insight-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
-  .insight-card{background:var(--brand-light);border-radius:10px;padding:13px 15px;transition:transform .15s}
+  .insights .ins-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;min-width:0}
+  .insights h3{font-family:var(--serif);font-size:1.05rem;font-weight:600;color:var(--ink);white-space:nowrap}
+  .ins-loc{background:var(--brand-light);color:var(--brand);font-size:.72rem;font-weight:700;border-radius:999px;padding:4px 12px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .insight-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  @media(max-width:700px){.insight-grid{grid-template-columns:repeat(2,1fr)}}
+  .insight-card{background:var(--brand-light);border-radius:10px;padding:12px 14px;transition:transform .15s;min-width:0;display:flex;flex-direction:column;justify-content:space-between;gap:6px}
   .insight-card:hover{transform:translateY(-2px)}
-  .insight-card .val{font-family:var(--serif);font-size:1.15rem;font-weight:600;color:var(--brand)}
-  .insight-card .lbl{font-size:.74rem;color:var(--muted);margin-top:2px}
+  .insight-card .lbl{font-size:.66rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;line-height:1.4}
+  .insight-card .val{font-family:var(--serif);font-size:1.28rem;font-weight:600;color:var(--brand);line-height:1;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .insight-card .val small{font-family:'Inter',sans-serif;font-size:.66rem;font-weight:700;color:var(--muted);letter-spacing:.4px;margin-right:3px;vertical-align:3px}
+  @media(max-width:640px){.insight-card .val{font-size:1.1rem}}
 
   .main{display:grid;grid-template-columns:1fr 380px;gap:22px;padding-bottom:56px;align-items:start}
   .map-fab{display:none}
@@ -330,7 +335,10 @@
   </div>
 
   <div class="insights" id="insights">
-    <h3>Market insights near <span id="insightLoc">you</span></h3>
+    <div class="ins-head">
+      <h3>Market insights</h3>
+      <span class="ins-loc" id="insightLoc">near you</span>
+    </div>
     <div class="insight-grid" id="insightGrid"></div>
   </div>
 
@@ -604,12 +612,15 @@ async function renderInsights(){
   if(!userLoc){box.classList.remove("show");return}
   try{
     const o=await api(`/api/insights?lat=${userLoc[0]}&lng=${userLoc[1]}&radiusKm=10`);
-    document.getElementById("insightLoc").textContent=userLocName||"you";
+    document.getElementById("insightLoc").textContent=(userLocName||"near you").replace(/^near /,"")||"near you";
+    const money=n=>n>=1e6?`<small>KES</small>${(n/1e6).toFixed(n%1e6?1:0)}M`
+      :n>=1e5?`<small>KES</small>${Math.round(n/1e3)}K`
+      :`<small>KES</small>${n.toLocaleString("en-KE")}`;
     document.getElementById("insightGrid").innerHTML=`
-      <div class="insight-card"><div class="val" id="iv0">0</div><div class="lbl">listings within ${o.radiusKm} km</div></div>
-      <div class="insight-card"><div class="val">${o.avgRent?fmt(o.avgRent):"—"}</div><div class="lbl">avg rent nearby /month</div></div>
-      <div class="insight-card"><div class="val">${o.cheapestRent?fmt(o.cheapestRent):"—"}</div><div class="lbl">cheapest rental nearby</div></div>
-      <div class="insight-card"><div class="val" id="iv3">0</div><div class="lbl">homes for sale nearby</div></div>`;
+      <div class="insight-card"><div class="lbl">Listings within ${o.radiusKm} km</div><div class="val" id="iv0">0</div></div>
+      <div class="insight-card"><div class="lbl">Average rent / month</div><div class="val">${o.avgRent?money(o.avgRent):"—"}</div></div>
+      <div class="insight-card"><div class="lbl">Cheapest rental</div><div class="val">${o.cheapestRent?money(o.cheapestRent):"—"}</div></div>
+      <div class="insight-card"><div class="lbl">Homes for sale</div><div class="val" id="iv3">0</div></div>`;
     box.classList.add("show");
     countUp(document.getElementById("iv0"),o.totalNearby,700);
     countUp(document.getElementById("iv3"),o.forSaleNearby,700);
