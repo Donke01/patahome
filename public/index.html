@@ -120,7 +120,7 @@
 
   /* ---------- Layout ---------- */
   .wrap{max-width:1200px;margin:0 auto;padding:0 24px}
-  .section-title{font-family:var(--serif);font-size:1.45rem;font-weight:600;letter-spacing:-.3px;padding:34px 0 2px}
+  .section-title{font-family:var(--serif);font-size:1.45rem;font-weight:600;letter-spacing:-.3px;padding:34px 0 2px;overflow-wrap:break-word}
   .section-sub{font-size:.9rem;color:var(--muted);margin-bottom:6px}
   .tabs{display:flex;gap:8px;overflow-x:auto;padding:16px 0 4px;scrollbar-width:none}
   .tabs::-webkit-scrollbar{display:none}
@@ -131,29 +131,29 @@
   .tab.active .count{background:rgba(255,255,255,.22)}
 
   .filters{display:flex;gap:10px;flex-wrap:wrap;padding:12px 0;align-items:center}
-  .filters select{border:1.5px solid var(--line);border-radius:10px;padding:9px 13px;background:var(--card);font-size:.87rem;color:var(--ink);outline:none;transition:border-color .15s}
+  .filters select{border:1.5px solid var(--line);border-radius:10px;padding:9px 13px;background:var(--card);font-size:.87rem;color:var(--ink);outline:none;transition:border-color .15s;max-width:100%}
   .filters select:focus{border-color:var(--brand)}
   .sort-label{font-size:.84rem;color:var(--muted);margin-left:auto;font-weight:500}
 
   .insights{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:var(--radius);padding:16px 18px 18px;margin:10px 0 18px;display:none;animation:fadeUp .5s both;box-shadow:var(--shadow)}
   .insights.show{display:block}
-  .insights .ins-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;min-width:0}
-  .insights h3{font-family:var(--serif);font-size:1.05rem;font-weight:600;color:var(--ink);white-space:nowrap}
-  .ins-loc{background:var(--brand-light);color:var(--brand);font-size:.72rem;font-weight:700;border-radius:999px;padding:4px 12px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .insight-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-  @media(max-width:700px){.insight-grid{grid-template-columns:repeat(2,1fr)}}
-  .insight-card{background:var(--brand-light);border-radius:10px;padding:12px 14px;transition:transform .15s;min-width:0;display:flex;flex-direction:column;justify-content:space-between;gap:6px}
+  .insights .ins-head{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;min-width:0}
+  .insights h3{font-family:var(--serif);font-size:1.05rem;font-weight:600;color:var(--ink)}
+  .ins-loc{background:var(--brand-light);color:var(--brand);font-size:.74rem;font-weight:600;border-radius:999px;padding:4px 12px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .insight-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+  @media(max-width:700px){.insight-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  .insight-card{background:var(--brand-light);border-radius:10px;padding:12px 14px;transition:transform .15s;min-width:0;display:flex;flex-direction:column;justify-content:space-between;gap:5px}
   .insight-card:hover{transform:translateY(-2px)}
-  .insight-card .lbl{font-size:.66rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;line-height:1.4}
-  .insight-card .val{font-family:var(--serif);font-size:1.28rem;font-weight:600;color:var(--brand);line-height:1;white-space:nowrap;font-variant-numeric:tabular-nums}
-  .insight-card .val small{font-family:'Inter',sans-serif;font-size:.66rem;font-weight:700;color:var(--muted);letter-spacing:.4px;margin-right:3px;vertical-align:3px}
-  @media(max-width:640px){.insight-card .val{font-size:1.1rem}}
+  .insight-card .lbl{font-size:.76rem;font-weight:500;color:var(--muted);line-height:1.4}
+  .insight-card .val{font-family:var(--serif);font-size:1.25rem;font-weight:600;color:var(--brand);line-height:1.1;font-variant-numeric:tabular-nums}
+  .insight-card .val small{font-family:'Inter',sans-serif;font-size:.7rem;font-weight:600;color:var(--muted);margin-right:2px}
+  @media(max-width:640px){.insight-card .val{font-size:1.08rem}}
 
-  .main{display:grid;grid-template-columns:1fr 380px;gap:22px;padding-bottom:56px;align-items:start}
+  .main{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:22px;padding-bottom:56px;align-items:start}
   .map-fab{display:none}
   .map-close{display:none}
   @media(max-width:900px){
-    .main{grid-template-columns:1fr}
+    .main{grid-template-columns:minmax(0,1fr)}
     /* Map hidden on mobile — opens full-screen via the floating button, so it never hijacks page scrolling */
     .map-panel{display:none}
     .map-panel.mobile-open{display:block;position:fixed;inset:0;z-index:1500;background:var(--bg);padding:14px}
@@ -163,7 +163,8 @@
     .map-panel.mobile-open ~ .map-fab, body.map-open .map-fab{display:none}
     .map-close{display:flex;position:absolute;top:22px;right:22px;z-index:1600;background:var(--ink);color:var(--bg);border:none;border-radius:50%;width:42px;height:42px;font-size:1.1rem;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.3)}
   }
-  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(265px,1fr));gap:18px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(265px,100%),1fr));gap:18px;min-width:0}
+  .card{min-width:0}
   .card{background:var(--card);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);transition:transform .2s, box-shadow .2s;cursor:pointer;border:1px solid var(--line);animation:fadeUp .5s both}
   .card:hover{transform:translateY(-4px);box-shadow:var(--shadow-lift)}
   .card-img{height:158px;display:flex;align-items:center;justify-content:center;position:relative;color:#fff;overflow:hidden}
@@ -282,7 +283,7 @@
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11a7 7 0 0 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
       Use my location
     </button>
-    <select class="loc-btn" id="citySelect" onchange="useCity(this.value)" style="appearance:auto;color:#1a2420;background:#fff">
+    <select class="loc-btn" id="citySelect" onchange="useCity(this.value)" style="appearance:auto;color:#1a2420;background:#fff;max-width:min(320px,86vw)">
       <option value="">…or pick an area</option>
     </select>
   </div>
