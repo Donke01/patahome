@@ -10,6 +10,10 @@ const { hashPassword, verifyPassword, signToken, verifyToken, km, makeRouter } =
 const PORT = process.env.PORT || 3000;
 const router = makeRouter();
 
+// Never let a stray rejection kill the server (Railway would answer 502 while it restarts)
+process.on("unhandledRejection", (e) => console.error("unhandledRejection:", e));
+process.on("uncaughtException", (e) => console.error("uncaughtException:", e));
+
 /* ================= Cloudinary (photo storage — zero local disk) ================= */
 const crypto = require("node:crypto");
 const CLD = {
@@ -140,7 +144,8 @@ router.add("POST", "/api/auth/google", async (req, res) => {
   const { credential } = req.body || {};
   if (!credential) return send(res, 400, { error: "Missing Google credential" });
   try {
-    const r = await fetch("https://oauth2.googleapis.com/tokeninfo?id_token=" + encodeURIComponent(credential));
+    const r = await fetch("https://oauth2.googleapis.com/tokeninfo?id_token=" + encodeURIComponent(credential),
+      { signal: AbortSignal.timeout(8000) });
     const p = await r.json();
     if (!r.ok || p.aud !== GOOGLE_CLIENT_ID || !p.email_verified) return send(res, 401, { error: "Google sign-in failed" });
     let user = db.prepare("SELECT * FROM users WHERE google_id=? OR email=?").get(p.sub, (p.email || "").toLowerCase());
