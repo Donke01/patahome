@@ -90,8 +90,8 @@
 
   /* ---------- Header ---------- */
   header{position:sticky;top:0;z-index:1000;background:var(--header-bg);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding:12px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;transition:background .3s}
-  .logo{font-size:1.3rem;font-weight:800;color:var(--brand);display:flex;align-items:center;gap:9px;letter-spacing:-.4px;font-family:var(--serif)}
-  .logo svg{width:27px;height:27px}
+  .logo{font-size:1.62rem;font-weight:800;color:var(--brand);display:flex;align-items:center;gap:10px;letter-spacing:-.5px;font-family:var(--serif)}
+  .logo svg{width:33px;height:33px}
   .logo span b{color:var(--gold);font-weight:700}
   .header-actions{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end;min-width:0}
   .btn{border:none;border-radius:10px;padding:10px 18px;font-weight:600;font-size:.88rem;transition:.18s;letter-spacing:.1px}
@@ -123,7 +123,7 @@
   .hero h1{font-family:var(--serif);font-size:clamp(2rem,5vw,3.3rem);font-weight:600;letter-spacing:-.5px;line-height:1.12;margin-bottom:16px;position:relative;animation:fadeUp .7s .08s both}
   .hero h1 .hl{color:#e3c98c;font-style:italic}
   .hero p{opacity:.85;max-width:600px;margin:0 auto 30px;font-size:1.02rem;font-weight:400;position:relative;animation:fadeUp .7s .16s both}
-  .stats{display:flex;justify-content:center;gap:0;margin-bottom:34px;position:relative;animation:fadeUp .7s .22s both;flex-wrap:wrap}
+  .stats{display:flex;justify-content:center;gap:0;position:relative;flex-wrap:wrap}
   .stat{padding:0 30px;border-right:1px solid rgba(255,255,255,.18)}
   .stat:last-child{border-right:none}
   .stat .num{font-family:var(--serif);font-size:1.7rem;font-weight:600;color:#e3c98c}
@@ -139,15 +139,15 @@
   .loc-btn:hover{background:rgba(255,255,255,.2)}
   .loc-btn.active{background:#fff;color:var(--brand-dark)}
   #locStatus{font-size:.82rem;opacity:.85;margin-top:12px;position:relative}
-  .quick-row{margin-top:18px;display:flex;justify-content:center;gap:9px;flex-wrap:wrap;position:relative;animation:fadeUp .7s .46s both}
-  .quick{background:rgba(255,255,255,.96);color:var(--brand-dark);border:none;border-radius:999px;padding:9px 19px;font-size:.83rem;font-weight:700;transition:.18s;box-shadow:0 3px 12px rgba(0,0,0,.18)}
-  .quick:hover{transform:translateY(-2px);background:#e3c98c;color:#0b3f2f}
+  .quick-row{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
+  .quick{background:var(--card);color:var(--brand-dark);border:1.5px solid var(--line);border-radius:999px;padding:10px 22px;font-size:.86rem;font-weight:700;transition:.18s;box-shadow:var(--shadow)}
+  .quick:hover{transform:translateY(-2px);border-color:var(--gold);color:var(--gold);box-shadow:var(--shadow-lift)}
 
   /* ---------- Compact mobile ---------- */
   @media(max-width:640px){
     header{padding:9px 10px;gap:6px;flex-wrap:nowrap}
-    .logo{font-size:1.02rem;gap:5px}
-    .logo svg{width:19px;height:19px}
+    .logo{font-size:1.22rem;gap:6px}
+    .logo svg{width:24px;height:24px}
     .header-actions{gap:6px;flex-wrap:nowrap;flex-shrink:0}
     .header-actions .btn{padding:7px 10px;font-size:.72rem;white-space:nowrap}
     .header-actions .btn-ghost{display:none}
@@ -163,7 +163,7 @@
     .hero h1{font-size:1.6rem;margin-bottom:10px}
     .hero h1 br{display:none}
     .hero p{font-size:.88rem;margin-bottom:18px}
-    .stats{gap:6px 0;margin-bottom:20px}
+    .stats{gap:6px 0}
     .stat{padding:0 14px}
     .stat .num{font-size:1.2rem}
     .stat .cap{letter-spacing:.8px;font-size:.6rem}
@@ -171,11 +171,13 @@
     .searchbar button{padding:0 16px;font-size:.88rem}
     .loc-row{margin-top:13px}
     .loc-btn{padding:8px 15px;font-size:.8rem}
-    .quick-row{margin-top:11px;gap:7px}
-    .quick{padding:7px 12px;font-size:.74rem}
+    .quick-row{gap:7px}
+    .quick{padding:8px 15px;font-size:.78rem}
     #locStatus{font-size:.75rem;margin-top:8px}
-    .trust-wrap{padding:9px 14px}
-    .trust{gap:7px 16px;font-size:.72rem}
+    .why{padding:36px 16px 4px}
+    .pop{padding:34px 16px 0}
+    .stats-band{margin-top:36px;padding:30px 16px}
+    .eyebrow{letter-spacing:2px;font-size:.66rem}
     .wrap{padding:0 16px}
     .section-title{font-size:1.25rem;padding-top:24px}
     .foot-links{gap:28px}
@@ -185,11 +187,21 @@
     .sort-label{margin-left:0;width:100%}
   }
 
-  /* ---------- Trust bar ---------- */
-  .trust-wrap{background:var(--brand-light);border-bottom:1px solid var(--line);padding:13px 20px;transition:background .3s}
-  .trust{max-width:1200px;margin:0 auto;display:flex;justify-content:center;gap:38px;flex-wrap:wrap;font-size:.82rem;font-weight:600;color:var(--brand);letter-spacing:.2px}
-  .trust span{display:flex;align-items:center;gap:8px}
-  .trust svg{width:15px;height:15px;flex-shrink:0}
+  /* ---------- Curated sections ---------- */
+  .eyebrow{font-size:.72rem;font-weight:700;letter-spacing:2.6px;text-transform:uppercase;color:var(--gold);margin-bottom:12px}
+  .why{max-width:1100px;margin:0 auto;padding:58px 24px 8px;text-align:center}
+  .why h2,.pop h2{font-family:var(--serif);font-size:clamp(1.5rem,3.2vw,2.15rem);font-weight:600;letter-spacing:-.5px;line-height:1.2;margin-bottom:36px}
+  .why h2 em,.pop h2 em{color:var(--brand);font-style:italic}
+  .why-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;text-align:center}
+  @media(max-width:700px){.why-grid{grid-template-columns:1fr;gap:12px}.why h2,.pop h2{margin-bottom:22px}}
+  .why-item{padding:30px 22px 26px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);transition:transform .25s,box-shadow .25s}
+  .why-item:hover{transform:translateY(-5px);box-shadow:var(--shadow-lift)}
+  .why-item .wi-ic{width:48px;height:48px;margin:0 auto 15px;border-radius:15px;background:var(--brand-light);color:var(--brand);display:flex;align-items:center;justify-content:center}
+  .why-item .wi-ic svg{width:23px;height:23px}
+  .why-item h3{font-family:var(--serif);font-size:1.1rem;font-weight:600;margin-bottom:7px}
+  .why-item p{font-size:.86rem;color:var(--muted);line-height:1.65}
+  .stats-band{background:linear-gradient(150deg,#07281e,#0d5c44);color:#fff;margin-top:56px;padding:46px 24px;text-align:center}
+  .pop{max-width:1100px;margin:0 auto;padding:52px 24px 4px;text-align:center}
 
   /* ---------- Layout ---------- */
   .wrap{max-width:1200px;margin:0 auto;padding:0 24px}
@@ -344,11 +356,6 @@
   <div class="kicker">Kenya's Direct-From-Owner Marketplace</div>
   <h1 id="heroHead"><span id="hlPre">Find your next </span><span class="rot-wrap"><span id="rotWord" class="hl">home</span></span><span id="hlPost"> <br>straight from the owner.</span></h1>
   <p id="heroSub">Verified rentals and homes for sale across Kenya, sorted by what's nearest to you. No agents. No viewing fees. Karibu home.</p>
-  <div class="stats">
-    <div class="stat"><div class="num" id="statListings">0</div><div class="cap">Live listings</div></div>
-    <div class="stat"><div class="num" id="statAreas">0</div><div class="cap">Areas covered</div></div>
-    <div class="stat"><div class="num" id="statOwners">0</div><div class="cap">Verified owners</div></div>
-  </div>
   <div class="searchbar">
     <span class="s-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
     <input id="searchInput" type="text" placeholder="" oninput="render()">
@@ -363,23 +370,52 @@
       <option value="">…or pick an area</option>
     </select>
   </div>
-  <div class="quick-row">
+  <div id="locStatus"></div>
+</section>
+
+<!-- The promise -->
+<section class="why">
+  <div class="eyebrow reveal">The PataHome promise</div>
+  <h2 class="reveal d1">Fewer middlemen.<br>More <em>karibu</em>.</h2>
+  <div class="why-grid">
+    <div class="why-item reveal">
+      <div class="wi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v6c0 5 3.5 8 8 11 4.5-3 8-6 8-11V5z"/><path d="m9 12 2 2 4-4"/></svg></div>
+      <h3>ID-verified owners</h3>
+      <p>Every landlord and seller is identity-checked before their listings go live. No brokers, no ghosts.</p>
+    </div>
+    <div class="why-item reveal d1">
+      <div class="wi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+      <h3>Talk directly, pay nothing</h3>
+      <p>Call or WhatsApp the owner the moment you find a fit. Zero agent fees, zero viewing fees.</p>
+    </div>
+    <div class="why-item reveal d2">
+      <div class="wi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11a7 7 0 0 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></div>
+      <h3>Nearest homes first</h3>
+      <p>Share your location and the closest kejas rise to the top — with live market insights for your area.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Live counters -->
+<section class="stats-band reveal">
+  <div class="stats">
+    <div class="stat"><div class="num" id="statListings">0</div><div class="cap">Live listings</div></div>
+    <div class="stat"><div class="num" id="statAreas">0</div><div class="cap">Areas covered</div></div>
+    <div class="stat"><div class="num" id="statOwners">0</div><div class="cap">Verified owners</div></div>
+  </div>
+</section>
+
+<!-- Popular searches -->
+<section class="pop">
+  <div class="eyebrow reveal">Popular right now</div>
+  <h2 class="reveal d1">Start with what comrades search most</h2>
+  <div class="quick-row reveal d2">
     <button class="quick" onclick="quickFilter('rent','0-5000','0','Bedsitters under 5K')">Bedsitters under 5K</button>
     <button class="quick" onclick="quickFilter('rent','5000-20000','1','1 Bedrooms under 20K')">1 Bedrooms under 20K</button>
     <button class="quick" onclick="quickFilter('rent','5000-20000','2','2 Bedrooms to share')">2 Bedrooms to share</button>
     <button class="quick" onclick="quickFilter('sale','','','Homes for sale')">Homes for sale</button>
   </div>
-  <div id="locStatus"></div>
 </section>
-
-<div class="trust-wrap reveal">
-  <div class="trust">
-    <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>ID-verified owners</span>
-    <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Zero agent fees</span>
-    <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Direct WhatsApp &amp; call contact</span>
-    <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Nearest-first search</span>
-  </div>
-</div>
 
 <div class="wrap">
   <div class="section-title reveal">Browse listings</div>
