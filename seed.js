@@ -1,4 +1,8 @@
-// seed.js — populate areas, demo owners, and listings. Run: node seed.js
+// seed.js — safe to run on every boot.
+//   • Areas + admin account are always ensured (idempotent) — the app needs areas to work.
+//   • Demo owners/listings/inquiries are only created when SEED_DEMO=1 (never in production).
+// Run: node seed.js           (production-safe: areas + admin only)
+//      SEED_DEMO=1 node seed.js   (also loads demo listings for local testing)
 const db = require("./db");
 const { hashPassword } = require("./lib");
 
@@ -22,6 +26,39 @@ const AREAS = [
   ["Kwanza","Trans Nzoia",1.1440,34.9990],
   ["Bikeke","Trans Nzoia",0.9700,35.0600]
 ];
+
+/* ---------- Always ensure areas exist (idempotent — name is UNIQUE) ---------- */
+const insArea = db.prepare("INSERT OR IGNORE INTO areas (name,county,lat,lng) VALUES (?,?,?,?)");
+let areasAdded = 0;
+for (const [name, county, lat, lng] of AREAS) {
+  if (insArea.run(name, county, lat, lng).changes) areasAdded++;
+}
+
+/* ---------- Always ensure the admin account exists ---------- */
+const adminPhone = process.env.ADMIN_PHONE || "0700000001";
+const adminPass = process.env.ADMIN_PASSWORD || "admin1234";
+const adminExists = db.prepare("SELECT id FROM users WHERE role='admin' LIMIT 1").get();
+if (!adminExists) {
+  db.prepare("INSERT INTO users (name,phone,password_hash,role,verified) VALUES (?,?,?,'admin',1)")
+    .run("Site Admin", adminPhone, hashPassword(adminPass));
+  console.log(`Admin account created for phone ${adminPhone}.`);
+  if (!process.env.ADMIN_PASSWORD) console.log("⚠️  Using default admin password 'admin1234' — set ADMIN_PASSWORD to change it.");
+}
+
+console.log(`Areas ensured (${areasAdded} added, ${AREAS.length} total).`);
+
+/* ---------- Demo data: only when explicitly requested ---------- */
+const wantDemo = /^(1|true|yes)$/i.test(process.env.SEED_DEMO || "");
+if (!wantDemo) {
+  console.log("Production mode: skipping demo listings (set SEED_DEMO=1 to load them locally).");
+  process.exit(0);
+}
+
+const existingListings = db.prepare("SELECT COUNT(*) n FROM listings").get().n;
+if (existingListings > 0) {
+  console.log(`DB already has ${existingListings} listings — skipping demo seed.`);
+  process.exit(0);
+}
 
 const OWNERS = [
   ["Grace Wanjiru","0712445210"],["Brian Otieno","0723118904"],
@@ -55,41 +92,26 @@ const LISTINGS = [
   ["sale","3BR farmhouse on 1 acre","Endebess",7500000,3],
 ];
 
-const already = db.prepare("SELECT COUNT(*) n FROM listings").get().n;
-if (already > 0) {
-  console.log(`DB already has ${already} listings — skipping seed. Delete patahome.db to reseed.`);
-  process.exit(0);
-}
-
-const insArea = db.prepare("INSERT INTO areas (name,county,lat,lng) VALUES (?,?,?,?)");
-const insUser = db.prepare("INSERT INTO users (name,phone,password_hash,verified) VALUES (?,?,?,1)");
+const insUser = db.prepare("INSERT OR IGNORE INTO users (name,phone,password_hash,verified) VALUES (?,?,?,1)");
 const insListing = db.prepare(`INSERT INTO listings
   (owner_id,category,title,area_id,price,bedrooms,lat,lng) VALUES (?,?,?,?,?,?,?,?)`);
-const getArea = db.prepare("SELECT * FROM areas WHERE id=?");
+const getAreaByName = db.prepare("SELECT * FROM areas WHERE name=?");
+const getUserByPhone = db.prepare("SELECT id FROM users WHERE phone=?");
 
-const areaIds = {};
-for (const [name, county, lat, lng] of AREAS) {
-  areaIds[name] = insArea.run(name, county, lat, lng).lastInsertRowid;
-}
 const hash = hashPassword("demo1234"); // all demo owners share this password
-const ownerIds = OWNERS.map(([name, phone]) => insUser.run(name, phone, hash).lastInsertRowid);
-
-// Admin account — CHANGE THE PASSWORD before going live (or set ADMIN_PHONE / ADMIN_PASSWORD env vars)
-const adminPhone = process.env.ADMIN_PHONE || "0700000001";
-const adminPass = process.env.ADMIN_PASSWORD || "admin1234";
-db.prepare("INSERT INTO users (name,phone,password_hash,role,verified) VALUES (?,?,?,'admin',1)")
-  .run("Site Admin", adminPhone, hashPassword(adminPass));
+const ownerIds = OWNERS.map(([name, phone]) => {
+  insUser.run(name, phone, hash);
+  return getUserByPhone.get(phone).id;
+});
 
 LISTINGS.forEach((x, i) => {
   const [cat, title, areaName, price, beds] = x;
-  const area = getArea.get(areaIds[areaName]);
-  // jitter coordinates so pins don't stack
+  const area = getAreaByName.get(areaName);
   const lat = area.lat + Math.sin(i * 7) * 0.006;
   const lng = area.lng + Math.cos(i * 5) * 0.006;
   insListing.run(ownerIds[i % ownerIds.length], cat, title, area.id, price, beds, lat, lng);
 });
 
-// demo inquiries so the landlord inbox isn't empty
 const INQUIRIES = [
   [1,"Kevin Ochieng","0722334455","Hi, is the 2BR still available? Can I come view it this Saturday morning?"],
   [1,"Wambui Kariuki","0733221144","What's included in the rent — water and garbage? Any deposit terms?"],
@@ -102,5 +124,5 @@ const insInq = db.prepare("INSERT INTO inquiries (listing_id,from_name,from_phon
 const insLead = db.prepare("INSERT INTO leads (listing_id) VALUES (?)");
 for (const [lid, name, phone, msg] of INQUIRIES) { insInq.run(lid, name, phone, msg); insLead.run(lid); }
 
-console.log(`Seeded ${AREAS.length} areas, ${OWNERS.length} owners, ${LISTINGS.length} listings, ${INQUIRIES.length} inquiries.`);
+console.log(`Demo data seeded: ${OWNERS.length} owners, ${LISTINGS.length} listings, ${INQUIRIES.length} inquiries.`);
 console.log("Demo owner login: phone 0712445210, password demo1234");
