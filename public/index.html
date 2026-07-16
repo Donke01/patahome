@@ -108,8 +108,11 @@
   .acct-chip:hover{border-color:var(--brand)}
   .acct-av{width:29px;height:29px;border-radius:50%;background:var(--brand);color:#fff;font-family:var(--serif);font-weight:600;font-size:.82rem;display:flex;align-items:center;justify-content:center;overflow:hidden}
   .acct-av img{width:100%;height:100%;object-fit:cover}
-  .acct-name{font-size:.85rem;font-weight:600;color:var(--ink);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .acct-name{font-size:.85rem;font-weight:600;color:var(--ink);max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  @media(max-width:800px){.acct-name{max-width:76px}}
   @media(max-width:640px){.acct-name{display:none}}
+  header .logo{flex-shrink:0}
+  .acct-chip{flex-shrink:0}
 
   /* ---------- Hero ---------- */
   .hero{background:linear-gradient(150deg,#07281e 0%,#0b3f2f 45%,#0d5c44 100%);color:#fff;padding:64px 24px 72px;text-align:center;position:relative;overflow:hidden}

@@ -162,16 +162,19 @@
 
   /* header user menu */
   .user-menu{position:relative}
-  .avatar-btn{display:flex;align-items:center;gap:9px;background:transparent;border:1.5px solid var(--line);border-radius:999px;padding:5px 12px 5px 6px;transition:.15s;max-width:220px}
+  .avatar-btn{display:flex;align-items:center;gap:9px;background:transparent;border:1.5px solid var(--line);border-radius:999px;padding:5px 12px 5px 6px;transition:.15s;max-width:190px}
+  @media(max-width:800px){.avatar-btn{max-width:150px}}
+  @media(max-width:640px){.avatar-btn .u-name,.avatar-btn .u-caret{display:none}.avatar-btn{padding:4px;border-radius:50%}}
+  header .logo{flex-shrink:0;min-width:0}
   .avatar-btn:hover{border-color:var(--green)}
   .avatar-c{width:32px;height:32px;border-radius:50%;background:var(--green);color:#fff;font-family:var(--serif);font-weight:600;font-size:.9rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
   .avatar-c img{width:100%;height:100%;object-fit:cover}
   .avatar-btn .u-name{font-size:.86rem;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .avatar-btn .u-caret{color:var(--muted);font-size:.7rem}
-  .menu-pop{position:absolute;right:0;top:calc(100% + 8px);width:266px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 40px rgba(16,40,30,.18);padding:8px;z-index:200;display:none;animation:modalIn .2s ease both}
+  .menu-pop{position:absolute;right:0;top:calc(100% + 8px);width:266px;max-width:calc(100vw - 20px);background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 40px rgba(16,40,30,.18);padding:8px;z-index:200;display:none;animation:modalIn .2s ease both}
   .menu-pop.show{display:block}
   .menu-head{padding:10px 12px 12px;border-bottom:1px solid var(--line);margin-bottom:6px}
-  .menu-head .mh-name{font-weight:700;font-size:.95rem}
+  .menu-head .mh-name{font-weight:700;font-size:.95rem;word-break:break-word}
   .menu-head .mh-sub{font-size:.78rem;color:var(--muted);word-break:break-word}
   .menu-head .mh-badge{display:inline-flex;align-items:center;gap:4px;font-size:.68rem;font-weight:700;border-radius:999px;padding:2px 9px;margin-top:7px}
   .mh-badge.ok{background:var(--green-light);color:var(--green-dark)}
