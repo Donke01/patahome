@@ -10,6 +10,41 @@ const { hashPassword, verifyPassword, signToken, verifyToken, km, makeRouter } =
 const PORT = process.env.PORT || 3000;
 const router = makeRouter();
 
+/* ================= Cloudinary (photo storage — zero local disk) ================= */
+const crypto = require("node:crypto");
+const CLD = {
+  cloud: process.env.CLOUDINARY_CLOUD_NAME || "",
+  key: process.env.CLOUDINARY_API_KEY || "",
+  secret: process.env.CLOUDINARY_API_SECRET || "",
+  folder: "patahome/listings",
+  maxPhotos: 5
+};
+const cldEnabled = () => !!(CLD.cloud && CLD.key && CLD.secret);
+// Cloudinary signature: sha1 of sorted params + api_secret
+function cldSign(params) {
+  const str = Object.keys(params).sort().map(k => `${k}=${params[k]}`).join("&");
+  return crypto.createHash("sha1").update(str + CLD.secret).digest("hex");
+}
+// Incoming transformation: cap at 1280px, auto quality — keeps every stored image small
+const CLD_TRANSFORM = "c_limit,w_1280,h_1280,q_auto:good";
+const photoUrl = (id, t) => `https://res.cloudinary.com/${CLD.cloud}/image/upload/${t}/${id}`;
+const parsePhotos = (s) => { try { const a = JSON.parse(s || "[]"); return Array.isArray(a) ? a : []; } catch { return []; } };
+const validPhotoId = (id) => typeof id === "string" && id.startsWith(CLD.folder + "/") &&
+  /^[\w\-/]{1,200}$/.test(id);
+// fire-and-forget delete of a Cloudinary image (used when listings/photos are removed)
+async function cldDestroy(publicId) {
+  if (!cldEnabled() || !validPhotoId(publicId)) return;
+  try {
+    const timestamp = Math.floor(Date.now() / 1000);
+    const signature = cldSign({ public_id: publicId, timestamp });
+    await fetch(`https://api.cloudinary.com/v1_1/${CLD.cloud}/image/destroy`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ public_id: publicId, timestamp, api_key: CLD.key, signature })
+    });
+  } catch (e) { console.error("cloudinary destroy failed:", e.message); }
+}
+
 /* ================= helpers ================= */
 const LISTING_SQL = `
   SELECT l.*, a.name AS area_name, a.county, u.name AS owner_name, u.verified AS owner_verified
@@ -27,6 +62,11 @@ const listingView = (row, userLat, userLng) => ({
   lat: row.lat,
   lng: row.lng,
   status: row.status,
+  photos: parsePhotos(row.photos),
+  photoUrls: cldEnabled() ? parsePhotos(row.photos).map(id => ({
+    thumb: photoUrl(id, "c_fill,w_480,h_320,q_auto:eco"),
+    full: photoUrl(id, "c_limit,w_1280,q_auto:good")
+  })) : [],
   featured: !!(row.featured_until && row.featured_until > new Date().toISOString()),
   ownerName: row.owner_name,
   ownerVerified: !!row.owner_verified,
@@ -138,10 +178,16 @@ router.add("POST", "/api/listings", (req, res) => {
   const area = db.prepare("SELECT * FROM areas WHERE id=?").get(areaId);
   if (!area) return send(res, 400, { error: "Unknown areaId — see GET /api/areas" });
   const lat = area.lat + (Math.random() - 0.5) * 0.01, lng = area.lng + (Math.random() - 0.5) * 0.01;
-  const info = db.prepare(`INSERT INTO listings (owner_id,category,title,description,area_id,price,bedrooms,lat,lng)
-    VALUES (?,?,?,?,?,?,?,?,?)`)
+  const photos = req.body.photos;
+  if (photos !== undefined) {
+    if (!Array.isArray(photos) || photos.length > CLD.maxPhotos || !photos.every(validPhotoId))
+      return send(res, 400, { error: `photos must be up to ${CLD.maxPhotos} uploaded photo ids` });
+  }
+  const info = db.prepare(`INSERT INTO listings (owner_id,category,title,description,area_id,price,bedrooms,lat,lng,photos)
+    VALUES (?,?,?,?,?,?,?,?,?,?)`)
     .run(u.id, category, title.trim(), description || "", areaId, +price,
-         bedrooms == null || bedrooms === "" ? null : +bedrooms, lat, lng);
+         bedrooms == null || bedrooms === "" ? null : +bedrooms, lat, lng,
+         JSON.stringify(photos || []));
   const row = db.prepare(`${LISTING_SQL} WHERE l.id=?`).get(info.lastInsertRowid);
   send(res, 201, listingView(row));
 });
@@ -154,6 +200,14 @@ router.add("PATCH", "/api/listings/:id", (req, res, p) => {
   const allowed = ["title", "description", "price", "bedrooms", "status"];
   const sets = [], params = [];
   for (const k of allowed) if (req.body[k] !== undefined) { sets.push(`${k}=?`); params.push(req.body[k]); }
+  if (req.body.photos !== undefined) {
+    const photos = req.body.photos;
+    if (!Array.isArray(photos) || photos.length > CLD.maxPhotos || !photos.every(validPhotoId))
+      return send(res, 400, { error: `photos must be up to ${CLD.maxPhotos} uploaded photo ids` });
+    // free storage for photos the owner removed
+    for (const old of parsePhotos(row.photos)) if (!photos.includes(old)) cldDestroy(old);
+    sets.push("photos=?"); params.push(JSON.stringify(photos));
+  }
   if (!sets.length) return send(res, 400, { error: "Nothing to update" });
   db.prepare(`UPDATE listings SET ${sets.join(",")} WHERE id=?`).run(...params, row.id);
   send(res, 200, listingView(db.prepare(`${LISTING_SQL} WHERE l.id=?`).get(row.id)));
@@ -164,8 +218,24 @@ router.add("DELETE", "/api/listings/:id", (req, res, p) => {
   const row = db.prepare("SELECT * FROM listings WHERE id=?").get(p.id);
   if (!row) return send(res, 404, { error: "Listing not found" });
   if (row.owner_id !== u.id && u.role !== "admin") return send(res, 403, { error: "Not your listing" });
-  db.prepare("UPDATE listings SET status='removed' WHERE id=?").run(row.id);
+  // reclaim photo storage before soft-deleting
+  for (const id of parsePhotos(row.photos)) cldDestroy(id);
+  db.prepare("UPDATE listings SET status='removed', photos='[]' WHERE id=?").run(row.id);
   send(res, 200, { ok: true });
+});
+
+/* -------- photo uploads: browser uploads straight to Cloudinary (no server disk) -------- */
+router.add("GET", "/api/uploads/sign", (req, res) => {
+  const u = requireAuth(req, res); if (!u) return;
+  if (!cldEnabled()) return send(res, 503, { error: "Photo uploads are not configured yet" });
+  const timestamp = Math.floor(Date.now() / 1000);
+  const params = { folder: CLD.folder, timestamp, transformation: CLD_TRANSFORM };
+  send(res, 200, {
+    cloudName: CLD.cloud, apiKey: CLD.key,
+    timestamp, folder: CLD.folder, transformation: CLD_TRANSFORM,
+    signature: cldSign(params),
+    maxPhotos: CLD.maxPhotos, maxBytes: 8 * 1024 * 1024
+  });
 });
 
 /* -------- contact owner (records a lead, returns phone) -------- */

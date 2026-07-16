@@ -140,6 +140,10 @@
   .card-img{height:158px;display:flex;align-items:center;justify-content:center;position:relative;color:#fff;overflow:hidden}
   .card-img .wm{width:74px;height:74px;opacity:.28;transition:transform .35s,opacity .35s}
   .card:hover .card-img .wm{transform:scale(1.12);opacity:.4}
+  .card-img .ph{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .35s}
+  .card:hover .card-img .ph{transform:scale(1.05)}
+  .photo-count{position:absolute;bottom:11px;left:11px;background:rgba(8,18,14,.6);color:#fff;font-size:.68rem;font-weight:700;padding:4px 10px;border-radius:999px;display:flex;align-items:center;gap:5px;backdrop-filter:blur(3px)}
+  .photo-count svg{width:11px;height:11px}
   .badge{position:absolute;top:12px;left:12px;font-size:.66rem;font-weight:800;padding:4px 12px;border-radius:999px;text-transform:uppercase;letter-spacing:1px;backdrop-filter:blur(4px)}
   .badge.rent{background:rgba(255,255,255,.92);color:var(--brand-dark)}
   .badge.sale{background:rgba(20,16,6,.55);color:#e8cf96;border:1px solid rgba(227,201,140,.5)}
@@ -463,7 +467,8 @@ async function loadData(){
   LISTINGS=res.listings.filter(x=>CAT[x.category]).map(x=>({
     id:x.id,cat:x.category,title:x.title,desc:x.description,area:x.area+", "+x.county,
     price:x.price,beds:x.bedrooms,lat:x.lat,lng:x.lng,
-    posted:timeAgo(x.createdAt),owner:x.ownerName,verified:x.ownerVerified
+    posted:timeAgo(x.createdAt),owner:x.ownerName,verified:x.ownerVerified,
+    photos:x.photoUrls||[]
   }));
 }
 
@@ -626,9 +631,11 @@ function render(){
     const c=CAT[x.cat];
     const d=userLoc?dist(userLoc[0],userLoc[1],x.lat,x.lng):null;
     const isNew=/today/.test(x.posted);
+    const CAM='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h3l2-2h6l2 2h3v13H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
     return `<div class="card" style="animation-delay:${Math.min(i*60,420)}ms" onclick="openDetail(${x.id})">
       <div class="card-img" style="background:${c.grad}">
-        <span class="wm">${ICONS[c.gal[0]]}</span>
+        ${x.photos.length?`<img class="ph" src="${x.photos[0].thumb}" alt="${esc(x.title)}" loading="lazy">`:`<span class="wm">${ICONS[c.gal[0]]}</span>`}
+        ${x.photos.length?`<span class="photo-count">${CAM}${x.photos.length}</span>`:""}
         <span class="badge ${c.badge}">${c.label}</span>
         ${isNew?`<span class="new-badge">NEW</span>`:""}
         <button class="heart ${favs.has(x.id)?"on":""}" onclick="event.stopPropagation();toggleFav(${x.id})">${favs.has(x.id)?"♥":"♡"}</button>
@@ -703,14 +710,18 @@ function openDetail(id){
 }
 function renderGallery(){
   const c=CAT[galItem.cat];
-  document.getElementById("gallery").innerHTML=
-    c.gal.map((e,i)=>`<div class="slide ${i===galIdx?"on":""}" style="background:${c.grad}">${ICONS[e]}</div>`).join("")+
-    `<button class="gal-nav gal-prev" onclick="galStep(-1)">‹</button>
+  const hasPhotos=galItem.photos&&galItem.photos.length;
+  const slides=hasPhotos
+    ?galItem.photos.map((p,i)=>`<div class="slide ${i===galIdx?"on":""}" style="background:#0d1512"><img src="${p.full}" alt="photo ${i+1}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" loading="lazy"></div>`).join("")
+    :c.gal.map((e,i)=>`<div class="slide ${i===galIdx?"on":""}" style="background:${c.grad}">${ICONS[e]}</div>`).join("");
+  const n=hasPhotos?galItem.photos.length:c.gal.length;
+  document.getElementById("gallery").innerHTML=slides+
+    (n>1?`<button class="gal-nav gal-prev" onclick="galStep(-1)">‹</button>
      <button class="gal-nav gal-next" onclick="galStep(1)">›</button>
-     <div class="dots">${c.gal.map((_,i)=>`<span class="dot ${i===galIdx?"on":""}"></span>`).join("")}</div>`;
+     <div class="dots">${Array.from({length:n},(_,i)=>`<span class="dot ${i===galIdx?"on":""}"></span>`).join("")}</div>`:"");
 }
 function galStep(n){
-  const len=CAT[galItem.cat].gal.length;
+  const len=(galItem.photos&&galItem.photos.length)||CAT[galItem.cat].gal.length;
   galIdx=(galIdx+n+len)%len;
   renderGallery();
 }

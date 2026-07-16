@@ -126,6 +126,18 @@
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--ink);color:#fff;padding:12px 22px;border-radius:12px;font-size:.9rem;z-index:3000;opacity:0;transition:.3s}
   .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
 
+  /* photo uploads */
+  .photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;margin-top:6px}
+  .photo-th{position:relative;border-radius:10px;overflow:hidden;aspect-ratio:4/3;background:var(--green-light);border:1px solid var(--line)}
+  .photo-th img{width:100%;height:100%;object-fit:cover;display:block}
+  .photo-th .rm{position:absolute;top:4px;right:4px;background:rgba(10,20,15,.65);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:.7rem;line-height:1;display:flex;align-items:center;justify-content:center}
+  .photo-th.uploading::after{content:"";position:absolute;inset:0;background:rgba(255,255,255,.55)}
+  .photo-th .spin{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:700;color:var(--green-dark);z-index:2}
+  .photo-add{aspect-ratio:4/3;border:1.5px dashed var(--line);border-radius:10px;background:transparent;color:var(--muted);font-size:.72rem;font-weight:700;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;transition:.15s}
+  .photo-add:hover{border-color:var(--green);color:var(--green)}
+  .photo-add span{font-size:1.15rem;line-height:1}
+  .photo-note{font-size:.72rem;color:var(--muted);margin-top:6px}
+
   /* inquiries inbox */
   .inbox{display:flex;flex-direction:column;gap:12px}
   .inq{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);animation:fadeUp .4s both}
@@ -234,6 +246,12 @@
     <input id="eTitle" placeholder="e.g. Spacious 2BR with balcony">
     <label>Description (optional)</label>
     <textarea id="eDesc" rows="2" placeholder="Amenities, terms, directions…"></textarea>
+    <div id="photoWrap" style="display:none">
+      <label>Photos (up to 5)</label>
+      <div class="photo-grid" id="photoGrid"></div>
+      <div class="photo-note">JPG, PNG or WebP, max 8&nbsp;MB each. Photos are compressed automatically — listings with photos get far more leads.</div>
+      <input type="file" id="photoFile" accept="image/jpeg,image/png,image/webp" multiple style="display:none" onchange="uploadPhotos(this.files);this.value=''">
+    </div>
     <label>Price (KES)</label>
     <input id="ePrice" type="number" placeholder="e.g. 15000">
     <label>Bedrooms (houses only)</label>
@@ -431,37 +449,101 @@ function renderTable(){
     </div>`).join("");
 }
 
+/* ---------- photo uploads (direct to Cloudinary — nothing touches our server) ---------- */
+let photoIds=[], uploadingCount=0, signCfg=null;
+async function getSignCfg(){
+  // fresh signature per batch (Cloudinary signatures expire after 1h)
+  signCfg=await api("/api/uploads/sign");
+  return signCfg;
+}
+async function initPhotoUI(){
+  if(signCfg!==null)return true;
+  try{await getSignCfg();return true}
+  catch{signCfg=false;return false}
+}
+function thumbUrl(id){
+  return signCfg&&signCfg.cloudName?`https://res.cloudinary.com/${signCfg.cloudName}/image/upload/c_fill,w_200,h_150,q_auto:eco/${id}`:"";
+}
+function renderPhotos(){
+  const max=(signCfg&&signCfg.maxPhotos)||5;
+  $("photoGrid").innerHTML=
+    photoIds.map((id,i)=>`<div class="photo-th"><img src="${thumbUrl(id)}" alt="photo ${i+1}" loading="lazy"><button type="button" class="rm" onclick="removePhoto(${i})">✕</button></div>`).join("")+
+    (uploadingCount?Array.from({length:uploadingCount},()=>`<div class="photo-th uploading"><div class="spin">Uploading…</div></div>`).join(""):"")+
+    (photoIds.length+uploadingCount<max?`<button type="button" class="photo-add" onclick="$('photoFile').click()"><span>+</span>Add photo</button>`:"");
+}
+function removePhoto(i){photoIds.splice(i,1);renderPhotos()}
+async function uploadPhotos(files){
+  const max=(signCfg&&signCfg.maxPhotos)||5, maxBytes=(signCfg&&signCfg.maxBytes)||8*1024*1024;
+  const room=max-photoIds.length-uploadingCount;
+  const picked=[...files].slice(0,room);
+  if(files.length>room)toast(`Maximum ${max} photos per listing`);
+  const ok=picked.filter(f=>{
+    if(!/^image\/(jpeg|png|webp)$/.test(f.type)){toast(f.name+": use JPG, PNG or WebP");return false}
+    if(f.size>maxBytes){toast(f.name+" is over 8 MB — choose a smaller photo");return false}
+    return true;
+  });
+  if(!ok.length)return;
+  let cfg;
+  try{cfg=await getSignCfg()}catch(e){toast(e.message);return}
+  uploadingCount+=ok.length;renderPhotos();
+  await Promise.all(ok.map(async f=>{
+    try{
+      const fd=new FormData();
+      fd.append("file",f);
+      fd.append("api_key",cfg.apiKey);
+      fd.append("timestamp",cfg.timestamp);
+      fd.append("signature",cfg.signature);
+      fd.append("folder",cfg.folder);
+      fd.append("transformation",cfg.transformation);
+      const r=await fetch(`https://api.cloudinary.com/v1_1/${cfg.cloudName}/image/upload`,{method:"POST",body:fd});
+      const d=await r.json();
+      if(!r.ok)throw new Error((d.error&&d.error.message)||"Upload failed");
+      photoIds.push(d.public_id);
+    }catch(e){toast("Upload failed: "+e.message)}
+    finally{uploadingCount--;renderPhotos()}
+  }));
+}
+
 /* ---------- add / edit ---------- */
+async function preparePhotoSection(){
+  const on=await initPhotoUI();
+  $("photoWrap").style.display=on?"block":"none";
+  if(on)renderPhotos();
+}
 function openAdd(){
-  editId=null;
+  editId=null;photoIds=[];uploadingCount=0;
   $("emTitle").textContent="New Listing";$("emSave").textContent="Publish";
   $("emCatWrap").style.display="block";$("emStatusWrap").style.display="none";
   $("eTitle").value="";$("eDesc").value="";$("ePrice").value="";$("eBeds").value="";$("emErr").textContent="";
+  preparePhotoSection();
   show("editModal");
 }
 function openEdit(id){
   const x=myListings.find(y=>y.id===id);
-  editId=id;
+  editId=id;photoIds=[...(x.photos||[])];uploadingCount=0;
   $("emTitle").textContent="Edit Listing";$("emSave").textContent="Save Changes";
   $("emCatWrap").style.display="none";$("emStatusWrap").style.display="block";
   $("eTitle").value=x.title;$("eDesc").value=x.description||"";$("ePrice").value=x.price;
   $("eBeds").value=x.bedrooms==null?"":x.bedrooms;$("eStatus").value=x.status;$("emErr").textContent="";
+  preparePhotoSection();
   show("editModal");
 }
 async function saveListing(){
   $("emErr").textContent="";
+  if(uploadingCount){$("emErr").textContent="Wait for photos to finish uploading…";return}
+  const photos=signCfg?{photos:photoIds}:{};
   try{
     if(editId==null){
       await api("/api/listings",{method:"POST",body:JSON.stringify({
         category:$("eCat").value,title:$("eTitle").value,description:$("eDesc").value,
         areaId:+$("eArea").value,price:+$("ePrice").value,
-        bedrooms:$("eBeds").value===""?null:+$("eBeds").value
+        bedrooms:$("eBeds").value===""?null:+$("eBeds").value,...photos
       })});
       toast("Listing published — it's now live on the site.");
     }else{
       await api("/api/listings/"+editId,{method:"PATCH",body:JSON.stringify({
         title:$("eTitle").value,description:$("eDesc").value,price:+$("ePrice").value,
-        bedrooms:$("eBeds").value===""?null:+$("eBeds").value,status:$("eStatus").value
+        bedrooms:$("eBeds").value===""?null:+$("eBeds").value,status:$("eStatus").value,...photos
       })});
       toast("Listing updated");
     }

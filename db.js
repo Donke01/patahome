@@ -86,4 +86,8 @@ CREATE TABLE IF NOT EXISTS payments (
 );
 `);
 
+/* -------- migrations (idempotent) -------- */
+// photos: JSON array of Cloudinary public_ids (max 5 per listing)
+try { db.exec("ALTER TABLE listings ADD COLUMN photos TEXT"); } catch (e) { /* column exists */ }
+
 module.exports = db;
