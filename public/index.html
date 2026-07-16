@@ -145,13 +145,18 @@
 
   /* ---------- Compact mobile ---------- */
   @media(max-width:640px){
-    header{padding:10px 14px;gap:8px}
-    .logo{font-size:1.15rem}
-    .logo svg{width:23px;height:23px}
-    .header-actions{gap:7px}
-    .header-actions .btn{padding:8px 12px;font-size:.78rem}
+    header{padding:9px 10px;gap:6px;flex-wrap:nowrap}
+    .logo{font-size:1.02rem;gap:5px}
+    .logo svg{width:19px;height:19px}
+    .header-actions{gap:6px;flex-wrap:nowrap;flex-shrink:0}
+    .header-actions .btn{padding:7px 10px;font-size:.72rem;white-space:nowrap}
     .header-actions .btn-ghost{display:none}
-    .icon-btn{width:35px;height:35px}
+    .icon-btn{width:32px;height:32px}
+    .icon-btn svg{width:15px;height:15px}
+    .acct-av{width:27px;height:27px;font-size:.72rem}
+  }
+  @media(max-width:380px){
+    #darkBtn{display:none}
     .hero{padding:26px 16px 34px}
     .hero .kicker{font-size:.6rem;letter-spacing:1.4px;margin-bottom:10px}
     .hero .kicker::before,.hero .kicker::after{display:none}
