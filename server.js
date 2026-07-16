@@ -526,7 +526,7 @@ function areaLinksHtml() {
 }
 
 function sendHtml(res, code, html) {
-  res.writeHead(code, { "Content-Type": "text/html; charset=utf-8" });
+  res.writeHead(code, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache, must-revalidate" });
   res.end(html);
 }
 
@@ -654,7 +654,12 @@ const server = http.createServer((req, res) => {
       if (req.method === "GET") {
         let file = path.join(__dirname, "public", url.pathname === "/" ? "index.html" : url.pathname);
         if (file.startsWith(path.join(__dirname, "public")) && fs.existsSync(file) && fs.statSync(file).isFile()) {
-          res.writeHead(200, { "Content-Type": MIME[path.extname(file)] || "application/octet-stream" });
+          const ext = path.extname(file);
+          res.writeHead(200, {
+            "Content-Type": MIME[ext] || "application/octet-stream",
+            // HTML must always revalidate so deploys show up immediately (browsers + Cloudflare edge)
+            "Cache-Control": ext === ".html" || ext === "" ? "no-cache, must-revalidate" : "public, max-age=86400"
+          });
           return res.end(fs.readFileSync(file));
         }
       }
