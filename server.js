@@ -634,6 +634,16 @@ const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
   req.query = Object.fromEntries(url.searchParams);
 
+  // Canonical redirects (only when behind a proxy that sets x-forwarded-proto,
+  // so local development on http://localhost is unaffected):
+  // www.example.com -> example.com, and http -> https
+  const fwdProto = req.headers["x-forwarded-proto"];
+  const host = req.headers.host || "";
+  if (fwdProto && (host.startsWith("www.") || fwdProto === "http")) {
+    res.writeHead(301, { Location: "https://" + host.replace(/^www\./, "") + req.url, "Cache-Control": "no-cache" });
+    return res.end();
+  }
+
   if (req.method === "OPTIONS") {
     res.writeHead(204, {
       "Access-Control-Allow-Origin": "*",
