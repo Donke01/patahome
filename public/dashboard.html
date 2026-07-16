@@ -201,6 +201,10 @@
   /* panel tabs */
   .pnav{display:flex;gap:8px;overflow-x:auto;padding:4px 0 16px;scrollbar-width:none;border-bottom:1px solid var(--line);margin-bottom:20px}
   .pnav::-webkit-scrollbar{display:none}
+  @media(max-width:640px){
+    .pnav{flex-wrap:wrap;overflow:visible;gap:6px}
+    .pt{padding:7px 13px;font-size:.78rem;flex:0 1 auto}
+  }
   .pt{white-space:nowrap;border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:9px 18px;font-size:.86rem;font-weight:600;color:var(--muted);display:flex;gap:7px;align-items:center;transition:.18s}
   .pt:hover{border-color:var(--green);color:var(--green)}
   .pt.on{background:var(--green);border-color:var(--green);color:#fff}
