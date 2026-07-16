@@ -13,7 +13,7 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="theme-color" content="#0d5c44">
+<meta name="theme-color" content="#0e8a68">
 <link rel="canonical" href="/">
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
@@ -25,10 +25,10 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
   :root{
-    --brand:#0d5c44; --brand-dark:#093f2f; --brand-light:#ecf4f0;
-    --gold:#c19a4b; --gold-soft:#f6efe1;
-    --ink:#1a2420; --muted:#5f6d66; --line:#e3e9e5; --bg:#fbfcfb;
-    --card:#ffffff; --radius:16px;
+    --brand:#0e8a68; --brand-dark:#0b6b51; --brand-light:#e9f6f1;
+    --gold:#c9a35c; --gold-soft:#f6efe1;
+    --ink:#1a2420; --muted:#5f6d66; --line:#e4eae7; --bg:#fcfdfc;
+    --card:#ffffff; --radius:18px;
     --shadow:0 1px 3px rgba(16,40,30,.06), 0 6px 20px rgba(16,40,30,.06);
     --shadow-lift:0 4px 10px rgba(16,40,30,.08), 0 14px 34px rgba(16,40,30,.12);
     --header-bg:rgba(255,255,255,.92); --footer-bg:#0d1512;
@@ -51,6 +51,11 @@
 
   @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
   @keyframes heartPop{0%{transform:scale(1)}40%{transform:scale(1.4)}100%{transform:scale(1)}}
+  @keyframes shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .skel{height:280px;border-radius:var(--radius);border:1px solid var(--line);background:linear-gradient(110deg,var(--card) 10%,var(--brand-light) 22%,var(--card) 36%);background-size:200% 100%;animation:shimmer 1.1s linear infinite}
+  .searchbar button .sp{display:none;width:15px;height:15px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;margin-right:8px;vertical-align:-2px}
+  .searchbar button.busy .sp{display:inline-block}
 
   /* ---------- Page slide transitions (View Transitions API) ---------- */
   @view-transition{navigation:auto}
@@ -90,13 +95,13 @@
 
   /* ---------- Header ---------- */
   header{position:sticky;top:0;z-index:1000;background:var(--header-bg);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding:12px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;transition:background .3s}
-  .logo{font-size:1.62rem;font-weight:800;color:var(--brand);display:flex;align-items:center;gap:10px;letter-spacing:-.5px;font-family:var(--serif)}
-  .logo svg{width:33px;height:33px}
+  .logo{font-size:1.8rem;font-weight:800;color:var(--brand);display:flex;align-items:center;gap:10px;letter-spacing:-.5px;font-family:var(--serif)}
+  .logo svg{width:37px;height:37px}
   .logo span b{color:var(--gold);font-weight:700}
   .header-actions{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end;min-width:0}
-  .btn{border:none;border-radius:10px;padding:10px 18px;font-weight:600;font-size:.88rem;transition:.18s;letter-spacing:.1px}
-  .btn-primary{background:var(--brand);color:#fff;box-shadow:0 2px 8px rgba(13,92,68,.25)}
-  .btn-primary:hover{background:var(--brand-dark);transform:translateY(-1px);box-shadow:0 4px 14px rgba(13,92,68,.3)}
+  .btn{border:none;border-radius:12px;padding:10px 18px;font-weight:600;font-size:.88rem;transition:.18s;letter-spacing:.1px}
+  .btn-primary{background:var(--brand);color:#fff;box-shadow:0 2px 8px rgba(14,138,104,.25)}
+  .btn-primary:hover{background:var(--brand-dark);transform:translateY(-1px);box-shadow:0 4px 14px rgba(14,138,104,.3)}
   .btn-ghost{background:transparent;color:var(--brand);border:1.5px solid var(--brand)}
   .btn-ghost:hover{background:var(--brand-light)}
   .icon-btn{background:transparent;border:1.5px solid var(--line);border-radius:10px;width:39px;height:39px;font-size:1rem;display:flex;align-items:center;justify-content:center;position:relative;color:var(--ink);transition:.18s}
@@ -115,7 +120,7 @@
   .acct-chip{flex-shrink:0}
 
   /* ---------- Hero ---------- */
-  .hero{background:linear-gradient(150deg,#07281e 0%,#0b3f2f 45%,#0d5c44 100%);color:#fff;padding:64px 24px 72px;text-align:center;position:relative;overflow:hidden}
+  .hero{background:linear-gradient(150deg,#0a4636 0%,#0d6b50 45%,#0e8a68 100%);color:#fff;padding:64px 24px 72px;text-align:center;position:relative;overflow:hidden}
   .hero::before{content:"";position:absolute;inset:0;background-image:radial-gradient(circle at 82% 12%,rgba(193,154,75,.22),transparent 42%),radial-gradient(circle at 10% 90%,rgba(63,169,130,.18),transparent 45%);pointer-events:none}
   .hero::after{content:"";position:absolute;inset:0;opacity:.05;background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 12 12 27v21h13v-11h10v11h13V27z' fill='none' stroke='%23ffffff' stroke-width='1'/%3E%3C/svg%3E");background-size:60px 60px;pointer-events:none}
   .hero .kicker{position:relative;display:inline-flex;align-items:center;gap:8px;font-size:.74rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:#d9c390;margin-bottom:18px;animation:fadeUp .7s both}
@@ -128,7 +133,7 @@
   .stat:last-child{border-right:none}
   .stat .num{font-family:var(--serif);font-size:1.7rem;font-weight:600;color:#e3c98c}
   .stat .cap{font-size:.7rem;opacity:.75;text-transform:uppercase;letter-spacing:1.6px;margin-top:2px}
-  .searchbar{max-width:660px;margin:0 auto;display:flex;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.28);position:relative;animation:fadeUp .7s .3s both;transition:transform .2s,box-shadow .2s}
+  .searchbar{max-width:660px;margin:0 auto;display:flex;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.24);position:relative;animation:fadeUp .7s .3s both;transition:transform .2s,box-shadow .2s}
   .searchbar:focus-within{transform:translateY(-2px);box-shadow:0 14px 48px rgba(0,0,0,.34)}
   .searchbar .s-icon{display:flex;align-items:center;padding-left:18px;color:#8a968f}
   .searchbar input{flex:1;border:none;outline:none;padding:17px 14px;font-size:1rem;min-width:0;color:#1a2420;background:transparent}
@@ -146,45 +151,52 @@
   /* ---------- Compact mobile ---------- */
   @media(max-width:640px){
     header{padding:9px 10px;gap:6px;flex-wrap:nowrap}
-    .logo{font-size:1.22rem;gap:6px}
-    .logo svg{width:24px;height:24px}
+    .logo{font-size:1.38rem;gap:7px}
+    .logo svg{width:27px;height:27px}
     .header-actions{gap:6px;flex-wrap:nowrap;flex-shrink:0}
     .header-actions .btn{padding:7px 10px;font-size:.72rem;white-space:nowrap}
     .header-actions .btn-ghost{display:none}
     .icon-btn{width:32px;height:32px}
     .icon-btn svg{width:15px;height:15px}
     .acct-av{width:27px;height:27px;font-size:.72rem}
-  }
-  @media(max-width:380px){
-    #darkBtn{display:none}
-    .hero{padding:26px 16px 34px}
-    .hero .kicker{font-size:.6rem;letter-spacing:1.4px;margin-bottom:10px}
+    .hero{padding:20px 16px 26px}
+    .hero .kicker{font-size:.58rem;letter-spacing:1.6px;margin-bottom:8px}
     .hero .kicker::before,.hero .kicker::after{display:none}
-    .hero h1{font-size:1.6rem;margin-bottom:10px}
+    .hero h1{font-size:1.45rem;margin-bottom:8px}
     .hero h1 br{display:none}
-    .hero p{font-size:.88rem;margin-bottom:18px}
+    .hero p{font-size:.84rem;margin-bottom:14px}
     .stats{gap:6px 0}
     .stat{padding:0 14px}
-    .stat .num{font-size:1.2rem}
+    .stat .num{font-size:1.15rem}
     .stat .cap{letter-spacing:.8px;font-size:.6rem}
-    .searchbar input{padding:13px 12px;font-size:.93rem}
-    .searchbar button{padding:0 16px;font-size:.88rem}
-    .loc-row{margin-top:13px}
-    .loc-btn{padding:8px 15px;font-size:.8rem}
+    .searchbar input{padding:12px 12px;font-size:.92rem}
+    .searchbar button{padding:0 15px;font-size:.86rem}
+    .loc-row{margin-top:11px}
+    .loc-btn{padding:7px 14px;font-size:.78rem}
     .quick-row{gap:7px}
-    .quick{padding:8px 15px;font-size:.78rem}
-    #locStatus{font-size:.75rem;margin-top:8px}
-    .why{padding:36px 16px 4px}
-    .pop{padding:34px 16px 0}
-    .stats-band{margin-top:36px;padding:30px 16px}
-    .eyebrow{letter-spacing:2px;font-size:.66rem}
+    .quick{padding:8px 14px;font-size:.76rem}
+    #locStatus{font-size:.74rem;margin-top:7px}
+    .why{padding:26px 16px 0}
+    .pop{padding:24px 16px 0}
+    .stats-band{margin-top:26px;padding:20px 12px}
+    .eyebrow{letter-spacing:1.8px;font-size:.63rem;margin-bottom:7px}
+    .why h2,.pop h2{font-size:1.26rem;margin-bottom:15px}
+    .why h2 br{display:none}
+    .why-item{display:flex;text-align:left;align-items:flex-start;gap:13px;padding:13px 15px}
+    .why-item .wi-ic{width:37px;height:37px;margin:0;border-radius:11px;flex-shrink:0}
+    .why-item .wi-ic svg{width:18px;height:18px}
+    .why-item h3{font-size:.93rem;margin-bottom:2px}
+    .why-item p{font-size:.79rem;line-height:1.5}
     .wrap{padding:0 16px}
-    .section-title{font-size:1.25rem;padding-top:24px}
+    .section-title{font-size:1.22rem;padding-top:22px}
     .foot-links{gap:28px}
     .tabs{flex-wrap:wrap;overflow-x:visible}
     .tab{padding:8px 15px;font-size:.83rem}
     .filters select{flex:1 1 45%}
     .sort-label{margin-left:0;width:100%}
+  }
+  @media(max-width:380px){
+    #darkBtn{display:none}
   }
 
   /* ---------- Curated sections ---------- */
@@ -200,7 +212,7 @@
   .why-item .wi-ic svg{width:23px;height:23px}
   .why-item h3{font-family:var(--serif);font-size:1.1rem;font-weight:600;margin-bottom:7px}
   .why-item p{font-size:.86rem;color:var(--muted);line-height:1.65}
-  .stats-band{background:linear-gradient(150deg,#07281e,#0d5c44);color:#fff;margin-top:56px;padding:46px 24px;text-align:center}
+  .stats-band{background:linear-gradient(150deg,#0a4636,#0e8a68);color:#fff;margin-top:56px;padding:46px 24px;text-align:center}
   .pop{max-width:1100px;margin:0 auto;padding:52px 24px 4px;text-align:center}
 
   /* ---------- Layout ---------- */
@@ -358,8 +370,8 @@
   <p id="heroSub">Verified rentals and homes for sale across Kenya, sorted by what's nearest to you. No agents. No viewing fees. Karibu home.</p>
   <div class="searchbar">
     <span class="s-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
-    <input id="searchInput" type="text" placeholder="" oninput="render()">
-    <button onclick="render()">Search</button>
+    <input id="searchInput" type="text" placeholder="" oninput="render()" onkeydown="if(event.key==='Enter')doSearch()">
+    <button id="searchBtn" onclick="doSearch()"><span class="sp"></span>Search</button>
   </div>
   <div class="loc-row">
     <button class="loc-btn" id="gpsBtn" onclick="useMyLocation()">
@@ -571,7 +583,7 @@ const ICONS = {
   key:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m11 12 9-9M15 5l3 3"/></svg>'
 };
 const CAT = {
-  rent:{label:"For Rent",unit:"/month",grad:"linear-gradient(140deg,#0b3f2f,#14735a)",gal:["home","sofa","shower"],badge:"rent"},
+  rent:{label:"For Rent",unit:"/month",grad:"linear-gradient(140deg,#0d6b50,#14735a)",gal:["home","sofa","shower"],badge:"rent"},
   sale:{label:"For Sale",unit:"",grad:"linear-gradient(140deg,#20272e,#3d4b56)",gal:["home","tree","key"],badge:"sale"}
 };
 const AMENITIES = {
@@ -746,6 +758,14 @@ function typewriter(){
     if(i>=word.length){clearInterval(iv);setTimeout(()=>{hi=(hi+1)%HINTS.length;typewriter()},2200)}
   },45);
 }
+/* Search with feedback: skeleton shimmer + scroll to results */
+function doSearch(){
+  const btn=document.getElementById("searchBtn");
+  btn.classList.add("busy");
+  document.getElementById("cards").innerHTML=Array.from({length:6},()=>'<div class="skel"></div>').join("");
+  document.querySelector(".section-title").scrollIntoView({behavior:"smooth",block:"start"});
+  setTimeout(()=>{btn.classList.remove("busy");render()},650);
+}
 /* Quick filters */
 function quickFilter(cat,price,beds,label){
   activeCat=cat;
@@ -807,7 +827,7 @@ function afterLocation(){
   if(map){
     map.setView(userLoc,12);
     if(userMarker)userMarker.remove();
-    userMarker=L.circleMarker(userLoc,{radius:9,color:"#fff",weight:2.5,fillColor:"#0d5c44",fillOpacity:1}).addTo(map).bindPopup("You are here");
+    userMarker=L.circleMarker(userLoc,{radius:9,color:"#fff",weight:2.5,fillColor:"#0e8a68",fillOpacity:1}).addTo(map).bindPopup("You are here");
   }
   render();
   renderInsights();

@@ -673,7 +673,7 @@ function pageShell({ title, description, canonical, jsonLd, bodyHtml }) {
 <meta property="og:site_name" content="PataHome">
 <meta property="og:image" content="${BASE_URL}/og-image.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="theme-color" content="#0d5c44">
+<meta name="theme-color" content="#0e8a68">
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
