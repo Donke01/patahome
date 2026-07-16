@@ -36,6 +36,7 @@
   *{box-sizing:border-box;margin:0;padding:0}
   html{scroll-behavior:smooth}
   body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);line-height:1.55;transition:background .3s,color .3s;-webkit-font-smoothing:antialiased}
+  html,body{overflow-x:clip;max-width:100%}
   button{font-family:inherit;cursor:pointer}
   input,select{font-family:inherit}
 
@@ -47,7 +48,7 @@
   .logo{font-size:1.3rem;font-weight:800;color:var(--brand);display:flex;align-items:center;gap:9px;letter-spacing:-.4px;font-family:var(--serif)}
   .logo svg{width:27px;height:27px}
   .logo span b{color:var(--gold);font-weight:700}
-  .header-actions{margin-left:auto;display:flex;gap:10px;align-items:center}
+  .header-actions{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end;min-width:0}
   .btn{border:none;border-radius:10px;padding:10px 18px;font-weight:600;font-size:.88rem;transition:.18s;letter-spacing:.1px}
   .btn-primary{background:var(--brand);color:#fff;box-shadow:0 2px 8px rgba(13,92,68,.25)}
   .btn-primary:hover{background:var(--brand-dark);transform:translateY(-1px);box-shadow:0 4px 14px rgba(13,92,68,.3)}
@@ -87,6 +88,29 @@
   .quick-row{margin-top:18px;display:flex;justify-content:center;gap:9px;flex-wrap:wrap;position:relative;animation:fadeUp .7s .46s both}
   .quick{background:rgba(255,255,255,.96);color:var(--brand-dark);border:none;border-radius:999px;padding:9px 19px;font-size:.83rem;font-weight:700;transition:.18s;box-shadow:0 3px 12px rgba(0,0,0,.18)}
   .quick:hover{transform:translateY(-2px);background:#e3c98c;color:#0b3f2f}
+
+  /* ---------- Compact mobile ---------- */
+  @media(max-width:640px){
+    header{padding:10px 14px;gap:8px}
+    .logo{font-size:1.15rem}
+    .logo svg{width:23px;height:23px}
+    .header-actions{gap:7px}
+    .header-actions .btn{padding:8px 12px;font-size:.78rem}
+    .header-actions .btn-ghost{display:none}
+    .icon-btn{width:35px;height:35px}
+    .hero{padding:46px 16px 54px}
+    .hero p{font-size:.93rem}
+    .stats{gap:6px 0}
+    .stat{padding:0 16px}
+    .stat .num{font-size:1.35rem}
+    .stat .cap{letter-spacing:1px;font-size:.64rem}
+    .searchbar button{padding:0 18px}
+    .quick{padding:8px 14px;font-size:.78rem}
+    .trust{gap:10px 20px;font-size:.75rem}
+    .wrap{padding:0 16px}
+    .section-title{font-size:1.25rem;padding-top:24px}
+    .foot-links{gap:28px}
+  }
 
   /* ---------- Trust bar ---------- */
   .trust-wrap{background:var(--brand-light);border-bottom:1px solid var(--line);padding:13px 20px;transition:background .3s}
