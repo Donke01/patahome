@@ -95,7 +95,7 @@
   #heroSub.fade{opacity:0!important}
   #heroHead{transition:opacity .42s ease}
   #heroHead.fade{opacity:0!important}
-  @keyframes heroGlow{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(36px,-24px) scale(1.06)}}
+  @keyframes heroGlow{0%,100%{transform:translate(0,0)}50%{transform:translate(28px,-18px)}}
   .hero::before{animation:heroGlow 15s ease-in-out infinite}
   .btn:active,.quick:active,.tab:active,.loc-btn:active{transform:scale(.96)}
   @keyframes modalIn{from{opacity:0;transform:translateY(24px) scale(.96)}to{opacity:1;transform:none}}
@@ -135,7 +135,7 @@
   .acct-chip{flex-shrink:0}
 
   /* ---------- Hero ---------- */
-  .hero{background:linear-gradient(150deg,#0a4636 0%,#0d6b50 45%,#0e8a68 100%);color:#fff;padding:64px 24px 72px;text-align:center;position:relative;overflow:hidden}
+  .hero{background:linear-gradient(150deg,#0a4636 0%,#0d6b50 45%,#0e8a68 100%);color:#fff;padding:64px 24px 72px;text-align:center;position:relative}
   .hero::before{content:"";position:absolute;inset:0;background-image:radial-gradient(circle at 82% 12%,rgba(193,154,75,.22),transparent 42%),radial-gradient(circle at 10% 90%,rgba(63,169,130,.18),transparent 45%);pointer-events:none}
   .hero::after{content:"";position:absolute;inset:0;opacity:.05;background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 12 12 27v21h13v-11h10v11h13V27z' fill='none' stroke='%23ffffff' stroke-width='1'/%3E%3C/svg%3E");background-size:60px 60px;pointer-events:none}
   .hero .kicker{position:relative;display:inline-flex;align-items:center;gap:8px;font-size:.74rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:#d9c390;margin-bottom:18px;animation:fadeUp .7s both}
@@ -148,7 +148,8 @@
   .stat:last-child{border-right:none}
   .stat .num{font-family:var(--serif);font-size:1.7rem;font-weight:600;color:#e3c98c}
   .stat .cap{font-size:.7rem;opacity:.75;text-transform:uppercase;letter-spacing:1.6px;margin-top:2px}
-  .searchbar{max-width:660px;margin:0 auto;display:flex;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.24);position:relative;animation:fadeUp .7s .3s both;transition:transform .2s,box-shadow .2s}
+  .search-wrap{max-width:660px;margin:0 auto;position:relative;animation:fadeUp .7s .3s both}
+  .searchbar{display:flex;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.24);transition:transform .2s,box-shadow .2s}
   .searchbar:focus-within{transform:translateY(-2px);box-shadow:0 14px 48px rgba(0,0,0,.34)}
   .searchbar .s-icon{display:flex;align-items:center;padding-left:18px;color:#8a968f}
   .searchbar input{flex:1;border:none;outline:none;padding:17px 14px;font-size:1rem;min-width:0;color:#1a2420;background:transparent}
@@ -383,10 +384,12 @@
   <div class="kicker">Kenya's Direct-From-Owner Marketplace</div>
   <h1 id="heroHead"><span id="hlPre">Find your next </span><span class="rot-wrap"><span id="rotWord" class="hl">home</span></span><span id="hlPost"> <br>straight from the owner.</span></h1>
   <p id="heroSub">Verified rentals and homes for sale across Kenya, sorted by what's nearest to you. No agents. No viewing fees. Karibu home.</p>
-  <div class="searchbar">
-    <span class="s-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
-    <input id="searchInput" type="text" placeholder="" autocomplete="off" oninput="onSearchInput()" onfocus="renderSugg()" onkeydown="if(event.key==='Enter'){closeSugg();doSearch()}else if(event.key==='Escape')closeSugg()">
-    <button id="searchBtn" onclick="closeSugg();doSearch()"><span class="sp"></span>Search</button>
+  <div class="search-wrap">
+    <div class="searchbar">
+      <span class="s-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
+      <input id="searchInput" type="text" placeholder="" autocomplete="off" oninput="onSearchInput()" onfocus="renderSugg()" onkeydown="if(event.key==='Enter'){closeSugg();doSearch()}else if(event.key==='Escape')closeSugg()">
+      <button id="searchBtn" onclick="closeSugg();doSearch()"><span class="sp"></span>Search</button>
+    </div>
     <div class="sugg" id="sugg"></div>
   </div>
   <div class="loc-row">
@@ -808,7 +811,7 @@ function renderSugg(){
 }
 function pickSugg(id){closeSugg();openDetail(id)}
 function closeSugg(){document.getElementById("sugg").classList.remove("show")}
-document.addEventListener("click",e=>{if(!e.target.closest(".searchbar"))closeSugg()});
+document.addEventListener("click",e=>{if(!e.target.closest(".search-wrap"))closeSugg()});
 
 /* Search with feedback: skeleton shimmer + scroll to results */
 function doSearch(){
