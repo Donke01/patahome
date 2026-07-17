@@ -191,17 +191,24 @@
     .quick-row{gap:7px}
     .quick{padding:8px 14px;font-size:.76rem}
     #locStatus{font-size:.74rem;margin-top:7px}
-    .why{padding:26px 16px 0}
-    .pop{padding:24px 16px 0}
-    .stats-band{margin-top:26px;padding:20px 12px}
-    .eyebrow{letter-spacing:1.8px;font-size:.63rem;margin-bottom:7px}
-    .why h2,.pop h2{font-size:1.26rem;margin-bottom:15px}
-    .why h2 br{display:none}
-    .why-item{display:flex;text-align:left;align-items:flex-start;gap:13px;padding:13px 15px}
-    .why-item .wi-ic{width:37px;height:37px;margin:0;border-radius:11px;flex-shrink:0}
-    .why-item .wi-ic svg{width:18px;height:18px}
-    .why-item h3{font-size:.93rem;margin-bottom:2px}
-    .why-item p{font-size:.79rem;line-height:1.5}
+    .hero-chips{margin-top:11px;gap:6px}
+    .hchip{padding:6px 12px;font-size:.71rem}
+    .strip{padding:10px 12px}
+    .strip-in{gap:7px 14px;font-size:.74rem}
+    .st-div{display:none}
+    .st-num{font-size:.72rem}
+    .st-num b{font-size:.9rem}
+    .eyebrow{letter-spacing:1.8px;font-size:.63rem;margin-bottom:5px}
+    .latest{padding:24px 16px 36px}
+    .latest-head{margin-bottom:12px}
+    .latest-head h2{font-size:1.3rem}
+    .latest-head .btn{padding:8px 13px;font-size:.75rem}
+    .latest-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .lc-img{height:92px}
+    .lc-body{padding:8px 10px 10px}
+    .lc-price{font-size:.9rem}
+    .lc-t{font-size:.75rem}
+    .lc-a{font-size:.68rem}
     .wrap{padding:0 16px}
     .section-title{font-size:1.22rem;padding-top:22px}
     .foot-links{gap:28px}
@@ -213,6 +220,37 @@
   @media(max-width:380px){
     #darkBtn{display:none}
   }
+
+  /* ---------- Hero chips ---------- */
+  .hero-chips{margin-top:15px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap;position:relative;animation:fadeUp .7s .42s both}
+  .hchip{background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:999px;padding:7px 16px;font-size:.79rem;font-weight:600;transition:.18s}
+  .hchip:hover{background:#fff;color:var(--brand-dark);transform:translateY(-1px)}
+
+  /* ---------- Trust strip ---------- */
+  .strip{background:var(--brand-light);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:13px 20px}
+  .strip-in{max-width:1100px;margin:0 auto;display:flex;justify-content:center;align-items:center;gap:10px 26px;flex-wrap:wrap;font-size:.84rem}
+  .st-item{color:var(--brand);font-weight:600;display:flex;align-items:center;gap:7px}
+  .st-item svg{width:14px;height:14px;flex-shrink:0}
+  .st-div{width:1px;height:18px;background:var(--line)}
+  .st-num{color:var(--muted);font-size:.8rem}
+  .st-num b{font-family:var(--serif);font-weight:600;color:var(--ink);font-size:1.02rem;margin-right:3px}
+
+  /* ---------- Latest listings ---------- */
+  .latest{max-width:1100px;margin:0 auto;padding:40px 24px 54px}
+  .latest-head{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;margin-bottom:18px;flex-wrap:wrap}
+  .latest-head h2{font-family:var(--serif);font-size:1.65rem;font-weight:600;letter-spacing:-.4px}
+  .latest-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(230px,100%),1fr));gap:14px}
+  .lcard{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);transition:transform .2s,box-shadow .2s;text-decoration:none;color:var(--ink);animation:fadeUp .5s both}
+  .lcard:hover{transform:translateY(-4px);box-shadow:var(--shadow-lift)}
+  .lc-img{height:124px;display:flex;align-items:center;justify-content:center;position:relative;color:#fff;overflow:hidden}
+  .lc-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .lc-img .wm{width:52px;height:52px;opacity:.3}
+  .lc-body{padding:11px 13px 13px}
+  .lc-price{font-family:var(--serif);font-weight:600;font-size:1.02rem}
+  .lc-price small{font-family:'Inter',sans-serif;color:var(--muted);font-size:.68rem;font-weight:500}
+  .lc-t{font-size:.83rem;font-weight:600;margin:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .lc-a{font-size:.74rem;color:var(--muted);display:flex;align-items:center;gap:5px}
+  .lc-a svg{width:11px;height:11px;flex-shrink:0}
 
   /* ---------- Curated sections ---------- */
   .eyebrow{font-size:.72rem;font-weight:700;letter-spacing:2.6px;text-transform:uppercase;color:var(--gold);margin-bottom:12px}
@@ -391,50 +429,37 @@
     </div>
     <div class="sugg" id="sugg"></div>
   </div>
-</section>
-
-<!-- The promise -->
-<section class="why">
-  <div class="eyebrow reveal">The PataHome promise</div>
-  <h2 class="reveal d1">Fewer middlemen.<br>More <em>karibu</em>.</h2>
-  <div class="why-grid">
-    <div class="why-item reveal">
-      <div class="wi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v6c0 5 3.5 8 8 11 4.5-3 8-6 8-11V5z"/><path d="m9 12 2 2 4-4"/></svg></div>
-      <h3>ID-verified owners</h3>
-      <p>Every landlord and seller is identity-checked before their listings go live. No brokers, no ghosts.</p>
-    </div>
-    <div class="why-item reveal d1">
-      <div class="wi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
-      <h3>Talk directly, pay nothing</h3>
-      <p>Call or WhatsApp the owner the moment you find a fit. Zero agent fees, zero viewing fees.</p>
-    </div>
-    <div class="why-item reveal d2">
-      <div class="wi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11a7 7 0 0 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></div>
-      <h3>Nearest homes first</h3>
-      <p>Share your location and the closest kejas rise to the top — with live market insights for your area.</p>
-    </div>
+  <div class="hero-chips">
+    <button class="hchip" onclick="quickFilter('rent','0-5000','0')">Bedsitters under 5K</button>
+    <button class="hchip" onclick="quickFilter('rent','5000-20000','1')">1BR under 20K</button>
+    <button class="hchip" onclick="quickFilter('rent','5000-20000','2')">2BR to share</button>
+    <button class="hchip" onclick="quickFilter('sale','','')">Homes for sale</button>
   </div>
 </section>
 
-<!-- Live counters -->
-<section class="stats-band reveal">
-  <div class="stats">
-    <div class="stat"><div class="num" id="statListings">0</div><div class="cap">Live listings</div></div>
-    <div class="stat"><div class="num" id="statAreas">0</div><div class="cap">Areas covered</div></div>
-    <div class="stat"><div class="num" id="statOwners">0</div><div class="cap">Verified owners</div></div>
+<!-- Trust strip: promise + live counters in one line -->
+<section class="strip reveal">
+  <div class="strip-in">
+    <span class="st-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>ID-verified owners</span>
+    <span class="st-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Zero agent fees</span>
+    <span class="st-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Nearest homes first</span>
+    <span class="st-div"></span>
+    <span class="st-num"><b id="statListings">0</b> listings</span>
+    <span class="st-num"><b id="statAreas">0</b> areas</span>
+    <span class="st-num"><b id="statOwners">0</b> owners</span>
   </div>
 </section>
 
-<!-- Popular searches -->
-<section class="pop">
-  <div class="eyebrow reveal">Popular right now</div>
-  <h2 class="reveal d1">Start with what comrades search most</h2>
-  <div class="quick-row reveal d2">
-    <button class="quick" onclick="quickFilter('rent','0-5000','0','Bedsitters under 5K')">Bedsitters under 5K</button>
-    <button class="quick" onclick="quickFilter('rent','5000-20000','1','1 Bedrooms under 20K')">1 Bedrooms under 20K</button>
-    <button class="quick" onclick="quickFilter('rent','5000-20000','2','2 Bedrooms to share')">2 Bedrooms to share</button>
-    <button class="quick" onclick="quickFilter('sale','','','Homes for sale')">Homes for sale</button>
+<!-- Latest listings preview -->
+<section class="latest">
+  <div class="latest-head reveal">
+    <div>
+      <div class="eyebrow">Fresh on the market</div>
+      <h2>Latest listings</h2>
+    </div>
+    <a class="btn btn-primary" href="/browse.html" style="text-decoration:none">Browse all →</a>
   </div>
+  <div class="latest-grid" id="latestGrid"></div>
 </section>
 
 
@@ -695,6 +720,25 @@ function pickSugg(id){closeSugg();location.href="/browse.html?open="+id}
 function closeSugg(){document.getElementById("sugg").classList.remove("show")}
 document.addEventListener("click",e=>{if(!e.target.closest(".search-wrap"))closeSugg()});
 
+function renderLatest(){
+  const g=document.getElementById("latestGrid");
+  const list=[...LISTINGS].sort((a,b)=>b.id-a.id).slice(0,6);
+  g.innerHTML=list.map((x,i)=>{
+    const c=CAT[x.cat];
+    return `<a class="lcard" style="animation-delay:${i*70}ms" href="/browse.html?open=${x.id}">
+      <div class="lc-img" style="background:${c.grad}">
+        ${x.photos.length?`<img src="${x.photos[0].thumb}" loading="lazy" alt="${esc(x.title)}">`:`<span class="wm">${ICONS[c.gal[0]]}</span>`}
+        <span class="badge ${c.badge}">${c.label}</span>
+      </div>
+      <div class="lc-body">
+        <div class="lc-price">${fmt(x.price)} <small>${c.unit}</small></div>
+        <div class="lc-t">${esc(x.title)}</div>
+        <div class="lc-a">${PIN_SVG}${esc(x.area)}</div>
+      </div>
+    </a>`;
+  }).join("");
+}
+
 /* Search hands off to the browse page */
 function doSearch(){
   const q=document.getElementById("searchInput").value.trim();
@@ -702,7 +746,7 @@ function doSearch(){
   location.href="/browse.html"+(q?"?q="+encodeURIComponent(q):"");
 }
 /* Quick filters */
-function quickFilter(cat,price,beds,label){
+function quickFilter(cat,price,beds){
   location.href="/browse.html?cat="+cat+(price?"&price="+price:"")+(beds!==""?"&beds="+beds:"");
 }
 /* Favourites (saved on this device) */
@@ -1050,6 +1094,7 @@ async function paintAccount(){
     return;
   }
   try{animateStats()}catch(e){}
+  try{renderLatest()}catch(e){}
   if(inBrowser&&!reduceMotion){
     try{
       const lockAll=()=>{lockSubHeight();lockHeadHeight()};
