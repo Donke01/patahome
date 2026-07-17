@@ -219,6 +219,17 @@
   .browse-h{font-family:var(--serif);font-size:clamp(1.5rem,3.4vw,2.1rem);font-weight:600;letter-spacing:-.4px;margin-bottom:4px}
   .browse-p{opacity:.85;font-size:.92rem;margin-bottom:22px}
   @media(max-width:640px){.hero-browse{padding:20px 16px 26px}.browse-p{font-size:.8rem;margin-bottom:14px}}
+  /* ---------- Mobile bottom nav ---------- */
+  .bnav{display:none}
+  @media(max-width:640px){
+    body{padding-bottom:64px}
+    .bnav{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:1300;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);border-top:1px solid var(--line);padding:7px 0 calc(7px + env(safe-area-inset-bottom))}
+    body.dark .bnav{background:rgba(14,20,17,.96)}
+    .bn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;text-decoration:none;color:var(--muted);font-size:.64rem;font-weight:600}
+    .bn svg{width:21px;height:21px}
+    .bn.on{color:var(--brand)}
+  }
+
   /* ---------- Curated sections ---------- */
   .eyebrow{font-size:.72rem;font-weight:700;letter-spacing:2.6px;text-transform:uppercase;color:var(--gold);margin-bottom:12px}
   .why{max-width:1100px;margin:0 auto;padding:58px 24px 8px;text-align:center}
@@ -275,7 +286,7 @@
     .map-panel{display:none}
     .map-panel.mobile-open{display:block;position:fixed;inset:0;z-index:1500;background:var(--bg);padding:14px}
     .map-panel.mobile-open #map{height:calc(100vh - 96px);height:calc(100dvh - 96px)}
-    .map-fab{display:flex;position:fixed;bottom:20px;right:20px;z-index:1400;background:var(--brand);color:#fff;border:none;border-radius:999px;padding:14px 24px;font-weight:700;font-size:.93rem;box-shadow:0 8px 24px rgba(0,0,0,.3);align-items:center;gap:9px}
+    .map-fab{display:flex;position:fixed;bottom:calc(76px + env(safe-area-inset-bottom));right:16px;z-index:1400;background:var(--brand);color:#fff;border:none;border-radius:999px;padding:14px 24px;font-weight:700;font-size:.93rem;box-shadow:0 8px 24px rgba(0,0,0,.3);align-items:center;gap:9px}
     .map-fab svg{width:16px;height:16px}
     .map-panel.mobile-open ~ .map-fab, body.map-open .map-fab{display:none}
     .map-close{display:flex;position:absolute;top:22px;right:22px;z-index:1600;background:var(--ink);color:var(--bg);border:none;border-radius:50%;width:42px;height:42px;font-size:1.1rem;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.3)}
@@ -548,6 +559,14 @@
     <button class="btn btn-primary" style="width:100%;margin-top:12px;padding:12px" onclick="sendInquiry()">Send Message</button>
   </div>
 </div>
+
+
+<nav class="bnav">
+  <a href="/" class="bn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg><span>Home</span></a>
+  <a href="/browse.html" class="bn on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Browse</span></a>
+  <a href="/dashboard.html" class="bn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span>Post</span></a>
+  <a href="/dashboard.html" class="bn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg><span>Account</span></a>
+</nav>
 
 <div class="toast" id="toast"></div>
 
