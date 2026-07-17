@@ -193,6 +193,8 @@
     .sl-h2{font-size:1.56rem;margin-bottom:10px}
     .sl-h2 br{display:none}
     .sl-trust{font-size:.76rem;gap:7px 13px}
+    .sl-p{font-size:.78rem;margin-bottom:11px}
+    .sl-cta{font-size:.78rem;padding:9px 17px}
     .stat{padding-right:16px;margin-right:16px}
     .search-wrap{margin-top:12px}
     .hero-chips{margin-top:11px;gap:6px}
@@ -227,7 +229,7 @@
 
   /* ---------- Hero slider ---------- */
   .slider{position:relative;max-width:1120px;margin:0 auto;min-height:250px;border-radius:20px;overflow:hidden;box-shadow:0 14px 44px rgba(10,45,32,.22);color:#fff}
-  .slide-h{position:absolute;inset:0;display:flex;align-items:center;opacity:0;transform:translateX(-56px);transition:opacity .5s ease,transform .6s cubic-bezier(.16,1,.3,1);pointer-events:none}
+  .slide-h{position:absolute;inset:0;display:flex;align-items:center;opacity:0;transform:translateX(-42px);transition:opacity .38s ease,transform .48s cubic-bezier(.22,1,.36,1);pointer-events:none;will-change:transform,opacity}
   .sl-1{background:linear-gradient(135deg,#0c7a55,#19b98b)}
   .sl-2{background:linear-gradient(135deg,#c07f14,#edb84e)}
   .sl-2 .hl{color:#fff7e2}
@@ -235,13 +237,21 @@
   .sl-2 .kicker::before,.sl-2 .kicker::after{background:rgba(255,243,209,.6)}
   .sl-2 .sl-trust svg{color:#fff}
   .sl-3{background:linear-gradient(135deg,#0f6079,#2cb0c9)}
+  .sl-3 .hl{color:#aef3e2}
+  .sl-4{background:linear-gradient(135deg,#5b21b6,#8b5cf6)}
+  .sl-4 .hl{color:#fcd9a8}
+  .sl-4 .kicker{color:#e6d5ff}
+  .sl-4 .kicker::before,.sl-4 .kicker::after{background:rgba(230,213,255,.55)}
+  .sl-p{opacity:.9;font-size:.95rem;margin:0 0 16px;max-width:520px}
+  .sl-cta{display:inline-block;background:#fff;color:#5b21b6;font-weight:800;font-size:.9rem;border-radius:999px;padding:11px 22px;text-decoration:none;box-shadow:0 6px 18px rgba(0,0,0,.22);transition:transform .18s}
+  .sl-cta:hover{transform:translateY(-2px)}
   .sl-in{display:flex;align-items:center;justify-content:space-between;gap:26px;width:100%;padding:34px 48px 42px;text-align:left}
   .sl-txt{min-width:0}
   .sl-art{flex-shrink:0;width:212px}
   .sl-art svg{width:100%;height:auto;display:block}
   @media(max-width:760px){.sl-art{display:none}.sl-in{padding:24px 22px 36px}}
   .slide-h.on{opacity:1;transform:none;pointer-events:auto}
-  .slide-h.out{opacity:0;transform:translateX(56px)}
+  .slide-h.out{opacity:0;transform:translateX(42px)}
   .sl-h2{font-family:var(--serif);font-size:clamp(1.95rem,4.4vw,3.15rem);font-weight:600;line-height:1.15;letter-spacing:-.5px;margin:0 0 18px}
   .sl-h2 .hl{color:#e3c98c;font-style:italic}
   .sl-trust{display:flex;gap:12px 26px;flex-wrap:wrap;font-size:.92rem;font-weight:600}
@@ -556,8 +566,9 @@
     <div class="slide-h sl-3">
       <div class="sl-in">
         <div class="sl-txt">
-          <div class="kicker">Live right now</div>
-          <h2 class="sl-h2">Kenya is listing <br>on <span class="hl">PataHome</span>.</h2>
+          <div class="kicker">Now live in your town</div>
+          <h2 class="sl-h2">Now available in <span class="hl">Kitale</span> <br>and its environs.</h2>
+          <p class="sl-p">Milimani · Town CBD · Kiminini · Kwanza · Endebess · Bikeke</p>
           <div class="stats">
             <div class="stat"><div class="num" id="statListings">0</div><div class="cap">Live listings</div></div>
             <div class="stat"><div class="num" id="statAreas">0</div><div class="cap">Areas covered</div></div>
@@ -567,9 +578,25 @@
         <div class="sl-art"><svg viewBox="0 0 220 170" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity=".9" aria-hidden="true">
  <path d="M62 142c-22-20-34-37-34-55a34 34 0 0 1 68 0c0 18-12 35-34 55z"/>
  <circle cx="62" cy="85" r="10"/>
- <path d="M152 150c-16-15-25-27-25-41a25 25 0 0 1 50 0c0 14-9 26-25 41z" stroke="#e3c98c"/>
- <circle cx="152" cy="108" r="7" stroke="#e3c98c"/>
+ <path d="M152 150c-16-15-25-27-25-41a25 25 0 0 1 50 0c0 14-9 26-25 41z" stroke="#a5f3dd"/>
+ <circle cx="152" cy="108" r="7" stroke="#a5f3dd"/>
  <path d="M18 158h185" opacity=".5"/>
+</svg></div>
+      </div>
+    </div>
+    <div class="slide-h sl-4">
+      <div class="sl-in">
+        <div class="sl-txt">
+          <div class="kicker">Kwa ma comrade</div>
+          <h2 class="sl-h2">Ma comrade <span class="hl">tumewasort!</span></h2>
+          <p class="sl-p">Bedsitters na 1BRs karibu na campus, bei ya comrade. Pata keja bila stress, bila agent.</p>
+          <a class="sl-cta" href="/browse.html?cat=rent&beds=0">Browse bedsitters →</a>
+        </div>
+        <div class="sl-art"><svg viewBox="0 0 220 170" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity=".92" aria-hidden="true">
+ <path d="M110 28 30 58l80 30 80-30z"/>
+ <path d="M62 74v34c0 10 21 20 48 20s48-10 48-20V74" />
+ <path d="M190 62v34" stroke="#ffd9a8"/><circle cx="190" cy="104" r="5" stroke="#ffd9a8"/>
+ <path d="M40 150c4-12 14-18 26-18s22 6 26 18" stroke="#ffd9a8"/>
 </svg></div>
       </div>
     </div>
@@ -577,6 +604,7 @@
       <button class="sl-dot on" onclick="goSlide(0)" aria-label="Slide 1"></button>
       <button class="sl-dot" onclick="goSlide(1)" aria-label="Slide 2"></button>
       <button class="sl-dot" onclick="goSlide(2)" aria-label="Slide 3"></button>
+      <button class="sl-dot" onclick="goSlide(3)" aria-label="Slide 4"></button>
     </div>
   </div>
   <div class="search-wrap">
@@ -915,16 +943,17 @@ function goSlide(n){
   if(n===slIdx||!slides.length)return;
   slides[slIdx].classList.remove("on");slides[slIdx].classList.add("out");
   const prev=slIdx;
-  setTimeout(()=>slides[prev].classList.remove("out"),600);
+  setTimeout(()=>slides[prev].classList.remove("out"),500);
   slIdx=(n+slides.length)%slides.length;
   slides[slIdx].classList.add("on");
   dots.forEach((d,i)=>d.classList.toggle("on",i===slIdx));
   restartSlider();
 }
-function nextSlide(){goSlide((slIdx+1)%3)}
+const slideCount=()=>document.querySelectorAll("#heroSlider .slide-h").length;
+function nextSlide(){goSlide((slIdx+1)%slideCount())}
 function restartSlider(){
   clearInterval(slTimer);
-  if(!reduceMotion)slTimer=setInterval(nextSlide,6800);
+  if(!reduceMotion)slTimer=setInterval(nextSlide,5000);
 }
 function sizeSlider(){
   const sl=document.getElementById("heroSlider");
@@ -957,7 +986,7 @@ function sizeSlider(){
   el.addEventListener("touchend",e=>{
     if(tx===null)return;
     const dx=e.changedTouches[0].clientX-tx;tx=null;
-    if(Math.abs(dx)>45)goSlide(dx<0?(slIdx+1)%3:(slIdx+2)%3);
+    if(Math.abs(dx)>45){const n=slideCount();goSlide(dx<0?(slIdx+1)%n:(slIdx+n-1)%n)}
   },{passive:true});
 })();
 
