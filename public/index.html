@@ -95,7 +95,6 @@
   #heroHead{transition:opacity .42s ease}
   #heroHead.fade{opacity:0!important}
   @keyframes heroGlow{0%,100%{transform:translate(0,0)}50%{transform:translate(28px,-18px)}}
-  .hero::before{animation:heroGlow 15s ease-in-out infinite}
   .btn:active,.quick:active,.tab:active,.loc-btn:active{transform:scale(.96)}
   @keyframes modalIn{from{opacity:0;transform:translateY(24px) scale(.96)}to{opacity:1;transform:none}}
   .section-title::after{content:"";display:block;width:54px;height:3px;background:var(--gold);border-radius:2px;margin-top:9px;transform:scaleX(0);transform-origin:left;transition:transform .7s cubic-bezier(.16,1,.3,1) .2s}
@@ -134,22 +133,20 @@
   .acct-chip{flex-shrink:0}
 
   /* ---------- Hero ---------- */
-  .hero{background:linear-gradient(150deg,#0a4636 0%,#0d6b50 45%,#0e8a68 100%);color:#fff;padding:64px 24px 72px;text-align:center;position:relative}
-  .hero::before{content:"";position:absolute;inset:0;background-image:radial-gradient(circle at 82% 12%,rgba(193,154,75,.22),transparent 42%),radial-gradient(circle at 10% 90%,rgba(63,169,130,.18),transparent 45%);pointer-events:none}
-  .hero::after{content:"";position:absolute;inset:0;opacity:.05;background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 12 12 27v21h13v-11h10v11h13V27z' fill='none' stroke='%23ffffff' stroke-width='1'/%3E%3C/svg%3E");background-size:60px 60px;pointer-events:none}
-  .hero .kicker{position:relative;display:inline-flex;align-items:center;gap:8px;font-size:.74rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:#d9c390;margin-bottom:18px;animation:fadeUp .7s both}
+  .hero{padding:16px 16px 6px;text-align:center;position:relative}
+  .hero .kicker{position:relative;display:inline-flex;text-align:left;align-items:center;gap:8px;font-size:.74rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:#d9c390;margin-bottom:18px;animation:fadeUp .7s both}
   .hero .kicker::before,.hero .kicker::after{content:"";width:26px;height:1px;background:rgba(217,195,144,.55)}
-  .hero h1{font-family:var(--serif);font-size:clamp(2rem,5vw,3.3rem);font-weight:600;letter-spacing:-.5px;line-height:1.12;margin-bottom:16px;position:relative;animation:fadeUp .7s .08s both}
+  .hero h1{font-family:var(--serif);font-size:clamp(1.6rem,3.6vw,2.55rem);font-weight:600;letter-spacing:-.5px;line-height:1.14;margin-bottom:12px}
   .hero h1 .hl{color:#e3c98c;font-style:italic}
-  .hero p{opacity:.85;max-width:600px;margin:0 auto 30px;font-size:1.02rem;font-weight:400;position:relative;animation:fadeUp .7s .16s both}
-  .stats{display:flex;justify-content:center;gap:0;position:relative;flex-wrap:wrap}
-  .stat{padding:0 30px;border-right:1px solid rgba(255,255,255,.18)}
+  .hero p{opacity:.88;max-width:540px;margin:0;font-size:.97rem}
+  .stats{display:flex;gap:0;position:relative;flex-wrap:wrap}
+  .stat{padding:0 26px 0 0;margin-right:26px;border-right:1px solid rgba(255,255,255,.22)}
   .stat:last-child{border-right:none}
   .stat .num{font-family:var(--serif);font-size:1.7rem;font-weight:600;color:#e3c98c}
   .stat .cap{font-size:.7rem;opacity:.75;text-transform:uppercase;letter-spacing:1.6px;margin-top:2px}
-  .search-wrap{max-width:660px;margin:0 auto;position:relative;animation:fadeUp .7s .3s both}
-  .searchbar{display:flex;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.24);transition:transform .2s,box-shadow .2s}
-  .searchbar:focus-within{transform:translateY(-2px);box-shadow:0 14px 48px rgba(0,0,0,.34)}
+  .search-wrap{max-width:660px;margin:18px auto 0;position:relative;animation:fadeUp .7s .3s both}
+  .searchbar{display:flex;background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 8px 28px rgba(16,45,32,.12);transition:transform .2s,box-shadow .2s}
+  .searchbar:focus-within{transform:translateY(-2px);border-color:var(--brand);box-shadow:0 12px 36px rgba(16,45,32,.18)}
   .searchbar .s-icon{display:flex;align-items:center;padding-left:18px;color:#8a968f}
   .searchbar input{flex:1;border:none;outline:none;padding:17px 14px;font-size:1rem;min-width:0;color:#1a2420;background:transparent}
   .searchbar button{background:var(--brand);border:none;color:#fff;padding:0 30px;font-weight:700;font-size:.95rem;letter-spacing:.3px;transition:.18s;margin:6px;border-radius:10px}
@@ -177,9 +174,9 @@
     .hero{padding:20px 16px 26px}
     .hero .kicker{font-size:.58rem;letter-spacing:1.6px;margin-bottom:8px}
     .hero .kicker::before,.hero .kicker::after{display:none}
-    .hero h1{font-size:1.45rem;margin-bottom:8px}
+    .hero h1{font-family:var(--serif);font-size:clamp(1.6rem,3.6vw,2.55rem);font-weight:600;letter-spacing:-.5px;line-height:1.14;margin-bottom:12px}
     .hero h1 br{display:none}
-    .hero p{font-size:.84rem;margin-bottom:14px}
+    .hero p{opacity:.88;max-width:540px;margin:0;font-size:.97rem}
     .stats{gap:6px 0}
     .stat{padding:0 14px}
     .stat .num{font-size:1.15rem}
@@ -191,11 +188,12 @@
     .quick-row{gap:7px}
     .quick{padding:8px 14px;font-size:.76rem}
     #locStatus{font-size:.74rem;margin-top:7px}
-    .slider{min-height:196px;padding-bottom:24px;margin-bottom:4px}
-    .slide-h{inset:0 0 24px 0}
-    .sl-h2{font-size:1.45rem;margin-bottom:12px}
+    .slider{min-height:190px;border-radius:15px}
+    .sl-h2{font-size:1.34rem;margin-bottom:10px}
     .sl-h2 br{display:none}
-    .sl-trust{font-size:.78rem;gap:8px 14px}
+    .sl-trust{font-size:.76rem;gap:7px 13px}
+    .stat{padding-right:16px;margin-right:16px}
+    .search-wrap{margin-top:12px}
     .hero-chips{margin-top:11px;gap:6px}
     .hchip{padding:6px 12px;font-size:.71rem}
     .strip{padding:10px 12px}
@@ -227,13 +225,21 @@
   }
 
   /* ---------- Hero slider ---------- */
-  .slider{position:relative;max-width:820px;margin:0 auto 8px;min-height:250px;padding-bottom:30px}
-  .slide-h{position:absolute;inset:0 0 30px 0;display:flex;flex-direction:column;justify-content:center;align-items:center;opacity:0;transform:translateX(-56px);transition:opacity .5s ease,transform .6s cubic-bezier(.16,1,.3,1);pointer-events:none}
+  .slider{position:relative;max-width:1120px;margin:0 auto;min-height:250px;border-radius:20px;overflow:hidden;box-shadow:0 14px 44px rgba(10,45,32,.22);color:#fff}
+  .slide-h{position:absolute;inset:0;display:flex;align-items:center;opacity:0;transform:translateX(-56px);transition:opacity .5s ease,transform .6s cubic-bezier(.16,1,.3,1);pointer-events:none}
+  .sl-1{background:linear-gradient(135deg,#0a4636,#0e8a68)}
+  .sl-2{background:linear-gradient(135deg,#6b450e,#c9932e)}
+  .sl-3{background:linear-gradient(135deg,#14242c,#2e5361)}
+  .sl-in{display:flex;align-items:center;justify-content:space-between;gap:26px;width:100%;padding:34px 48px 42px;text-align:left}
+  .sl-txt{min-width:0}
+  .sl-art{flex-shrink:0;width:212px}
+  .sl-art svg{width:100%;height:auto;display:block}
+  @media(max-width:760px){.sl-art{display:none}.sl-in{padding:24px 22px 36px}}
   .slide-h.on{opacity:1;transform:none;pointer-events:auto}
   .slide-h.out{opacity:0;transform:translateX(56px)}
-  .sl-h2{font-family:var(--serif);font-size:clamp(1.7rem,4.2vw,2.7rem);font-weight:600;line-height:1.15;letter-spacing:-.5px;margin:0 0 18px}
+  .sl-h2{font-family:var(--serif);font-size:clamp(1.6rem,3.6vw,2.55rem);font-weight:600;line-height:1.15;letter-spacing:-.5px;margin:0 0 18px}
   .sl-h2 .hl{color:#e3c98c;font-style:italic}
-  .sl-trust{display:flex;gap:12px 26px;flex-wrap:wrap;justify-content:center;font-size:.92rem;font-weight:600}
+  .sl-trust{display:flex;gap:12px 26px;flex-wrap:wrap;font-size:.92rem;font-weight:600}
   .sl-trust span{display:flex;align-items:center;gap:8px}
   .sl-trust svg{width:15px;height:15px;color:#e3c98c;flex-shrink:0}
   .sl-dots{position:absolute;bottom:0;left:0;right:0;display:flex;justify-content:center;gap:8px}
@@ -475,27 +481,60 @@
 
 <section class="hero">
   <div class="slider" id="heroSlider">
-    <div class="slide-h on">
-  <div class="kicker">Kenya's Direct-From-Owner Marketplace</div>
-  <h1 id="heroHead"><span id="hlPre">Find your next </span><span class="rot-wrap"><span id="rotWord" class="hl">home</span></span><span id="hlPost"> <br>straight from the owner.</span></h1>
-  <p id="heroSub">Verified rentals and homes for sale across Kenya, sorted by what's nearest to you. No agents. No viewing fees. Karibu home.</p>
-    </div>
-    <div class="slide-h">
-      <div class="kicker">The PataHome promise</div>
-      <h2 class="sl-h2">Fewer middlemen.<br>More <span class="hl">karibu</span>.</h2>
-      <div class="sl-trust">
-        <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>ID-verified owners</span>
-        <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Zero agent fees</span>
-        <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Nearest homes first</span>
+    <div class="slide-h sl-1 on">
+      <div class="sl-in">
+        <div class="sl-txt">
+          <div class="kicker">Kenya's Direct-From-Owner Marketplace</div>
+          <h1 id="heroHead"><span id="hlPre">Find your next </span><span class="rot-wrap"><span id="rotWord" class="hl">home</span></span><span id="hlPost"> <br>straight from the owner.</span></h1>
+          <p id="heroSub">Verified rentals and homes for sale across Kenya, sorted by what's nearest to you. No agents. No viewing fees. Karibu home.</p>
+        </div>
+        <div class="sl-art"><svg viewBox="0 0 220 170" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity=".9" aria-hidden="true">
+ <path d="M20 150V96l38-30 38 30v54"/>
+ <path d="M44 150v-30h28v30" stroke="#e3c98c"/>
+ <path d="M120 150V70l45-34 45 34v80"/>
+ <path d="M148 150v-38h34v38"/>
+ <circle cx="58" cy="88" r="4"/><circle cx="165" cy="72" r="5"/>
+ <path d="M5 150h210" opacity=".6"/>
+</svg></div>
       </div>
     </div>
-    <div class="slide-h">
-      <div class="kicker">Live right now</div>
-      <h2 class="sl-h2">Kenya is listing<br>on <span class="hl">PataHome</span>.</h2>
-      <div class="stats">
-        <div class="stat"><div class="num" id="statListings">0</div><div class="cap">Live listings</div></div>
-        <div class="stat"><div class="num" id="statAreas">0</div><div class="cap">Areas covered</div></div>
-        <div class="stat"><div class="num" id="statOwners">0</div><div class="cap">Verified owners</div></div>
+    <div class="slide-h sl-2">
+      <div class="sl-in">
+        <div class="sl-txt">
+          <div class="kicker">The PataHome promise</div>
+          <h2 class="sl-h2">Fewer middlemen.<br>More <span class="hl">karibu</span>.</h2>
+          <div class="sl-trust">
+            <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>ID-verified owners</span>
+            <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Zero agent fees</span>
+            <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Nearest homes first</span>
+          </div>
+        </div>
+        <div class="sl-art"><svg viewBox="0 0 220 170" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity=".9" aria-hidden="true">
+ <path d="M78 25 30 44v36c0 30 21 48 48 64 27-16 48-34 48-64V44z"/>
+ <path d="m58 85 14 14 27-27" stroke="#ffe9b3"/>
+ <circle cx="160" cy="122" r="20"/>
+ <path d="m174 108 34-34M192 86l13 13" stroke="#ffe9b3"/>
+</svg></div>
+      </div>
+    </div>
+    <div class="slide-h sl-3">
+      <div class="sl-in">
+        <div class="sl-txt">
+          <div class="kicker">Live right now</div>
+          <h2 class="sl-h2">Kenya is listing<br>on <span class="hl">PataHome</span>.</h2>
+          <div class="stats">
+            <div class="stat"><div class="num" id="statListings">0</div><div class="cap">Live listings</div></div>
+            <div class="stat"><div class="num" id="statAreas">0</div><div class="cap">Areas covered</div></div>
+            <div class="stat"><div class="num" id="statOwners">0</div><div class="cap">Verified owners</div></div>
+          </div>
+        </div>
+        <div class="sl-art"><svg viewBox="0 0 220 170" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity=".9" aria-hidden="true">
+ <path d="M62 142c-22-20-34-37-34-55a34 34 0 0 1 68 0c0 18-12 35-34 55z"/>
+ <circle cx="62" cy="85" r="10"/>
+ <path d="M152 150c-16-15-25-27-25-41a25 25 0 0 1 50 0c0 14-9 26-25 41z" stroke="#e3c98c"/>
+ <circle cx="152" cy="108" r="7" stroke="#e3c98c"/>
+ <path d="M18 158h185" opacity=".5"/>
+</svg></div>
       </div>
     </div>
     <div class="sl-dots" id="slDots">
