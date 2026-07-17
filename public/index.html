@@ -193,8 +193,12 @@
     .sl-h2{font-size:1.56rem;margin-bottom:10px}
     .sl-h2 br{display:none}
     .sl-trust{font-size:.76rem;gap:7px 13px}
-    .sl-p{font-size:.78rem;margin-bottom:11px}
+    .sl-p{font-size:.78rem;margin-bottom:10px;line-height:1.45}
     .sl-cta{font-size:.78rem;padding:9px 17px}
+    .sl-h2{margin-bottom:8px}
+    .stat{padding-right:13px;margin-right:13px}
+    .stat .num{font-size:1.05rem}
+    .stat .cap{font-size:.56rem}
     .stat{padding-right:16px;margin-right:16px}
     .search-wrap{margin-top:12px}
     .hero-chips{margin-top:11px;gap:6px}
@@ -230,7 +234,7 @@
   /* ---------- Hero slider ---------- */
   .slider{position:relative;max-width:1120px;margin:0 auto;min-height:250px;border-radius:20px;overflow:hidden;box-shadow:0 14px 44px rgba(10,45,32,.22);color:#fff}
   .slide-h{position:absolute;inset:0;display:flex;align-items:center;opacity:0;transform:translateX(-42px);transition:opacity .38s ease,transform .48s cubic-bezier(.22,1,.36,1);pointer-events:none;will-change:transform,opacity}
-  .sl-1{background:linear-gradient(135deg,#0c7a55,#19b98b)}
+  .sl-1{background:linear-gradient(120deg,#0a9c68,#27d4a2 78%,#7ce8c8)}
   .sl-2{background:linear-gradient(135deg,#c07f14,#edb84e)}
   .sl-2 .hl{color:#fff7e2}
   .sl-2 .kicker{color:#fff3d1}
@@ -249,8 +253,8 @@
   .sl-txt{min-width:0}
   .sl-art{flex-shrink:0;width:212px}
   .sl-art svg{width:100%;height:auto;display:block}
-  @media(max-width:760px){.sl-art{display:none}.sl-in{padding:24px 22px 36px}}
-  .slide-h.on{opacity:1;transform:none;pointer-events:auto}
+  @media(max-width:760px){.sl-art{display:none}.sl-in{padding:18px 16px 30px}}
+  .slide-h.on{opacity:1;transform:none;pointer-events:auto;cursor:pointer}
   .slide-h.out{opacity:0;transform:translateX(42px)}
   .sl-h2{font-family:var(--serif);font-size:clamp(1.95rem,4.4vw,3.15rem);font-weight:600;line-height:1.15;letter-spacing:-.5px;margin:0 0 18px}
   .sl-h2 .hl{color:#e3c98c;font-style:italic}
@@ -527,7 +531,7 @@
 
 <section class="hero">
   <div class="slider" id="heroSlider">
-    <div class="slide-h sl-1 on">
+    <div class="slide-h sl-1 on" data-href="/browse.html">
       <div class="sl-in">
         <div class="sl-txt">
           <div class="kicker">Kenya's home of direct owner deals</div>
@@ -544,7 +548,7 @@
 </svg></div>
       </div>
     </div>
-    <div class="slide-h sl-2">
+    <div class="slide-h sl-2" data-href="/browse.html">
       <div class="sl-in">
         <div class="sl-txt">
           <div class="kicker">The PataHome promise</div>
@@ -563,7 +567,7 @@
 </svg></div>
       </div>
     </div>
-    <div class="slide-h sl-3">
+    <div class="slide-h sl-3" data-href="/browse.html">
       <div class="sl-in">
         <div class="sl-txt">
           <div class="kicker">Now live in your town</div>
@@ -584,10 +588,9 @@
 </svg></div>
       </div>
     </div>
-    <div class="slide-h sl-4">
+    <div class="slide-h sl-4" data-href="/browse.html?cat=rent&beds=0">
       <div class="sl-in">
         <div class="sl-txt">
-          <div class="kicker">Kwa ma comrade</div>
           <h2 class="sl-h2">Ma comrade <span class="hl">tumewasort!</span></h2>
           <p class="sl-p">Bedsitters na 1BRs karibu na campus, bei ya comrade. Pata keja bila stress.</p>
           <a class="sl-cta" href="/browse.html?cat=rent&beds=0">Browse bedsitters →</a>
@@ -981,13 +984,20 @@ function sizeSlider(){
   restartSlider();
   el.addEventListener("mouseenter",()=>clearInterval(slTimer));
   el.addEventListener("mouseleave",restartSlider);
-  let tx=null;
+  let tx=null,justSwiped=false;
   el.addEventListener("touchstart",e=>{tx=e.touches[0].clientX},{passive:true});
   el.addEventListener("touchend",e=>{
     if(tx===null)return;
     const dx=e.changedTouches[0].clientX-tx;tx=null;
-    if(Math.abs(dx)>45){const n=slideCount();goSlide(dx<0?(slIdx+1)%n:(slIdx+n-1)%n)}
+    if(Math.abs(dx)>45){justSwiped=true;const n=slideCount();goSlide(dx<0?(slIdx+1)%n:(slIdx+n-1)%n)}
   },{passive:true});
+  el.querySelectorAll(".slide-h").forEach(s=>{
+    s.addEventListener("click",e=>{
+      if(e.target.closest("a,button"))return;
+      if(justSwiped){justSwiped=false;return}
+      if(s.dataset.href)location.href=s.dataset.href;
+    });
+  });
 })();
 
 function renderLatest(){
