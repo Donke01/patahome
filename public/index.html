@@ -31,7 +31,7 @@
     --card:#ffffff; --radius:18px;
     --shadow:0 1px 3px rgba(16,40,30,.06), 0 6px 20px rgba(16,40,30,.06);
     --shadow-lift:0 4px 10px rgba(16,40,30,.08), 0 14px 34px rgba(16,40,30,.12);
-    --header-bg:rgba(255,255,255,.92); --footer-bg:#0d1512;
+    --header-bg:rgba(255,255,255,.92); --footer-bg:#0a4636;
     --serif:'Fraunces',Georgia,serif;
   }
   body.dark{
@@ -137,10 +137,10 @@
   .hero{padding:16px 16px 6px;text-align:center;position:relative}
   .hero .kicker{position:relative;display:inline-flex;text-align:left;align-items:center;gap:8px;font-size:.74rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:#d9c390;margin-bottom:18px;animation:fadeUp .7s both}
   .hero .kicker::before,.hero .kicker::after{content:"";width:26px;height:1px;background:rgba(217,195,144,.55)}
-  .hero h1{font-family:var(--serif);font-size:clamp(1.95rem,4.4vw,3.15rem);font-weight:600;letter-spacing:-.5px;line-height:1.14;margin-bottom:12px}
+  .hero h1{font-family:var(--serif);font-size:clamp(2.15rem,5vw,3.45rem);font-weight:600;letter-spacing:-.5px;line-height:1.14;margin-bottom:12px}
   .hero h1 .hl{color:#e3c98c;font-style:italic}
-  .hero p{opacity:.88;max-width:540px;margin:0;font-size:.97rem}
-  .stats{display:flex;gap:0;position:relative;flex-wrap:wrap}
+  .hero p{opacity:.88;max-width:540px;margin:0 auto;font-size:.97rem}
+  .stats{display:flex;justify-content:center;gap:0;position:relative;flex-wrap:wrap}
   .stat{padding:0 26px 0 0;margin-right:26px;border-right:1px solid rgba(255,255,255,.22)}
   .stat:last-child{border-right:none}
   .stat .num{font-family:var(--serif);font-size:1.7rem;font-weight:600;color:#e3c98c}
@@ -175,9 +175,9 @@
     .hero{padding:20px 16px 26px}
     .hero .kicker{font-size:.58rem;letter-spacing:1.6px;margin-bottom:8px}
     .hero .kicker::before,.hero .kicker::after{display:none}
-    .hero h1{font-family:var(--serif);font-size:clamp(1.95rem,4.4vw,3.15rem);font-weight:600;letter-spacing:-.5px;line-height:1.14;margin-bottom:12px}
+    .hero h1{font-family:var(--serif);font-size:clamp(2.15rem,5vw,3.45rem);font-weight:600;letter-spacing:-.5px;line-height:1.14;margin-bottom:12px}
     .hero h1 br{display:none}
-    .hero p{opacity:.88;max-width:540px;margin:0;font-size:.97rem}
+    .hero p{opacity:.88;max-width:540px;margin:0 auto;font-size:.97rem}
     .stats{gap:6px 0}
     .stat{padding:0 14px}
     .stat .num{font-size:1.15rem}
@@ -190,7 +190,7 @@
     .quick{padding:8px 14px;font-size:.76rem}
     #locStatus{font-size:.74rem;margin-top:7px}
     .slider{min-height:190px;border-radius:15px}
-    .sl-h2{font-size:1.56rem;margin-bottom:10px}
+    .sl-h2{font-size:1.72rem;margin-bottom:10px}
     .sl-h2 br{display:none}
     .sl-trust{font-size:.76rem;gap:7px 13px}
     .sl-p{font-size:.78rem;margin-bottom:10px;line-height:1.45}
@@ -246,19 +246,19 @@
   .sl-4 .hl{color:#fcd9a8}
   .sl-4 .kicker{color:#e6d5ff}
   .sl-4 .kicker::before,.sl-4 .kicker::after{background:rgba(230,213,255,.55)}
-  .sl-p{opacity:.9;font-size:.95rem;margin:0 0 16px;max-width:520px}
+  .sl-p{opacity:.9;font-size:.95rem;margin:0 auto 16px;max-width:520px}
   .sl-cta{display:inline-block;background:#fff;color:#5b21b6;font-weight:800;font-size:.9rem;border-radius:999px;padding:11px 22px;text-decoration:none;box-shadow:0 6px 18px rgba(0,0,0,.22);transition:transform .18s}
   .sl-cta:hover{transform:translateY(-2px)}
   .sl-in{display:flex;align-items:center;justify-content:space-between;gap:26px;width:100%;padding:34px 48px 42px;text-align:left}
-  .sl-txt{min-width:0}
+  .sl-txt{min-width:0;flex:1;text-align:center}
   .sl-art{flex-shrink:0;width:212px}
   .sl-art svg{width:100%;height:auto;display:block}
   @media(max-width:760px){.sl-art{display:none}.sl-in{padding:18px 16px 30px}}
   .slide-h.on{opacity:1;transform:none;pointer-events:auto;cursor:pointer}
   .slide-h.out{opacity:0;transform:translateX(42px)}
-  .sl-h2{font-family:var(--serif);font-size:clamp(1.95rem,4.4vw,3.15rem);font-weight:600;line-height:1.15;letter-spacing:-.5px;margin:0 0 18px}
+  .sl-h2{font-family:var(--serif);font-size:clamp(2.15rem,5vw,3.45rem);font-weight:600;line-height:1.15;letter-spacing:-.5px;margin:0 0 18px}
   .sl-h2 .hl{color:#e3c98c;font-style:italic}
-  .sl-trust{display:flex;gap:12px 26px;flex-wrap:wrap;font-size:.92rem;font-weight:600}
+  .sl-trust{display:flex;gap:12px 26px;flex-wrap:wrap;justify-content:center;font-size:.92rem;font-weight:600}
   .sl-trust span{display:flex;align-items:center;gap:8px}
   .sl-trust svg{width:15px;height:15px;color:#e3c98c;flex-shrink:0}
   .sl-dots{position:absolute;bottom:0;left:0;right:0;display:flex;justify-content:center;gap:8px}
@@ -496,17 +496,17 @@
   .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
 
   /* ---------- Footer ---------- */
-  footer{background:var(--footer-bg);color:#8fa199;padding:44px 24px 30px;font-size:.85rem}
+  footer{background:var(--footer-bg);color:#b2d4c6;padding:44px 24px 30px;font-size:.85rem}
   .foot-inner{max-width:1200px;margin:0 auto;display:flex;justify-content:space-between;gap:30px;flex-wrap:wrap;align-items:flex-start}
   .foot-brand{font-family:var(--serif);font-size:1.25rem;font-weight:600;color:#fff;display:flex;align-items:center;gap:8px}
   .foot-brand b{color:var(--gold)}
-  .foot-brand svg{width:22px;height:22px;color:#3fa982}
-  .foot-tag{margin-top:8px;max-width:320px;line-height:1.6}
+  .foot-brand svg{width:22px;height:22px;color:#5fd4ab}
+  .foot-tag{margin-top:8px;max-width:320px;line-height:1.6;color:#b2d4c6}
   .foot-links{display:flex;gap:44px;flex-wrap:wrap}
-  .foot-links h4{color:#d7ded9;font-size:.78rem;text-transform:uppercase;letter-spacing:1.4px;margin-bottom:10px}
-  .foot-links a{display:block;color:#8fa199;text-decoration:none;padding:3px 0;transition:color .15s}
+  .foot-links h4{color:#e4f2ea;font-size:.78rem;text-transform:uppercase;letter-spacing:1.4px;margin-bottom:10px}
+  .foot-links a{display:block;color:#b2d4c6;text-decoration:none;padding:3px 0;transition:color .15s}
   .foot-links a:hover{color:#e3c98c}
-  .foot-base{max-width:1200px;margin:30px auto 0;padding-top:18px;border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:.78rem;color:#66766e}
+  .foot-base{max-width:1200px;margin:30px auto 0;padding-top:18px;border-top:1px solid rgba(255,255,255,.14);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:.78rem;color:#8fb8a8}
 </style>
 </head>
 <body>
