@@ -136,7 +136,7 @@
   .hero{padding:16px 16px 6px;text-align:center;position:relative}
   .hero .kicker{position:relative;display:inline-flex;text-align:left;align-items:center;gap:8px;font-size:.74rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:#d9c390;margin-bottom:18px;animation:fadeUp .7s both}
   .hero .kicker::before,.hero .kicker::after{content:"";width:26px;height:1px;background:rgba(217,195,144,.55)}
-  .hero h1{font-family:var(--serif);font-size:clamp(1.6rem,3.6vw,2.55rem);font-weight:600;letter-spacing:-.5px;line-height:1.14;margin-bottom:12px}
+  .hero h1{font-family:var(--serif);font-size:clamp(1.95rem,4.4vw,3.15rem);font-weight:600;letter-spacing:-.5px;line-height:1.14;margin-bottom:12px}
   .hero h1 .hl{color:#e3c98c;font-style:italic}
   .hero p{opacity:.88;max-width:540px;margin:0;font-size:.97rem}
   .stats{display:flex;gap:0;position:relative;flex-wrap:wrap}
@@ -174,7 +174,7 @@
     .hero{padding:20px 16px 26px}
     .hero .kicker{font-size:.58rem;letter-spacing:1.6px;margin-bottom:8px}
     .hero .kicker::before,.hero .kicker::after{display:none}
-    .hero h1{font-family:var(--serif);font-size:clamp(1.6rem,3.6vw,2.55rem);font-weight:600;letter-spacing:-.5px;line-height:1.14;margin-bottom:12px}
+    .hero h1{font-family:var(--serif);font-size:clamp(1.95rem,4.4vw,3.15rem);font-weight:600;letter-spacing:-.5px;line-height:1.14;margin-bottom:12px}
     .hero h1 br{display:none}
     .hero p{opacity:.88;max-width:540px;margin:0;font-size:.97rem}
     .stats{gap:6px 0}
@@ -189,7 +189,7 @@
     .quick{padding:8px 14px;font-size:.76rem}
     #locStatus{font-size:.74rem;margin-top:7px}
     .slider{min-height:190px;border-radius:15px}
-    .sl-h2{font-size:1.34rem;margin-bottom:10px}
+    .sl-h2{font-size:1.56rem;margin-bottom:10px}
     .sl-h2 br{display:none}
     .sl-trust{font-size:.76rem;gap:7px 13px}
     .stat{padding-right:16px;margin-right:16px}
@@ -227,9 +227,13 @@
   /* ---------- Hero slider ---------- */
   .slider{position:relative;max-width:1120px;margin:0 auto;min-height:250px;border-radius:20px;overflow:hidden;box-shadow:0 14px 44px rgba(10,45,32,.22);color:#fff}
   .slide-h{position:absolute;inset:0;display:flex;align-items:center;opacity:0;transform:translateX(-56px);transition:opacity .5s ease,transform .6s cubic-bezier(.16,1,.3,1);pointer-events:none}
-  .sl-1{background:linear-gradient(135deg,#0a4636,#0e8a68)}
-  .sl-2{background:linear-gradient(135deg,#6b450e,#c9932e)}
-  .sl-3{background:linear-gradient(135deg,#14242c,#2e5361)}
+  .sl-1{background:linear-gradient(135deg,#0c7a55,#19b98b)}
+  .sl-2{background:linear-gradient(135deg,#c07f14,#edb84e)}
+  .sl-2 .hl{color:#fff7e2}
+  .sl-2 .kicker{color:#fff3d1}
+  .sl-2 .kicker::before,.sl-2 .kicker::after{background:rgba(255,243,209,.6)}
+  .sl-2 .sl-trust svg{color:#fff}
+  .sl-3{background:linear-gradient(135deg,#0f6079,#2cb0c9)}
   .sl-in{display:flex;align-items:center;justify-content:space-between;gap:26px;width:100%;padding:34px 48px 42px;text-align:left}
   .sl-txt{min-width:0}
   .sl-art{flex-shrink:0;width:212px}
@@ -237,7 +241,7 @@
   @media(max-width:760px){.sl-art{display:none}.sl-in{padding:24px 22px 36px}}
   .slide-h.on{opacity:1;transform:none;pointer-events:auto}
   .slide-h.out{opacity:0;transform:translateX(56px)}
-  .sl-h2{font-family:var(--serif);font-size:clamp(1.6rem,3.6vw,2.55rem);font-weight:600;line-height:1.15;letter-spacing:-.5px;margin:0 0 18px}
+  .sl-h2{font-family:var(--serif);font-size:clamp(1.95rem,4.4vw,3.15rem);font-weight:600;line-height:1.15;letter-spacing:-.5px;margin:0 0 18px}
   .sl-h2 .hl{color:#e3c98c;font-style:italic}
   .sl-trust{display:flex;gap:12px 26px;flex-wrap:wrap;font-size:.92rem;font-weight:600}
   .sl-trust span{display:flex;align-items:center;gap:8px}
@@ -484,7 +488,7 @@
     <div class="slide-h sl-1 on">
       <div class="sl-in">
         <div class="sl-txt">
-          <div class="kicker">Kenya's Direct-From-Owner Marketplace</div>
+          <div class="kicker">Kenya's home of direct owner deals</div>
           <h1 id="heroHead"><span id="hlPre">Find your next </span><span class="rot-wrap"><span id="rotWord" class="hl">home</span></span><span id="hlPost"> <br>straight from the owner.</span></h1>
           <p id="heroSub">Verified rentals and homes for sale across Kenya, sorted by what's nearest to you. No agents. No viewing fees. Karibu home.</p>
         </div>
@@ -502,9 +506,9 @@
       <div class="sl-in">
         <div class="sl-txt">
           <div class="kicker">The PataHome promise</div>
-          <h2 class="sl-h2">Fewer middlemen.<br>More <span class="hl">karibu</span>.</h2>
+          <h2 class="sl-h2">Fewer middlemen. <br>More <span class="hl">karibu</span>.</h2>
           <div class="sl-trust">
-            <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>ID-verified owners</span>
+            <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>ID verified owners</span>
             <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Zero agent fees</span>
             <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Nearest homes first</span>
           </div>
@@ -521,7 +525,7 @@
       <div class="sl-in">
         <div class="sl-txt">
           <div class="kicker">Live right now</div>
-          <h2 class="sl-h2">Kenya is listing<br>on <span class="hl">PataHome</span>.</h2>
+          <h2 class="sl-h2">Kenya is listing <br>on <span class="hl">PataHome</span>.</h2>
           <div class="stats">
             <div class="stat"><div class="num" id="statListings">0</div><div class="cap">Live listings</div></div>
             <div class="stat"><div class="num" id="statAreas">0</div><div class="cap">Areas covered</div></div>
@@ -581,7 +585,7 @@
 
 <!-- Trust row -->
 <section class="trustrow reveal">
-  <div class="tr-item"><span class="tr-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v6c0 5 3.5 8 8 11 4.5-3 8-6 8-11V5z"/><path d="m9 12 2 2 4-4"/></svg></span><div><h3>ID-verified owners</h3><p>Every lister is identity-checked</p></div></div>
+  <div class="tr-item"><span class="tr-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v6c0 5 3.5 8 8 11 4.5-3 8-6 8-11V5z"/><path d="m9 12 2 2 4-4"/></svg></span><div><h3>ID verified owners</h3><p>Every lister is identity-checked</p></div></div>
   <div class="tr-item"><span class="tr-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span><div><h3>Talk directly, pay nothing</h3><p>No agent fees, no viewing fees</p></div></div>
   <div class="tr-item"><span class="tr-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11a7 7 0 0 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></span><div><h3>Nearest homes first</h3><p>Sorted by what's closest to you</p></div></div>
 </section>
@@ -593,7 +597,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg>
         Pata<b>Home</b>
       </div>
-      <div class="foot-tag">Houses for rent and sale across Kenya, direct from ID-verified owners. No agents, no viewing fees — just you and the owner.</div>
+      <div class="foot-tag">Houses for rent and sale across Kenya, direct from ID verified owners. No agents, no viewing fees — just you and the owner.</div>
     </div>
     <div class="foot-links">
       <div>
