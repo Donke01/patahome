@@ -275,13 +275,12 @@
 
 
   /* ---------- floating contact buttons + live chat ---------- */
-  .float-c{position:fixed;left:16px;bottom:18px;z-index:1350;display:flex;flex-direction:column;gap:10px}
-  .fab{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;border:none;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.28);transition:transform .18s}
+  .fab{position:fixed;bottom:20px;width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;border:none;cursor:pointer;box-shadow:0 10px 26px rgba(0,0,0,.3);transition:transform .18s;z-index:1350}
   .fab:hover{transform:scale(1.08)}
-  .fab svg{width:26px;height:26px}
-  .fab-w{background:#25D366}
-  .fab-c{background:linear-gradient(135deg,#0c7a55,#19b98b)}
-  .chatbox{position:fixed;left:16px;bottom:142px;width:324px;max-width:calc(100vw - 32px);background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 22px 60px rgba(10,40,30,.3);z-index:1400;display:none;overflow:hidden}
+  .fab svg{width:30px;height:30px}
+  .fab-w{left:16px;background:#25D366}
+  .fab-c{right:16px;background:linear-gradient(135deg,#0c7a55,#19b98b)}
+  .chatbox{position:fixed;right:16px;bottom:92px;width:324px;max-width:calc(100vw - 32px);background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 22px 60px rgba(10,40,30,.3);z-index:1400;display:none;overflow:hidden}
   .chatbox.show{display:block;animation:modalIn .3s cubic-bezier(.16,1,.3,1) both}
   .cb-head{background:linear-gradient(135deg,#0c7a55,#19b98b);color:#fff;padding:13px 15px;display:flex;align-items:center;gap:10px}
   .cb-dot{width:9px;height:9px;border-radius:50%;background:#7dffc8;box-shadow:0 0 0 3px rgba(125,255,200,.25);flex-shrink:0}
@@ -295,14 +294,14 @@
   .cb-err{color:#b3413a;font-size:.76rem;min-height:1em}
   .cb-send{background:var(--brand);color:#fff;border:none;border-radius:10px;padding:11px;font-weight:700;font-size:.88rem;cursor:pointer}
   .cb-send:hover{background:var(--brand-dark)}
-  .bn-post .bp{width:47px;height:47px;margin-top:-24px;border-radius:50%;background:linear-gradient(135deg,#0c7a55,#19b98b);display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 6px 16px rgba(14,138,104,.4);border:3px solid #fff}
-  .bn-post .bp svg{width:22px;height:22px}
-  body.dark .bn-post .bp{border-color:#151d19}
+  .bn-post .bp{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#0c7a55,#19b98b);display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 3px 9px rgba(14,138,104,.35)}
+  .bn-post .bp svg{width:17px;height:17px}
   @media(max-width:640px){
-    .float-c{bottom:calc(78px + env(safe-area-inset-bottom));left:12px}
-    .fab{width:47px;height:47px}
-    .fab svg{width:23px;height:23px}
-    .chatbox{left:12px;bottom:calc(196px + env(safe-area-inset-bottom))}
+    .fab{bottom:calc(80px + env(safe-area-inset-bottom));width:55px;height:55px}
+    .fab svg{width:27px;height:27px}
+    .fab-w{left:12px}
+    .fab-c{right:12px}
+    .chatbox{right:12px;left:12px;width:auto;bottom:calc(146px + env(safe-area-inset-bottom))}
   }
 
   /* ---------- Mobile bottom nav ---------- */
@@ -666,10 +665,8 @@
 </nav>
 
 
-<div class="float-c">
-  <a class="fab fab-w" href="https://wa.me/254748181876?text=Hi%20PataHome!" target="_blank" rel="noopener" aria-label="Chat on WhatsApp"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.04 2a9.9 9.9 0 0 0-8.53 14.9L2 22l5.25-1.47A9.9 9.9 0 1 0 12.04 2zm0 18.1a8.2 8.2 0 0 1-4.18-1.15l-.3-.18-3.12.87.86-3.04-.2-.31a8.2 8.2 0 1 1 6.94 3.81zm4.52-6.13c-.25-.13-1.47-.72-1.69-.8-.23-.09-.4-.13-.56.12-.17.25-.64.8-.79.97-.14.17-.29.19-.54.06-.25-.12-1.05-.38-2-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.01-.38.11-.51.11-.11.25-.29.37-.43.13-.15.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.12-.56-1.34-.76-1.84-.2-.48-.41-.42-.56-.43h-.48c-.17 0-.44.06-.66.31-.23.25-.87.85-.87 2.07 0 1.22.89 2.4 1.01 2.57.12.17 1.75 2.67 4.23 3.74.59.26 1.05.41 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.67-1.18.21-.58.21-1.07.15-1.18-.06-.1-.23-.16-.48-.28z"/></svg></a>
-  <button class="fab fab-c" onclick="toggleChat(true)" aria-label="Live chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.3A8.3 8.3 0 0 1 12.7 20.6H4l1.6-3.2A8.3 8.3 0 1 1 21 12.3z"/><path d="M8.4 11h.01M12.3 11h.01M16.2 11h.01" stroke-width="2.6"/></svg></button>
-</div>
+<a class="fab fab-w" href="https://wa.me/254748181876?text=Hi%20PataHome!" target="_blank" rel="noopener" aria-label="Chat on WhatsApp"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.04 2a9.9 9.9 0 0 0-8.53 14.9L2 22l5.25-1.47A9.9 9.9 0 1 0 12.04 2zm0 18.1a8.2 8.2 0 0 1-4.18-1.15l-.3-.18-3.12.87.86-3.04-.2-.31a8.2 8.2 0 1 1 6.94 3.81zm4.52-6.13c-.25-.13-1.47-.72-1.69-.8-.23-.09-.4-.13-.56.12-.17.25-.64.8-.79.97-.14.17-.29.19-.54.06-.25-.12-1.05-.38-2-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.01-.38.11-.51.11-.11.25-.29.37-.43.13-.15.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.12-.56-1.34-.76-1.84-.2-.48-.41-.42-.56-.43h-.48c-.17 0-.44.06-.66.31-.23.25-.87.85-.87 2.07 0 1.22.89 2.4 1.01 2.57.12.17 1.75 2.67 4.23 3.74.59.26 1.05.41 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.67-1.18.21-.58.21-1.07.15-1.18-.06-.1-.23-.16-.48-.28z"/></svg></a>
+<button class="fab fab-c" onclick="toggleChat(true)" aria-label="Live chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.3A8.3 8.3 0 0 1 12.7 20.6H4l1.6-3.2A8.3 8.3 0 1 1 21 12.3z"/><path d="M8.4 11h.01M12.3 11h.01M16.2 11h.01" stroke-width="2.6"/></svg></button>
 
 <div class="chatbox" id="chatbox">
   <div class="cb-head">
