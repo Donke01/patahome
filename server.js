@@ -785,20 +785,27 @@ router.add("GET", "/:catSlug/:areaSlug", (req, res, p) => {
 });
 
 /* ---- browse index (crawl entry point) ---- */
+/* /browse = the interactive listings app; /areas = crawlable area directory for SEO */
 router.add("GET", "/browse", (req, res) => {
+  res.writeHead(200, { "Content-Type": "text/html", "Cache-Control": "no-cache, must-revalidate" });
+  res.end(fs.readFileSync(path.join(__dirname, "public", "browse.html")));
+});
+
+router.add("GET", "/areas", (req, res) => {
   sendHtml(res, 200, pageShell({
-    title: "Browse Homes, Land & Vehicles by Area | PataHome",
-    description: "Browse rentals, houses for sale, land and vehicles across Kenyan counties on PataHome — direct from verified owners.",
-    canonical: `${BASE_URL}/browse`,
+    title: "Browse Houses by Area | PataHome",
+    description: "Browse rentals and houses for sale across Kenyan counties on PataHome — direct from verified owners.",
+    canonical: `${BASE_URL}/areas`,
     bodyHtml: `<h1>Browse by area</h1>${areaLinksHtml()}`
   }));
 });
 
 /* ---- sitemap.xml + robots.txt ---- */
+
 router.add("GET", "/sitemap.xml", (req, res) => {
   const areas = db.prepare("SELECT * FROM areas").all();
   const listings = db.prepare("SELECT id, title FROM listings WHERE status='active'").all();
-  const urls = [`${BASE_URL}/`, `${BASE_URL}/browse`]
+  const urls = [`${BASE_URL}/`, `${BASE_URL}/browse`, `${BASE_URL}/areas`]
     .concat(Object.keys(CATS).flatMap((cs) => areas.map((a) => `${BASE_URL}/${cs}/${slugify(a.name)}`)))
     .concat(listings.map((l) => `${BASE_URL}/listing/${l.id}/${slugify(l.title)}`));
   const xml = `<?xml version="1.0" encoding="UTF-8"?>

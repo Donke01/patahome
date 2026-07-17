@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PataHome — Houses for Rent & Sale Near You</title>
+<title>Browse Listings — PataHome</title>
 <meta name="description" content="Find bedsitters, 1BRs and family houses for rent or sale across Kenya — direct from verified owners. PataHome shows what is nearest to you first. No agents, no viewing fees.">
 <meta property="og:title" content="PataHome — Houses for Rent & Sale Near You">
 <meta property="og:description" content="Rentals and homes for sale from verified owners across Kenya, sorted by what is nearest to you.">
@@ -14,7 +14,7 @@
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#0e8a68">
-<link rel="canonical" href="/">
+<link rel="canonical" href="/browse.html">
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png">
@@ -22,6 +22,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
   :root{
     --brand:#0e8a68; --brand-dark:#0b6b51; --brand-light:#e9f6f1;
@@ -214,6 +215,10 @@
     #darkBtn{display:none}
   }
 
+  .hero-browse{padding:30px 24px 40px}
+  .browse-h{font-family:var(--serif);font-size:clamp(1.5rem,3.4vw,2.1rem);font-weight:600;letter-spacing:-.4px;margin-bottom:4px}
+  .browse-p{opacity:.85;font-size:.92rem;margin-bottom:22px}
+  @media(max-width:640px){.hero-browse{padding:20px 16px 26px}.browse-p{font-size:.8rem;margin-bottom:14px}}
   /* ---------- Curated sections ---------- */
   .eyebrow{font-size:.72rem;font-weight:700;letter-spacing:2.6px;text-transform:uppercase;color:var(--gold);margin-bottom:12px}
   .why{max-width:1100px;margin:0 auto;padding:58px 24px 8px;text-align:center}
@@ -362,15 +367,15 @@
 <body>
 
 <header>
-  <div class="logo">
+  <a class="logo" href="/" style="text-decoration:none">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg>
     <span>Pata<b>Home</b></span>
-  </div>
+  </a>
   <div class="header-actions">
+    <button class="icon-btn" id="favBtn" title="Saved listings" onclick="toggleFavView()">♥<span class="pill" id="favCount" style="display:none">0</span></button>
     <button class="icon-btn" id="darkBtn" title="Dark mode" onclick="toggleDark()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
     </button>
-    <a class="btn btn-ghost" href="/browse.html" style="text-decoration:none">Browse Listings</a>
     <a class="btn btn-primary" href="/dashboard.html" style="text-decoration:none">List Your Property</a>
     <a class="acct-chip" id="acctChip" href="/dashboard.html" style="display:none;text-decoration:none">
       <span class="acct-av" id="acctAv">U</span>
@@ -379,10 +384,9 @@
   </div>
 </header>
 
-<section class="hero">
-  <div class="kicker">Kenya's Direct-From-Owner Marketplace</div>
-  <h1 id="heroHead"><span id="hlPre">Find your next </span><span class="rot-wrap"><span id="rotWord" class="hl">home</span></span><span id="hlPost"> <br>straight from the owner.</span></h1>
-  <p id="heroSub">Verified rentals and homes for sale across Kenya, sorted by what's nearest to you. No agents. No viewing fees. Karibu home.</p>
+<section class="hero hero-browse">
+  <h1 class="browse-h">Browse listings</h1>
+  <p class="browse-p">Search, filter and map every verified listing.</p>
   <div class="search-wrap">
     <div class="searchbar">
       <span class="s-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
@@ -391,52 +395,71 @@
     </div>
     <div class="sugg" id="sugg"></div>
   </div>
+  <div class="loc-row">
+    <button class="loc-btn" id="gpsBtn" onclick="useMyLocation()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11a7 7 0 0 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+      Use my location
+    </button>
+    <select class="loc-btn" id="citySelect" onchange="useCity(this.value)" style="appearance:auto;color:#1a2420;background:#fff;max-width:min(320px,86vw)">
+      <option value="">…or pick an area</option>
+    </select>
+  </div>
+  <div id="locStatus"></div>
 </section>
 
-<!-- The promise -->
-<section class="why">
-  <div class="eyebrow reveal">The PataHome promise</div>
-  <h2 class="reveal d1">Fewer middlemen.<br>More <em>karibu</em>.</h2>
-  <div class="why-grid">
-    <div class="why-item reveal">
-      <div class="wi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v6c0 5 3.5 8 8 11 4.5-3 8-6 8-11V5z"/><path d="m9 12 2 2 4-4"/></svg></div>
-      <h3>ID-verified owners</h3>
-      <p>Every landlord and seller is identity-checked before their listings go live. No brokers, no ghosts.</p>
+
+<div class="wrap">
+  <div class="section-title reveal">Browse listings</div>
+  <div class="section-sub reveal d1">Every listing is posted directly by a verified property owner.</div>
+  <div class="tabs" id="tabs"></div>
+
+  <div class="filters">
+    <select id="priceFilter" onchange="render()">
+      <option value="">Any price</option>
+      <option value="0-5000">Rent: under KES 5K</option>
+      <option value="5000-20000">Rent: KES 5K – 20K</option>
+      <option value="20000-200000">Rent: KES 20K+</option>
+      <option value="200000-10000000">Buy: under KES 10M</option>
+      <option value="10000000-999999999">Buy: above KES 10M</option>
+    </select>
+    <select id="bedFilter" onchange="render()">
+      <option value="">Any bedrooms</option>
+      <option value="0">Bedsitter / Studio</option>
+      <option value="1">1 bedroom</option>
+      <option value="2">2 bedrooms</option>
+      <option value="3">3+ bedrooms</option>
+    </select>
+    <select id="sortSelect" onchange="render()">
+      <option value="distance">Nearest first</option>
+      <option value="price-asc">Price: low → high</option>
+      <option value="price-desc">Price: high → low</option>
+      <option value="newest">Newest</option>
+    </select>
+    <span class="sort-label" id="resultCount"></span>
+  </div>
+
+  <div class="insights" id="insights">
+    <div class="ins-head">
+      <h3>Market insights</h3>
+      <span class="ins-loc" id="insightLoc">near you</span>
     </div>
-    <div class="why-item reveal d1">
-      <div class="wi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
-      <h3>Talk directly, pay nothing</h3>
-      <p>Call or WhatsApp the owner the moment you find a fit. Zero agent fees, zero viewing fees.</p>
-    </div>
-    <div class="why-item reveal d2">
-      <div class="wi-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11a7 7 0 0 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></div>
-      <h3>Nearest homes first</h3>
-      <p>Share your location and the closest kejas rise to the top — with live market insights for your area.</p>
+    <div class="insight-grid" id="insightGrid"></div>
+  </div>
+
+  <div class="main">
+    <div class="cards" id="cards"></div>
+    <div class="map-panel" id="mapPanel">
+      <button class="map-close" onclick="toggleMobileMap(false)">✕</button>
+      <div id="map"></div>
+      <div class="map-hint">Green dot marks your location · click a pin for listing details</div>
     </div>
   </div>
-</section>
+</div>
 
-<!-- Live counters -->
-<section class="stats-band reveal">
-  <div class="stats">
-    <div class="stat"><div class="num" id="statListings">0</div><div class="cap">Live listings</div></div>
-    <div class="stat"><div class="num" id="statAreas">0</div><div class="cap">Areas covered</div></div>
-    <div class="stat"><div class="num" id="statOwners">0</div><div class="cap">Verified owners</div></div>
-  </div>
-</section>
-
-<!-- Popular searches -->
-<section class="pop">
-  <div class="eyebrow reveal">Popular right now</div>
-  <h2 class="reveal d1">Start with what comrades search most</h2>
-  <div class="quick-row reveal d2">
-    <button class="quick" onclick="quickFilter('rent','0-5000','0','Bedsitters under 5K')">Bedsitters under 5K</button>
-    <button class="quick" onclick="quickFilter('rent','5000-20000','1','1 Bedrooms under 20K')">1 Bedrooms under 20K</button>
-    <button class="quick" onclick="quickFilter('rent','5000-20000','2','2 Bedrooms to share')">2 Bedrooms to share</button>
-    <button class="quick" onclick="quickFilter('sale','','','Homes for sale')">Homes for sale</button>
-  </div>
-</section>
-
+<button class="map-fab" onclick="toggleMobileMap(true)">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 20-6-3V4l6 3 6-3 6 3v13l-6-3-6 3z"/><path d="M9 7v13M15 4v13"/></svg>
+  Map
+</button>
 
 <footer>
   <div class="foot-inner reveal">
@@ -450,8 +473,8 @@
     <div class="foot-links">
       <div>
         <h4>Explore</h4>
-        <a href="/browse.html?cat=rent">Houses for rent</a>
-        <a href="/browse.html?cat=sale">Homes for sale</a>
+        <a href="#" onclick="activeCat='rent';render();window.scrollTo({top:document.getElementById('tabs').offsetTop-80,behavior:'smooth'});return false">Houses for rent</a>
+        <a href="#" onclick="activeCat='sale';render();window.scrollTo({top:document.getElementById('tabs').offsetTop-80,behavior:'smooth'});return false">Homes for sale</a>
       </div>
       <div>
         <h4>Owners</h4>
@@ -473,8 +496,62 @@
   </div>
 </footer>
 
+<!-- Detail modal -->
+<div class="overlay" id="detailModal" onclick="if(event.target===this)closeModal('detailModal')">
+  <div class="modal">
+    <button class="close-x" onclick="closeModal('detailModal')">✕</button>
+    <div class="gallery" id="gallery"></div>
+    <h2 id="dTitle"></h2>
+    <div class="sub" id="dSub"></div>
+    <div class="chips" id="dChips"></div>
+    <div class="contact-row">
+      <div class="avatar" id="dAvatar"></div>
+      <div>
+        <div class="name" id="dOwner"></div>
+        <div class="phone" id="dPhone"></div>
+        <div class="verify"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>ID &amp; ownership verified</div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="dContactBtn">Contact Owner</button>
+      <button class="btn btn-ghost" id="dMapBtn">View on Map</button>
+    </div>
+  </div>
+</div>
+
+<!-- Contact modal -->
+<div class="overlay" id="contactModal" onclick="if(event.target===this)closeModal('contactModal')">
+  <div class="modal">
+    <button class="close-x" onclick="closeModal('contactModal')">✕</button>
+    <h2 id="cTitle"></h2>
+    <div class="sub" id="cSub"></div>
+    <div class="contact-row">
+      <div class="avatar" id="cAvatar"></div>
+      <div>
+        <div class="name" id="cOwner"></div>
+        <div class="phone" id="cPhone"></div>
+        <div class="verify"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>ID &amp; ownership verified</div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <a class="btn btn-primary" id="cWhatsApp" target="_blank" style="text-decoration:none;text-align:center">WhatsApp</a>
+      <a class="btn btn-ghost" id="cCall" style="text-decoration:none;text-align:center">Call</a>
+    </div>
+    <label>Or send a message</label>
+    <input id="qName" placeholder="Your name" style="margin-bottom:8px">
+    <input id="qPhone" placeholder="Your phone e.g. 0712 345 678" style="margin-bottom:8px">
+    <textarea id="qMsg" rows="2" placeholder="e.g. Is it still available? Can I view Saturday?"></textarea>
+    <label style="display:flex;align-items:center;gap:9px;margin-top:12px;font-size:.84rem;font-weight:500;color:var(--muted);text-transform:none;letter-spacing:0;cursor:pointer">
+      <input type="checkbox" id="qFollow" checked style="width:auto;accent-color:var(--brand)">
+      Follow this owner to hear about their new listings
+    </label>
+    <button class="btn btn-primary" style="width:100%;margin-top:12px;padding:12px" onclick="sendInquiry()">Send Message</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
 /* ================= CONFIG ================= */
 const ICONS = {
@@ -664,7 +741,7 @@ function typewriter(){
 let sugT=null;
 function onSearchInput(){
   clearTimeout(sugT);
-  sugT=setTimeout(renderSugg,120);
+  sugT=setTimeout(()=>{render();renderSugg()},120);
 }
 function renderSugg(){
   const box=document.getElementById("sugg");
@@ -679,6 +756,7 @@ function renderSugg(){
     box.innerHTML=`<div class="sg-none">No matches yet — try other keywords, e.g. “bedsitter Kasarani” or “2br under 20k”</div>`;
     box.classList.add("show");return;
   }
+  const total=filtered().length;
   box.innerHTML=matches.map(({x})=>{
     const c=CAT[x.cat];
     const th=x.photos.length?`<img src="${x.photos[0].thumb}" alt="">`:ICONS[c.gal[0]];
@@ -688,22 +766,30 @@ function renderSugg(){
       <span class="sg-p">${fmt(x.price)}${c.unit?"<small>/mo</small>":""}</span>
     </div>`;
   }).join("")+
-  `<div class="sg all" onmousedown="event.preventDefault()" onclick="closeSugg();doSearch()">See all results →</div>`;
+  `<div class="sg all" onmousedown="event.preventDefault()" onclick="closeSugg();doSearch()">See all ${total} result${total===1?"":"s"} →</div>`;
   box.classList.add("show");
 }
-function pickSugg(id){closeSugg();location.href="/browse.html?open="+id}
+function pickSugg(id){closeSugg();openDetail(id)}
 function closeSugg(){document.getElementById("sugg").classList.remove("show")}
 document.addEventListener("click",e=>{if(!e.target.closest(".search-wrap"))closeSugg()});
 
-/* Search hands off to the browse page */
+/* Search with feedback: skeleton shimmer + scroll to results */
 function doSearch(){
-  const q=document.getElementById("searchInput").value.trim();
-  document.getElementById("searchBtn").classList.add("busy");
-  location.href="/browse.html"+(q?"?q="+encodeURIComponent(q):"");
+  const btn=document.getElementById("searchBtn");
+  btn.classList.add("busy");
+  document.getElementById("cards").innerHTML=Array.from({length:6},()=>'<div class="skel"></div>').join("");
+  document.querySelector(".section-title").scrollIntoView({behavior:"smooth",block:"start"});
+  setTimeout(()=>{btn.classList.remove("busy");render()},650);
 }
 /* Quick filters */
 function quickFilter(cat,price,beds,label){
-  location.href="/browse.html?cat="+cat+(price?"&price="+price:"")+(beds!==""?"&beds="+beds:"");
+  activeCat=cat;
+  document.getElementById("priceFilter").value=price;
+  document.getElementById("bedFilter").value=beds;
+  document.getElementById("searchInput").value="";
+  render();
+  toast(label+" — filters applied");
+  document.getElementById("tabs").scrollIntoView({behavior:"smooth",block:"start"});
 }
 /* Favourites (saved on this device) */
 function saveFavs(){localStorage.setItem("ph_favs",JSON.stringify([...favs]))}
@@ -1049,8 +1135,24 @@ async function paintAccount(){
     document.getElementById("cards").innerHTML=`<div class="empty">Can't reach the PataHome server.<br>Make sure it's running and open the site via <b>http://localhost:3000</b> (not as a file).</div>`;
     return;
   }
+  const cs=document.getElementById("citySelect");
+  for(const name of Object.keys(AREAS))cs.insertAdjacentHTML("beforeend",`<option>${esc(name)}</option>`);
+  const n=favs.size,pill=document.getElementById("favCount");
+  pill.textContent=n;pill.style.display=n?"flex":"none";
+  const P=new URLSearchParams(location.search);
+  if(P.get("q"))document.getElementById("searchInput").value=P.get("q");
+  if(P.get("cat")&&CAT[P.get("cat")])activeCat=P.get("cat");
+  if(P.get("price"))document.getElementById("priceFilter").value=P.get("price");
+  if(P.get("beds")!==null&&P.get("beds")!==undefined&&P.get("beds")!=="")document.getElementById("bedFilter").value=P.get("beds");
+  render();
+  if(P.get("open"))setTimeout(()=>{try{openDetail(+P.get("open"))}catch(e){}},400);
+  try{initMap()}catch(e){
+    // Map library unavailable (slow/blocked CDN) — hide the map gracefully, keep the site working
+    document.getElementById("mapPanel").style.display="none";
+    const fab=document.querySelector(".map-fab");if(fab)fab.style.display="none";
+  }
   try{animateStats()}catch(e){}
-  if(inBrowser&&!reduceMotion){
+  if(inBrowser&&!reduceMotion&&document.getElementById("rotWord")){
     try{
       const lockAll=()=>{lockSubHeight();lockHeadHeight()};
       lockAll();
@@ -1061,6 +1163,10 @@ async function paintAccount(){
     }catch(e){}
   }
   try{if(inBrowser)typewriter()}catch(e){}
+  if(inBrowser&&navigator.geolocation){
+    document.getElementById("locStatus").textContent="Detecting your location for nearby listings…";
+    useMyLocation();
+  }
 })();
 </script>
 </body>
