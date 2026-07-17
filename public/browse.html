@@ -219,6 +219,38 @@
   .browse-h{font-family:var(--serif);font-size:clamp(1.5rem,3.4vw,2.1rem);font-weight:600;letter-spacing:-.4px;margin-bottom:4px}
   .browse-p{opacity:.85;font-size:.92rem;margin-bottom:22px}
   @media(max-width:640px){.hero-browse{padding:20px 16px 26px}.browse-p{font-size:.8rem;margin-bottom:14px}}
+
+  /* ---------- floating contact buttons + live chat ---------- */
+  .float-c{position:fixed;left:16px;bottom:18px;z-index:1350;display:flex;flex-direction:column;gap:10px}
+  .fab{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;border:none;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.28);transition:transform .18s}
+  .fab:hover{transform:scale(1.08)}
+  .fab svg{width:26px;height:26px}
+  .fab-w{background:#25D366}
+  .fab-c{background:linear-gradient(135deg,#0c7a55,#19b98b)}
+  .chatbox{position:fixed;left:16px;bottom:142px;width:324px;max-width:calc(100vw - 32px);background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 22px 60px rgba(10,40,30,.3);z-index:1400;display:none;overflow:hidden}
+  .chatbox.show{display:block;animation:modalIn .3s cubic-bezier(.16,1,.3,1) both}
+  .cb-head{background:linear-gradient(135deg,#0c7a55,#19b98b);color:#fff;padding:13px 15px;display:flex;align-items:center;gap:10px}
+  .cb-dot{width:9px;height:9px;border-radius:50%;background:#7dffc8;box-shadow:0 0 0 3px rgba(125,255,200,.25);flex-shrink:0}
+  .cb-t{font-weight:700;font-size:.92rem}
+  .cb-s{font-size:.72rem;opacity:.85}
+  .cb-x{margin-left:auto;background:rgba(255,255,255,.15);border:none;color:#fff;width:26px;height:26px;border-radius:50%;font-size:.8rem;cursor:pointer}
+  .cb-body{padding:14px;display:flex;flex-direction:column;gap:8px}
+  .cb-msg{background:var(--brand-light);color:var(--ink);font-size:.84rem;line-height:1.5;padding:10px 12px;border-radius:12px 12px 12px 3px}
+  .cb-body input,.cb-body textarea{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:9px 11px;font-size:.86rem;outline:none;font-family:inherit;background:var(--bg);color:var(--ink)}
+  .cb-body input:focus,.cb-body textarea:focus{border-color:var(--brand)}
+  .cb-err{color:#b3413a;font-size:.76rem;min-height:1em}
+  .cb-send{background:var(--brand);color:#fff;border:none;border-radius:10px;padding:11px;font-weight:700;font-size:.88rem;cursor:pointer}
+  .cb-send:hover{background:var(--brand-dark)}
+  .bn-post .bp{width:47px;height:47px;margin-top:-24px;border-radius:50%;background:linear-gradient(135deg,#0c7a55,#19b98b);display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 6px 16px rgba(14,138,104,.4);border:3px solid #fff}
+  .bn-post .bp svg{width:22px;height:22px}
+  body.dark .bn-post .bp{border-color:#151d19}
+  @media(max-width:640px){
+    .float-c{bottom:calc(78px + env(safe-area-inset-bottom));left:12px}
+    .fab{width:47px;height:47px}
+    .fab svg{width:23px;height:23px}
+    .chatbox{left:12px;bottom:calc(196px + env(safe-area-inset-bottom))}
+  }
+
   /* ---------- Mobile bottom nav ---------- */
   .bnav{display:none}
   @media(max-width:640px){
@@ -562,11 +594,33 @@
 
 
 <nav class="bnav">
-  <a href="/" class="bn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg><span>Home</span></a>
-  <a href="/browse.html" class="bn on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Browse</span></a>
-  <a href="/dashboard.html" class="bn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span>Post</span></a>
-  <a href="/dashboard.html" class="bn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg><span>Account</span></a>
+  <a href="/" class="bn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.2 12 3.5l9 7.7"/><path d="M5.5 9.9V20a1 1 0 0 0 1 1H10v-5.6h4V21h3.5a1 1 0 0 0 1-1V9.9"/><path d="M16.6 6.9V4.4h2.3v4.4"/></svg><span>Home</span></a>
+  <a href="/browse.html" class="bn on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="7"/><path d="m20.5 20.5-4.9-4.9"/><path d="m7.3 11 3.2-2.7 3.2 2.7M8.5 10.6v3.2h4v-3.2"/></svg><span>Browse</span></a>
+  <a href="/dashboard.html" class="bn bn-post"><span class="bp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5.5v13M5.5 12h13"/></svg></span><span>Post</span></a>
+  <a href="/dashboard.html" class="bn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7.4" r="3.7"/><path d="M4.6 20.3c.9-3.9 3.9-5.8 7.4-5.8s6.5 1.9 7.4 5.8"/><path d="M12 14.5v3M10.6 19h2.8" opacity=".55"/></svg><span>Account</span></a>
 </nav>
+
+
+<div class="float-c">
+  <a class="fab fab-w" href="https://wa.me/254748181876?text=Hi%20PataHome!" target="_blank" rel="noopener" aria-label="Chat on WhatsApp"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.04 2a9.9 9.9 0 0 0-8.53 14.9L2 22l5.25-1.47A9.9 9.9 0 1 0 12.04 2zm0 18.1a8.2 8.2 0 0 1-4.18-1.15l-.3-.18-3.12.87.86-3.04-.2-.31a8.2 8.2 0 1 1 6.94 3.81zm4.52-6.13c-.25-.13-1.47-.72-1.69-.8-.23-.09-.4-.13-.56.12-.17.25-.64.8-.79.97-.14.17-.29.19-.54.06-.25-.12-1.05-.38-2-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.01-.38.11-.51.11-.11.25-.29.37-.43.13-.15.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.12-.56-1.34-.76-1.84-.2-.48-.41-.42-.56-.43h-.48c-.17 0-.44.06-.66.31-.23.25-.87.85-.87 2.07 0 1.22.89 2.4 1.01 2.57.12.17 1.75 2.67 4.23 3.74.59.26 1.05.41 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.67-1.18.21-.58.21-1.07.15-1.18-.06-.1-.23-.16-.48-.28z"/></svg></a>
+  <button class="fab fab-c" onclick="toggleChat(true)" aria-label="Live chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.3A8.3 8.3 0 0 1 12.7 20.6H4l1.6-3.2A8.3 8.3 0 1 1 21 12.3z"/><path d="M8.4 11h.01M12.3 11h.01M16.2 11h.01" stroke-width="2.6"/></svg></button>
+</div>
+
+<div class="chatbox" id="chatbox">
+  <div class="cb-head">
+    <span class="cb-dot"></span>
+    <div><div class="cb-t">PataHome Support</div><div class="cb-s">Typically replies within the hour</div></div>
+    <button class="cb-x" onclick="toggleChat(false)" aria-label="Close chat">✕</button>
+  </div>
+  <div class="cb-body" id="cbBody">
+    <div class="cb-msg">Karibu! 👋 How can we help? Leave your details and message — we'll get back to you on WhatsApp or SMS.</div>
+    <input id="cbName" placeholder="Your name">
+    <input id="cbPhone" placeholder="Phone e.g. 0712 345 678">
+    <textarea id="cbMsg" rows="3" placeholder="Type your message…"></textarea>
+    <div class="cb-err" id="cbErr"></div>
+    <button class="cb-send" onclick="sendChat()">Send message</button>
+  </div>
+</div>
 
 <div class="toast" id="toast"></div>
 
@@ -1187,6 +1241,22 @@ async function paintAccount(){
     useMyLocation();
   }
 })();
+
+/* ---------- live chat ---------- */
+function toggleChat(open){document.getElementById("chatbox").classList.toggle("show",open)}
+async function sendChat(){
+  const name=document.getElementById("cbName").value.trim();
+  const phone=document.getElementById("cbPhone").value.trim();
+  const message=document.getElementById("cbMsg").value.trim();
+  const err=document.getElementById("cbErr");
+  err.textContent="";
+  if(!name||!phone||!message){err.textContent="Fill in your name, phone and message";return}
+  try{
+    const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,phone,message})});
+    if(!r.ok)throw new Error((await r.json()).error||"Could not send");
+    document.getElementById("cbBody").innerHTML='<div class="cb-msg">Asante, '+name.split(" ")[0].replace(/[<>&]/g,"")+'! 🙌 Your message is in — we\'ll reply on WhatsApp or SMS shortly.</div><button class="cb-send" onclick="toggleChat(false)">Close</button>';
+  }catch(e){err.textContent=e.message}
+}
 </script>
 </body>
 </html>

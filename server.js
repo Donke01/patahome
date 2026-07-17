@@ -428,6 +428,15 @@ router.add("POST", "/api/my/notifications/read", (req, res) => {
   send(res, 200, { ok: true });
 });
 
+/* -------- public live chat: stored as a support ticket, replied via WhatsApp/SMS -------- */
+router.add("POST", "/api/chat", (req, res) => {
+  const { name, phone, message } = req.body || {};
+  if (!name || !phone || !message) return send(res, 400, { error: "name, phone and message are required" });
+  db.prepare("INSERT INTO support_tickets (user_id,subject,message) VALUES (NULL,?,?)")
+    .run(`Live chat — ${String(name).trim().slice(0, 80)} (${String(phone).trim().slice(0, 20)})`, String(message).slice(0, 2000));
+  send(res, 201, { ok: true });
+});
+
 /* -------- support tickets (Request Help) -------- */
 router.add("POST", "/api/support", (req, res) => {
   const u = requireAuth(req, res); if (!u) return;
