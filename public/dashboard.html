@@ -316,6 +316,19 @@
       <label>Email (optional)</label>
       <input id="aEmail" type="email" placeholder="you@email.com">
     </div>
+    <div id="regExtra" style="display:none">
+      <label>Birthday</label>
+      <input id="aDob" type="date" max="2010-01-01">
+      <label>County</label>
+      <input id="aCounty" list="countyList" placeholder="e.g. Trans Nzoia">
+      <datalist id="countyList"><option value="Baringo"><option value="Bomet"><option value="Bungoma"><option value="Busia"><option value="Elgeyo Marakwet"><option value="Embu"><option value="Garissa"><option value="Homa Bay"><option value="Isiolo"><option value="Kajiado"><option value="Kakamega"><option value="Kericho"><option value="Kiambu"><option value="Kilifi"><option value="Kirinyaga"><option value="Kisii"><option value="Kisumu"><option value="Kitui"><option value="Kwale"><option value="Laikipia"><option value="Lamu"><option value="Machakos"><option value="Makueni"><option value="Mandera"><option value="Marsabit"><option value="Meru"><option value="Migori"><option value="Mombasa"><option value="Murang'a"><option value="Nairobi"><option value="Nakuru"><option value="Nandi"><option value="Narok"><option value="Nyamira"><option value="Nyandarua"><option value="Nyeri"><option value="Samburu"><option value="Siaya"><option value="Taita Taveta"><option value="Tana River"><option value="Tharaka Nithi"><option value="Trans Nzoia"><option value="Turkana"><option value="Uasin Gishu"><option value="Vihiga"><option value="Wajir"><option value="West Pokot"></datalist>
+      <label>Town / Estate</label>
+      <input id="aTown" placeholder="e.g. Kitale, Milimani">
+      <label style="display:flex;align-items:center;gap:9px;font-weight:500;text-transform:none;letter-spacing:0;margin-top:14px;cursor:pointer">
+        <input type="checkbox" id="aTerms" style="width:auto;accent-color:var(--green)">
+        I agree to PataHome's terms of use and privacy policy
+      </label>
+    </div>
     <label>Password</label>
     <input id="aPass" type="password" placeholder="At least 8 characters">
     <div class="err" id="authErr"></div>
@@ -503,6 +516,7 @@ function setMode(m){
   $("tabReg").classList.toggle("on",m==="register");
   $("regName").style.display=m==="register"?"block":"none";
   $("regEmailWrap").style.display=m==="register"?"block":"none";
+  $("regExtra").style.display=m==="register"?"block":"none";
   $("phoneLbl").textContent=m==="register"?"Phone":"Phone or email";
   $("aPhone").placeholder=m==="register"?"07XXXXXXXX":"07XXXXXXXX or you@email.com";
   $("authBtn").textContent=m==="login"?"Log In":"Create Account";
@@ -517,7 +531,12 @@ async function submitAuth(){
       body=/@/.test(idField)?{email:idField}:{phone:idField};
       body.password=$("aPass").value;path="/api/auth/login";
     }else{
-      body={name:$("aName").value.trim(),phone:idField,email:$("aEmail").value.trim()||undefined,password:$("aPass").value};
+      if(!$("aDob").value){$("authErr").textContent="Enter your birthday";return}
+      const ageMs=Date.now()-new Date($("aDob").value).getTime();
+      if(ageMs<18*31557600000){$("authErr").textContent="You must be at least 18 years old to use PataHome";return}
+      if(!$("aTerms").checked){$("authErr").textContent="Please accept the terms to continue";return}
+      body={name:$("aName").value.trim(),phone:idField,email:$("aEmail").value.trim()||undefined,password:$("aPass").value,
+        dob:$("aDob").value,county:$("aCounty").value.trim(),town:$("aTown").value.trim(),country:"Kenya"};
       path="/api/auth/register";
     }
     const r=await api(path,{method:"POST",body:JSON.stringify(body)});
@@ -546,7 +565,7 @@ async function onGoogleCredential(resp){
   try{
     const r=await api("/api/auth/google",{method:"POST",body:JSON.stringify({credential:resp.credential})});
     saveSession(r);enterDash();
-    if(r.user.needsSetup){setTimeout(()=>{toast("Add your phone number to start posting");openSettings("phone")},600)}
+    if(r.user.needsSetup){setTimeout(()=>{toast("Karibu! Complete your profile to start posting");openSettings("complete")},600)}
   }catch(e){$("authErr").textContent=e.message}
 }
 function logout(){
@@ -932,17 +951,45 @@ function openSettings(kind){
     save=()=>saveAccount({businessName:$("sBiz").value.trim(),businessType:$("sBizType").value},"Business details saved");
   }else if(kind==="verify"){
     title="Verify my details";
-    if(ME.verified){sub="";html=`<div class="set-row"><span class="sr-k">Status</span><span class="sr-v" style="color:var(--green)">✓ Verified owner</span></div><p style="font-size:.85rem;color:var(--muted);margin-top:10px">Your account is verified — listings show a verified badge.</p>`;acts.innerHTML=`<button class="btn btn-ghost" onclick="hide('setModal')" style="flex:1;padding:11px">Close</button>`;
-      $("setTitle").textContent=title;$("setSub").textContent=sub;body.innerHTML=html;show("setModal");return;}
-    if(ME.verifyStatus==="pending"){sub="";html=`<div class="set-row"><span class="sr-k">Status</span><span class="sr-v" style="color:#b45309">Pending review</span></div><p style="font-size:.85rem;color:var(--muted);margin-top:10px">We've received your request. Our team will verify your account shortly.</p>`;acts.innerHTML=`<button class="btn btn-ghost" onclick="hide('setModal')" style="flex:1;padding:11px">Close</button>`;
-      $("setTitle").textContent=title;$("setSub").textContent=sub;body.innerHTML=html;show("setModal");return;}
-    sub="Get the verified badge that renters trust.";
-    html=`<p style="font-size:.86rem;color:var(--muted);line-height:1.6">Verification confirms your identity and that you own or manage the properties you list. Submit a request and our team will contact you on your registered phone to complete ID and ownership checks.</p>`;
-    save=()=>doVerify();acts._label="Request verification";
+    if(ME.verified){
+      $("setTitle").textContent=title;$("setSub").textContent="";
+      body.innerHTML=`<div class="set-row"><span class="sr-k">Status</span><span class="sr-v" style="color:var(--green)">✓ Verified owner</span></div><p style="font-size:.85rem;color:var(--muted);margin-top:10px">Your account is verified — listings show a verified badge.</p>`;
+      acts.innerHTML=`<button class="btn btn-ghost" onclick="hide('setModal')" style="flex:1;padding:11px">Close</button>`;show("setModal");return;
+    }
+    if(ME.verifyStatus==="pending"){
+      $("setTitle").textContent=title;$("setSub").textContent="";
+      body.innerHTML=`<div class="set-row"><span class="sr-k">Status</span><span class="sr-v" style="color:#b45309">Pending review</span></div><p style="font-size:.85rem;color:var(--muted);margin-top:10px">We've received your documents. Our team will review and verify your account shortly.</p>`;
+      acts.innerHTML=`<button class="btn btn-ghost" onclick="hide('setModal')" style="flex:1;padding:11px">Close</button>`;show("setModal");return;
+    }
+    sub="Get the verified badge renters trust. Your details are kept private and only used for verification.";
+    vDocIds=[];
+    html=(ME.verifyStatus==="rejected"?`<p style="font-size:.83rem;color:var(--red);background:#faeeed;border-radius:10px;padding:9px 12px;margin-bottom:4px">Your previous request wasn't approved — check your details and try again.</p>`:"")+
+      inp("vLegal","Full legal name (as on your ID)",ME.legalName||ME.name)+
+      inp("vId","National ID number",ME.idNumber)+
+      `<label>Photo of your national ID</label>
+      <div class="photo-grid" id="vDocGrid"></div>
+      <div class="photo-note" id="vDocNote">Clear photo, all corners visible. Add a title deed or utility bill as a second document if you have one (optional).</div>
+      <input type="file" id="vFile" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="uploadVerifyDoc(this.files);this.value=''">`;
+    save=()=>doVerify();acts._label="Submit for review";
+    setTimeout(renderVDocs,0);
   }else if(kind==="phone"){
-    title="Change phone number";sub=ME.phone?("Current: "+ME.phone):"You haven't set a phone yet — add one to start posting.";
-    html=inp("sPhone","New phone (07XXXXXXXX)",ME.phone);
-    save=()=>saveField("/api/account/change-phone",{phone:$("sPhone").value.trim()},"Phone updated");
+    title=ME.phone?"Change phone number":"Add phone number";
+    sub=ME.phone?("Current: "+ME.phone):"Add your phone so tenants and buyers can reach you.";
+    html=inp("sPhone",ME.phone?"New phone (07XXXXXXXX)":"Phone (07XXXXXXXX)",ME.phone);
+    save=()=>saveField("/api/account/change-phone",{phone:$("sPhone").value.trim()},ME.phone?"Phone updated":"Phone added");
+  }else if(kind==="complete"){
+    title="Complete your profile";sub="Two quick details and you're ready to post listings.";
+    html=inp("sPhone","Phone (07XXXXXXXX)","")+
+      '<label>County</label><input id="sCounty" list="countyList" placeholder="e.g. Nairobi" value="'+esc(ME.county||"")+'">'+
+      inp("sTown","Town / Estate",ME.town);
+    save=async()=>{
+      try{
+        const r=await api("/api/account/change-phone",{method:"POST",body:JSON.stringify({phone:$("sPhone").value.trim()})});
+        ME=r;
+        ME=await api("/api/account",{method:"PATCH",body:JSON.stringify({county:$("sCounty").value.trim(),town:$("sTown").value.trim()})});
+        paintUser();hide("setModal");toast("Profile complete — karibu!");
+      }catch(e){$("setErr").textContent=e.message}
+    };
   }else if(kind==="email"){
     title="Change email";sub=ME.email?("Current: "+ME.email):"Add an email to your account.";
     html=inp("sEmail","New email",ME.email,"email");
@@ -976,9 +1023,42 @@ async function saveField(path,body,msg,noUser){
   try{const r=await api(path,{method:"POST",body:JSON.stringify(body)});if(!noUser&&r.id)ME=r;paintUser();hide("setModal");toast(msg)}
   catch(e){$("setErr").textContent=e.message}
 }
+let vDocIds=[],vUploading=0;
+function renderVDocs(){
+  const g=$("vDocGrid");if(!g)return;
+  if(!CONFIG||!CONFIG.cloudinary){g.innerHTML="";$("vDocNote").textContent="Document upload isn't available right now — submit your details and our team will contact you to complete verification.";return}
+  g.innerHTML=vDocIds.map((id,i)=>`<div class="photo-th"><img src="https://res.cloudinary.com/${signCfg&&signCfg.cloudName?signCfg.cloudName:""}/image/upload/c_fill,w_200,h_150,q_auto:eco/${id}" alt="document ${i+1}"><button type="button" class="rm" onclick="vDocIds.splice(${i},1);renderVDocs()">✕</button></div>`).join("")+
+    (vUploading?`<div class="photo-th uploading"><div class="spin">Uploading…</div></div>`:"")+
+    (vDocIds.length+vUploading<2?`<button type="button" class="photo-add" onclick="$('vFile').click()"><span>+</span>Add document</button>`:"");
+}
+async function uploadVerifyDoc(files){
+  if(!files.length)return;
+  const f=files[0];
+  if(!/^image\/(jpeg|png|webp)$/.test(f.type)){toast("Use a JPG, PNG or WebP photo");return}
+  if(f.size>8*1024*1024){toast("Photo is over 8 MB — take a smaller one");return}
+  let cfg;
+  try{cfg=await api("/api/uploads/sign?kind=verify");signCfg=signCfg||cfg}
+  catch(e){$("setErr").textContent=e.message;return}
+  vUploading++;renderVDocs();
+  try{
+    const fd=new FormData();
+    fd.append("file",f);fd.append("api_key",cfg.apiKey);fd.append("timestamp",cfg.timestamp);
+    fd.append("signature",cfg.signature);fd.append("folder",cfg.folder);fd.append("transformation",cfg.transformation);
+    const r=await fetch(`https://api.cloudinary.com/v1_1/${cfg.cloudName}/image/upload`,{method:"POST",body:fd});
+    const d=await r.json();
+    if(!r.ok)throw new Error((d.error&&d.error.message)||"Upload failed");
+    vDocIds.push(d.public_id);
+  }catch(e){$("setErr").textContent="Upload failed: "+e.message}
+  finally{vUploading--;renderVDocs()}
+}
 async function doVerify(){
-  try{ME=await api("/api/account/request-verification",{method:"POST"});paintUser();hide("setModal");toast("Verification requested")}
-  catch(e){$("setErr").textContent=e.message}
+  if(vUploading){$("setErr").textContent="Wait for the document to finish uploading";return}
+  try{
+    ME=await api("/api/account/request-verification",{method:"POST",body:JSON.stringify({
+      legalName:$("vLegal").value.trim(),idNumber:$("vId").value.trim(),docs:vDocIds
+    })});
+    paintUser();hide("setModal");toast("Submitted — we'll review and verify you shortly");
+  }catch(e){$("setErr").textContent=e.message}
 }
 async function doDelete(){
   if(!confirm("Delete your account permanently? This cannot be undone."))return;

@@ -107,21 +107,31 @@ const publicUser = (u) => ({
   verified: !!u.verified, verifyStatus: u.verify_status || "none",
   businessName: u.business_name || "", businessType: u.business_type || "",
   bio: u.bio || "", language: u.language || "en", avatarUrl: u.avatar_url || "",
+  dob: u.dob || "", country: u.country || "Kenya", county: u.county || "", town: u.town || "",
+  idNumber: u.id_number || "", legalName: u.legal_name || "",
   hasPassword: !!u.password_hash, needsSetup: !realPhone(u.phone),
   role: u.role
 });
+const age = (dob) => { const d = new Date(dob); return isNaN(d) ? null : Math.floor((Date.now() - d.getTime()) / 31557600000); };
 const authResponse = (res, code, u) =>
   send(res, code, { token: signToken({ id: u.id, name: u.name, role: u.role }), user: publicUser(u) });
 
 router.add("POST", "/api/auth/register", (req, res) => {
-  const { name, phone, email, password } = req.body || {};
+  const { name, phone, email, password, dob, county, town, country } = req.body || {};
   if (!name || !phone || !password) return send(res, 400, { error: "name, phone and password are required" });
   if (!/^0[17]\d{8}$/.test(phone)) return send(res, 400, { error: "Enter a valid Kenyan phone e.g. 0712345678" });
   if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return send(res, 400, { error: "Enter a valid email address" });
   if (password.length < 8) return send(res, 400, { error: "Password must be at least 8 characters" });
+  if (dob) {
+    const a = age(dob);
+    if (a === null) return send(res, 400, { error: "Enter a valid date of birth" });
+    if (a < 18) return send(res, 400, { error: "You must be at least 18 years old to use PataHome" });
+    if (a > 120) return send(res, 400, { error: "Enter a valid date of birth" });
+  }
   try {
-    const info = db.prepare("INSERT INTO users (name,phone,email,password_hash) VALUES (?,?,?,?)")
-      .run(name.trim(), phone, email || null, hashPassword(password));
+    const info = db.prepare("INSERT INTO users (name,phone,email,password_hash,dob,county,town,country) VALUES (?,?,?,?,?,?,?,?)")
+      .run(name.trim(), phone, email ? email.toLowerCase() : null, hashPassword(password),
+           dob || null, (county || "").slice(0, 60), (town || "").slice(0, 80), (country || "Kenya").slice(0, 60));
     const user = db.prepare("SELECT * FROM users WHERE id=?").get(info.lastInsertRowid);
     db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
       .run(user.id, "system", "Karibu to PataHome", "Your account is ready. Post your first listing to start receiving leads.");
@@ -179,7 +189,8 @@ router.add("GET", "/api/auth/me", (req, res) => {
 /* ================= account settings ================= */
 router.add("PATCH", "/api/account", (req, res) => {
   const u = requireAuth(req, res); if (!u) return;
-  const map = { name: "name", businessName: "business_name", businessType: "business_type", bio: "bio", language: "language" };
+  const map = { name: "name", businessName: "business_name", businessType: "business_type", bio: "bio", language: "language",
+    county: "county", town: "town", country: "country", dob: "dob" };
   const sets = [], params = [];
   for (const [k, col] of Object.entries(map)) if (req.body[k] !== undefined) {
     sets.push(`${col}=?`); params.push(String(req.body[k]).slice(0, 400));
@@ -223,7 +234,13 @@ router.add("POST", "/api/account/change-password", (req, res) => {
 
 router.add("POST", "/api/account/request-verification", (req, res) => {
   const u = requireAuth(req, res); if (!u) return;
-  db.prepare("UPDATE users SET verify_status='pending' WHERE id=? AND verified=0").run(u.id);
+  const { legalName, idNumber, docs } = req.body || {};
+  if (!legalName || !String(legalName).trim()) return send(res, 400, { error: "Enter your full legal name as it appears on your ID" });
+  if (!/^\d{6,10}$/.test(String(idNumber || "").trim())) return send(res, 400, { error: "Enter a valid national ID number" });
+  const docList = Array.isArray(docs) ? docs.filter(d => typeof d === "string" && d.startsWith("patahome/") && /^[\w\-/]{1,200}$/.test(d)).slice(0, 3) : [];
+  if (cldEnabled() && !docList.length) return send(res, 400, { error: "Upload a photo of your national ID" });
+  db.prepare("UPDATE users SET verify_status='pending', legal_name=?, id_number=?, verify_docs=? WHERE id=? AND verified=0")
+    .run(String(legalName).trim().slice(0, 120), String(idNumber).trim(), JSON.stringify(docList), u.id);
   db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
     .run(u.id, "verify", "Verification submitted", "Our team will review your details and verify your account shortly.");
   send(res, 200, publicUser(db.prepare("SELECT * FROM users WHERE id=?").get(u.id)));
@@ -354,11 +371,12 @@ router.add("DELETE", "/api/listings/:id", (req, res, p) => {
 router.add("GET", "/api/uploads/sign", (req, res) => {
   const u = requireAuth(req, res); if (!u) return;
   if (!cldEnabled()) return send(res, 503, { error: "Photo uploads are not configured yet" });
+  const folder = req.query.kind === "verify" ? "patahome/verify" : CLD.folder;
   const timestamp = Math.floor(Date.now() / 1000);
-  const params = { folder: CLD.folder, timestamp, transformation: CLD_TRANSFORM };
+  const params = { folder, timestamp, transformation: CLD_TRANSFORM };
   send(res, 200, {
     cloudName: CLD.cloud, apiKey: CLD.key,
-    timestamp, folder: CLD.folder, transformation: CLD_TRANSFORM,
+    timestamp, folder, transformation: CLD_TRANSFORM,
     signature: cldSign(params),
     maxPhotos: CLD.maxPhotos, maxBytes: 8 * 1024 * 1024
   });
@@ -581,6 +599,36 @@ router.add("GET", "/api/admin/overview", (req, res) => {
     unrepliedInquiries: one("SELECT COUNT(*) FROM inquiries WHERE owner_reply IS NULL"),
     byCategory: Object.fromEntries(db.prepare("SELECT category, COUNT(*) n FROM listings WHERE status='active' GROUP BY category").all().map(r => [r.category, r.n]))
   });
+});
+
+/* -------- verification review queue -------- */
+router.add("GET", "/api/admin/verifications", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const rows = db.prepare("SELECT * FROM users WHERE verify_status='pending' ORDER BY id").all();
+  send(res, 200, rows.map(u => ({
+    id: u.id, name: u.name, legalName: u.legal_name, phone: u.phone, email: u.email,
+    idNumber: u.id_number, county: u.county, town: u.town,
+    docs: (() => { try { return JSON.parse(u.verify_docs || "[]"); } catch { return []; } })()
+      .map(d => cldEnabled() ? photoUrl(d, "c_limit,w_1000,q_auto:good") : d),
+    listings: db.prepare("SELECT COUNT(*) n FROM listings WHERE owner_id=? AND status!='removed'").get(u.id).n
+  })));
+});
+
+router.add("POST", "/api/admin/verifications/:id", (req, res, p) => {
+  if (!requireAdmin(req, res)) return;
+  const u = db.prepare("SELECT * FROM users WHERE id=?").get(p.id);
+  if (!u) return send(res, 404, { error: "User not found" });
+  const approve = !!(req.body && req.body.approve);
+  if (approve) {
+    db.prepare("UPDATE users SET verified=1, verify_status='verified' WHERE id=?").run(u.id);
+    db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
+      .run(u.id, "verify", "You are verified ✓", "Your account passed verification — your listings now show the trusted badge.");
+  } else {
+    db.prepare("UPDATE users SET verified=0, verify_status='rejected' WHERE id=?").run(u.id);
+    db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
+      .run(u.id, "verify", "Verification not approved", (req.body && req.body.reason) ? String(req.body.reason).slice(0, 300) : "We couldn't verify your details. Check your ID information and try again, or contact support.");
+  }
+  send(res, 200, { ok: true });
 });
 
 /* -------- platform-wide daily stats for the live admin dashboard -------- */

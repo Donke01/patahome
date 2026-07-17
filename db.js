@@ -93,7 +93,9 @@ try { db.exec("ALTER TABLE listings ADD COLUMN photos TEXT"); } catch (e) { /* c
 for (const col of [
   "business_name TEXT", "business_type TEXT", "bio TEXT",
   "language TEXT DEFAULT 'en'", "avatar_url TEXT", "google_id TEXT",
-  "verify_status TEXT DEFAULT 'none'"   // none | pending | verified
+  "verify_status TEXT DEFAULT 'none'",  // none | pending | verified | rejected
+  "dob TEXT", "country TEXT DEFAULT 'Kenya'", "county TEXT", "town TEXT",
+  "id_number TEXT", "verify_docs TEXT", "legal_name TEXT"
 ]) {
   try { db.exec(`ALTER TABLE users ADD COLUMN ${col}`); } catch (e) { /* exists */ }
 }
