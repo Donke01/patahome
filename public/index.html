@@ -191,6 +191,11 @@
     .quick-row{gap:7px}
     .quick{padding:8px 14px;font-size:.76rem}
     #locStatus{font-size:.74rem;margin-top:7px}
+    .slider{min-height:196px;padding-bottom:24px;margin-bottom:4px}
+    .slide-h{inset:0 0 24px 0}
+    .sl-h2{font-size:1.45rem;margin-bottom:12px}
+    .sl-h2 br{display:none}
+    .sl-trust{font-size:.78rem;gap:8px 14px}
     .hero-chips{margin-top:11px;gap:6px}
     .hchip{padding:6px 12px;font-size:.71rem}
     .strip{padding:10px 12px}
@@ -220,6 +225,21 @@
   @media(max-width:380px){
     #darkBtn{display:none}
   }
+
+  /* ---------- Hero slider ---------- */
+  .slider{position:relative;max-width:820px;margin:0 auto 8px;min-height:246px;padding-bottom:30px}
+  .slide-h{position:absolute;inset:0 0 30px 0;display:flex;flex-direction:column;justify-content:center;align-items:center;opacity:0;transform:translateX(-56px);transition:opacity .5s ease,transform .6s cubic-bezier(.16,1,.3,1);pointer-events:none}
+  .slide-h.on{opacity:1;transform:none;pointer-events:auto}
+  .slide-h.out{opacity:0;transform:translateX(56px)}
+  .sl-h2{font-family:var(--serif);font-size:clamp(1.7rem,4.2vw,2.7rem);font-weight:600;line-height:1.15;letter-spacing:-.5px;margin:0 0 18px}
+  .sl-h2 .hl{color:#e3c98c;font-style:italic}
+  .sl-trust{display:flex;gap:12px 26px;flex-wrap:wrap;justify-content:center;font-size:.92rem;font-weight:600}
+  .sl-trust span{display:flex;align-items:center;gap:8px}
+  .sl-trust svg{width:15px;height:15px;color:#e3c98c;flex-shrink:0}
+  .sl-dots{position:absolute;bottom:0;left:0;right:0;display:flex;justify-content:center;gap:8px}
+  .sl-dot{width:8px;height:8px;border-radius:50%;border:none;background:rgba(255,255,255,.35);padding:0;transition:.25s;cursor:pointer}
+  .sl-dot.on{background:#e3c98c;width:22px;border-radius:999px}
+  @media(prefers-reduced-motion:reduce){.slide-h{transition:none}}
 
   /* ---------- Hero chips ---------- */
   .hero-chips{margin-top:15px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap;position:relative;animation:fadeUp .7s .42s both}
@@ -418,10 +438,38 @@
 </header>
 
 <section class="hero">
+  <div class="slider" id="heroSlider">
+    <div class="slide-h on">
   <div class="kicker">Kenya's Direct-From-Owner Marketplace</div>
   <h1 id="heroHead"><span id="hlPre">Find your next </span><span class="rot-wrap"><span id="rotWord" class="hl">home</span></span><span id="hlPost"> <br>straight from the owner.</span></h1>
   <p id="heroSub">Verified rentals and homes for sale across Kenya, sorted by what's nearest to you. No agents. No viewing fees. Karibu home.</p>
+    </div>
+    <div class="slide-h">
+      <div class="kicker">The PataHome promise</div>
+      <h2 class="sl-h2">Fewer middlemen.<br>More <span class="hl">karibu</span>.</h2>
+      <div class="sl-trust">
+        <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>ID-verified owners</span>
+        <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Zero agent fees</span>
+        <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Nearest homes first</span>
+      </div>
+    </div>
+    <div class="slide-h">
+      <div class="kicker">Live right now</div>
+      <h2 class="sl-h2">Kenya is listing<br>on <span class="hl">PataHome</span>.</h2>
+      <div class="stats">
+        <div class="stat"><div class="num" id="statListings">0</div><div class="cap">Live listings</div></div>
+        <div class="stat"><div class="num" id="statAreas">0</div><div class="cap">Areas covered</div></div>
+        <div class="stat"><div class="num" id="statOwners">0</div><div class="cap">Verified owners</div></div>
+      </div>
+    </div>
+    <div class="sl-dots" id="slDots">
+      <button class="sl-dot on" onclick="goSlide(0)" aria-label="Slide 1"></button>
+      <button class="sl-dot" onclick="goSlide(1)" aria-label="Slide 2"></button>
+      <button class="sl-dot" onclick="goSlide(2)" aria-label="Slide 3"></button>
+    </div>
+  </div>
   <div class="search-wrap">
+
     <div class="searchbar">
       <span class="s-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
       <input id="searchInput" type="text" placeholder="" autocomplete="off" oninput="onSearchInput()" onfocus="renderSugg()" onkeydown="if(event.key==='Enter'){closeSugg();doSearch()}else if(event.key==='Escape')closeSugg()">
@@ -434,19 +482,6 @@
     <button class="hchip" onclick="quickFilter('rent','5000-20000','1')">1BR under 20K</button>
     <button class="hchip" onclick="quickFilter('rent','5000-20000','2')">2BR to share</button>
     <button class="hchip" onclick="quickFilter('sale','','')">Homes for sale</button>
-  </div>
-</section>
-
-<!-- Trust strip: promise + live counters in one line -->
-<section class="strip reveal">
-  <div class="strip-in">
-    <span class="st-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>ID-verified owners</span>
-    <span class="st-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Zero agent fees</span>
-    <span class="st-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Nearest homes first</span>
-    <span class="st-div"></span>
-    <span class="st-num"><b id="statListings">0</b> listings</span>
-    <span class="st-num"><b id="statAreas">0</b> areas</span>
-    <span class="st-num"><b id="statOwners">0</b> owners</span>
   </div>
 </section>
 
@@ -719,6 +754,40 @@ function renderSugg(){
 function pickSugg(id){closeSugg();location.href="/browse.html?open="+id}
 function closeSugg(){document.getElementById("sugg").classList.remove("show")}
 document.addEventListener("click",e=>{if(!e.target.closest(".search-wrap"))closeSugg()});
+
+/* Hero slider: left-to-right slide transitions */
+let slIdx=0,slTimer=null;
+function goSlide(n){
+  const slides=document.querySelectorAll("#heroSlider .slide-h");
+  const dots=document.querySelectorAll(".sl-dot");
+  if(n===slIdx||!slides.length)return;
+  slides[slIdx].classList.remove("on");slides[slIdx].classList.add("out");
+  const prev=slIdx;
+  setTimeout(()=>slides[prev].classList.remove("out"),600);
+  slIdx=(n+slides.length)%slides.length;
+  slides[slIdx].classList.add("on");
+  dots.forEach((d,i)=>d.classList.toggle("on",i===slIdx));
+  restartSlider();
+}
+function nextSlide(){goSlide((slIdx+1)%3)}
+function restartSlider(){
+  clearInterval(slTimer);
+  if(!reduceMotion)slTimer=setInterval(nextSlide,6800);
+}
+(function initSlider(){
+  const el=document.getElementById("heroSlider");
+  if(!el)return;
+  restartSlider();
+  el.addEventListener("mouseenter",()=>clearInterval(slTimer));
+  el.addEventListener("mouseleave",restartSlider);
+  let tx=null;
+  el.addEventListener("touchstart",e=>{tx=e.touches[0].clientX},{passive:true});
+  el.addEventListener("touchend",e=>{
+    if(tx===null)return;
+    const dx=e.changedTouches[0].clientX-tx;tx=null;
+    if(Math.abs(dx)>45)goSlide(dx<0?(slIdx+1)%3:(slIdx+2)%3);
+  },{passive:true});
+})();
 
 function renderLatest(){
   const g=document.getElementById("latestGrid");
