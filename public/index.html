@@ -227,7 +227,7 @@
   }
 
   /* ---------- Hero slider ---------- */
-  .slider{position:relative;max-width:820px;margin:0 auto 8px;min-height:246px;padding-bottom:30px}
+  .slider{position:relative;max-width:820px;margin:0 auto 8px;min-height:250px;padding-bottom:30px}
   .slide-h{position:absolute;inset:0 0 30px 0;display:flex;flex-direction:column;justify-content:center;align-items:center;opacity:0;transform:translateX(-56px);transition:opacity .5s ease,transform .6s cubic-bezier(.16,1,.3,1);pointer-events:none}
   .slide-h.on{opacity:1;transform:none;pointer-events:auto}
   .slide-h.out{opacity:0;transform:translateX(56px)}
@@ -774,9 +774,29 @@ function restartSlider(){
   clearInterval(slTimer);
   if(!reduceMotion)slTimer=setInterval(nextSlide,6800);
 }
+function sizeSlider(){
+  const sl=document.getElementById("heroSlider");
+  if(!sl)return;
+  let max=0;
+  sl.querySelectorAll(".slide-h").forEach(s=>{
+    const c=s.cloneNode(true);
+    c.classList.remove("on","out");
+    c.removeAttribute("id");
+    c.querySelectorAll("[id]").forEach(n=>n.removeAttribute("id"));
+    c.style.cssText="position:absolute;visibility:hidden;opacity:1;transform:none;transition:none;inset:auto;left:0;right:0;top:0";
+    sl.appendChild(c);
+    max=Math.max(max,c.offsetHeight);
+    c.remove();
+  });
+  if(max)sl.style.minHeight=(max+36)+"px";
+}
 (function initSlider(){
   const el=document.getElementById("heroSlider");
   if(!el)return;
+  sizeSlider();
+  addEventListener("load",sizeSlider);
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(sizeSlider);
+  let srz;addEventListener("resize",()=>{clearTimeout(srz);srz=setTimeout(sizeSlider,200)});
   restartSlider();
   el.addEventListener("mouseenter",()=>clearInterval(slTimer));
   el.addEventListener("mouseleave",restartSlider);
