@@ -74,9 +74,28 @@ const net = require("node:net");
 const tls = require("node:tls");
 
 const mailConfigured = () =>
-  !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS && process.env.MAIL_FROM);
+  !!(process.env.MAIL_FROM && (process.env.RESEND_API_KEY ||
+     (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS)));
 
-function sendMail({ to, subject, text }) {
+/* Preferred path: Resend HTTPS API (works on hosts that block SMTP ports) */
+async function sendMail({ to, subject, text }) {
+  if (process.env.RESEND_API_KEY) {
+    const r = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + process.env.RESEND_API_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: `PataHome <${process.env.MAIL_FROM}>`, to: [to], subject, text }),
+      signal: AbortSignal.timeout(15000)
+    });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      throw new Error(d.message || ("Resend error " + r.status));
+    }
+    return true;
+  }
+  return smtpSend({ to, subject, text });
+}
+
+function smtpSend({ to, subject, text }) {
   return new Promise((resolve, reject) => {
     if (!mailConfigured()) return reject(new Error("mail not configured"));
     const host = process.env.SMTP_HOST, port = +(process.env.SMTP_PORT || 587);
