@@ -1036,10 +1036,9 @@ function openSettings(kind){
       selField("sGender","Gender (optional)",["Female","Male","Prefer not to say"],ME.gender)+
       selField("sPref","Preferred contact method",["Call","WhatsApp","Email"],ME.contactPref)+
       inp("sWa","WhatsApp number (if different from phone)",ME.whatsapp)+
-      inp("sLangs","Languages you speak (e.g. English, Kiswahili)",ME.languages)+
       taField("sBio","About you","A short intro — how long you've been renting out homes, your neighbourhoods, response times…",ME.bio);
     save=()=>saveAccount({name:$("sName").value.trim(),gender:$("sGender").value,contactPref:$("sPref").value,
-      whatsapp:$("sWa").value.trim(),languages:$("sLangs").value.trim(),bio:$("sBio").value.trim(),
+      whatsapp:$("sWa").value.trim(),bio:$("sBio").value.trim(),
       ...(pendingAvatar?{avatarUrl:pendingAvatar}:{})},"Personal details saved");
   }else if(kind==="business"){
     title="Business details";sub="For landlords, agents and developers — builds credibility with clients.";

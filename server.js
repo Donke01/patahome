@@ -109,7 +109,7 @@ const publicUser = (u) => ({
   bio: u.bio || "", language: u.language || "en", avatarUrl: u.avatar_url || "",
   dob: u.dob || "", country: u.country || "Kenya", county: u.county || "", town: u.town || "",
   idNumber: u.id_number || "", legalName: u.legal_name || "",
-  gender: u.gender || "", contactPref: u.contact_pref || "", whatsapp: u.whatsapp || "", languages: u.languages || "",
+  gender: u.gender || "", contactPref: u.contact_pref || "", whatsapp: u.whatsapp || "",
   businessRole: u.business_role || "", businessSince: u.business_since || "", website: u.website || "", businessAddress: u.business_address || "",
   idType: u.id_type || "", kraPin: u.kra_pin || "",
   emailVerified: !!u.email_verified,
@@ -245,7 +245,7 @@ router.add("PATCH", "/api/account", (req, res) => {
   const u = requireAuth(req, res); if (!u) return;
   const map = { name: "name", businessName: "business_name", businessType: "business_type", bio: "bio", language: "language",
     county: "county", town: "town", country: "country", dob: "dob",
-    gender: "gender", contactPref: "contact_pref", whatsapp: "whatsapp", languages: "languages", avatarUrl: "avatar_url",
+    gender: "gender", contactPref: "contact_pref", whatsapp: "whatsapp", avatarUrl: "avatar_url",
     businessRole: "business_role", businessSince: "business_since", website: "website", businessAddress: "business_address" };
   const sets = [], params = [];
   for (const [k, col] of Object.entries(map)) if (req.body[k] !== undefined) {
