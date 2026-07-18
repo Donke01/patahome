@@ -109,17 +109,33 @@ const publicUser = (u) => ({
   bio: u.bio || "", language: u.language || "en", avatarUrl: u.avatar_url || "",
   dob: u.dob || "", country: u.country || "Kenya", county: u.county || "", town: u.town || "",
   idNumber: u.id_number || "", legalName: u.legal_name || "",
+  emailVerified: !!u.email_verified,
   hasPassword: !!u.password_hash, needsSetup: !realPhone(u.phone),
   role: u.role
 });
+// send a fresh email verification code to a user; returns true if a mail was sent
+async function sendEmailCode(userId, email) {
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  db.prepare("DELETE FROM verify_codes WHERE user_id=? AND kind='email'").run(userId);
+  db.prepare("INSERT INTO verify_codes (user_id,kind,target,code,expires_at) VALUES (?,?,?,?,datetime('now','+15 minutes'))")
+    .run(userId, "email", email, code);
+  await sendMail({
+    to: email,
+    subject: `${code} is your PataHome verification code`,
+    text: `Karibu!\n\nYour PataHome verification code is: ${code}\n\nEnter it to confirm your email address. The code expires in 15 minutes.\n\nIf you didn't request this, you can ignore this email.\n\n— PataHome · patahome.co.ke`
+  });
+  return true;
+}
 const age = (dob) => { const d = new Date(dob); return isNaN(d) ? null : Math.floor((Date.now() - d.getTime()) / 31557600000); };
 const authResponse = (res, code, u) =>
   send(res, code, { token: signToken({ id: u.id, name: u.name, role: u.role }), user: publicUser(u) });
 
-router.add("POST", "/api/auth/register", (req, res) => {
+router.add("POST", "/api/auth/register", async (req, res) => {
   const { name, phone, email, password, dob, county, town, country } = req.body || {};
   if (!name || !phone || !password) return send(res, 400, { error: "name, phone and password are required" });
   if (!/^0[17]\d{8}$/.test(phone)) return send(res, 400, { error: "Enter a valid Kenyan phone e.g. 0712345678" });
+  // Email is required so every account can be verified (unless mail isn't set up yet)
+  if (mailConfigured() && !email) return send(res, 400, { error: "Email is required" });
   if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return send(res, 400, { error: "Enter a valid email address" });
   if (password.length < 8) return send(res, 400, { error: "Password must be at least 8 characters" });
   if (dob) {
@@ -128,18 +144,53 @@ router.add("POST", "/api/auth/register", (req, res) => {
     if (a < 18) return send(res, 400, { error: "You must be at least 18 years old to use PataHome" });
     if (a > 120) return send(res, 400, { error: "Enter a valid date of birth" });
   }
+  const requireEmailVerify = mailConfigured() && !!email;
+  let user;
   try {
-    const info = db.prepare("INSERT INTO users (name,phone,email,password_hash,dob,county,town,country) VALUES (?,?,?,?,?,?,?,?)")
+    const info = db.prepare("INSERT INTO users (name,phone,email,password_hash,dob,county,town,country,email_verified) VALUES (?,?,?,?,?,?,?,?,?)")
       .run(name.trim(), phone, email ? email.toLowerCase() : null, hashPassword(password),
-           dob || null, (county || "").slice(0, 60), (town || "").slice(0, 80), (country || "Kenya").slice(0, 60));
-    const user = db.prepare("SELECT * FROM users WHERE id=?").get(info.lastInsertRowid);
+           dob || null, (county || "").slice(0, 60), (town || "").slice(0, 80), (country || "Kenya").slice(0, 60),
+           requireEmailVerify ? 0 : 1);
+    user = db.prepare("SELECT * FROM users WHERE id=?").get(info.lastInsertRowid);
     db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
       .run(user.id, "system", "Karibu to PataHome", "Your account is ready. Post your first listing to start receiving leads.");
-    authResponse(res, 201, user);
   } catch (e) {
     if (String(e).includes("UNIQUE")) return send(res, 409, { error: "Phone or email already registered" });
     throw e;
   }
+  if (requireEmailVerify) {
+    try { await sendEmailCode(user.id, user.email); }
+    catch (e) { console.error("signup mail failed:", e.message); /* account exists; they can resend */ }
+  }
+  send(res, 201, {
+    token: signToken({ id: user.id, name: user.name, role: user.role }),
+    user: publicUser(user),
+    emailVerifyRequired: requireEmailVerify, emailTarget: requireEmailVerify ? user.email : null
+  });
+});
+
+/* verify the signed-in user's own email with a code (used at signup + resend) */
+router.add("POST", "/api/auth/verify-email/send", async (req, res) => {
+  const u = requireAuth(req, res); if (!u) return;
+  const row = db.prepare("SELECT * FROM users WHERE id=?").get(u.id);
+  if (!row || !row.email) return send(res, 400, { error: "No email on file" });
+  if (row.email_verified) return send(res, 200, { alreadyVerified: true });
+  if (!mailConfigured()) return send(res, 503, { error: "Email sending isn't configured yet" });
+  try { await sendEmailCode(u.id, row.email); send(res, 200, { ok: true, target: row.email }); }
+  catch (e) { console.error("verify-email send failed:", e.message); send(res, 400, { error: "Couldn't send the code (" + String(e.message).slice(0, 90) + ")" }); }
+});
+
+router.add("POST", "/api/auth/verify-email/confirm", (req, res) => {
+  const u = requireAuth(req, res); if (!u) return;
+  const code = String(req.body.code || "").trim();
+  const row = db.prepare("SELECT * FROM verify_codes WHERE user_id=? AND kind='email'").get(u.id);
+  if (!row) return send(res, 400, { error: "No pending code — request a new one" });
+  if (new Date(row.expires_at + "Z") < new Date()) { db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id); return send(res, 400, { error: "Code expired — request a new one" }); }
+  if (row.attempts >= 5) { db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id); return send(res, 400, { error: "Too many attempts — request a new code" }); }
+  if (row.code !== code) { db.prepare("UPDATE verify_codes SET attempts=attempts+1 WHERE id=?").run(row.id); return send(res, 400, { error: "Wrong code — check the email and try again" }); }
+  db.prepare("UPDATE users SET email_verified=1 WHERE id=?").run(u.id);
+  db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id);
+  send(res, 200, publicUser(db.prepare("SELECT * FROM users WHERE id=?").get(u.id)));
 });
 
 router.add("POST", "/api/auth/login", (req, res) => {
@@ -165,7 +216,7 @@ router.add("POST", "/api/auth/google", async (req, res) => {
     if (user) {
       if (!user.google_id) db.prepare("UPDATE users SET google_id=?, avatar_url=COALESCE(avatar_url,?) WHERE id=?").run(p.sub, p.picture || null, user.id);
     } else {
-      const info = db.prepare("INSERT INTO users (name,phone,email,password_hash,google_id,avatar_url) VALUES (?,?,?,?,?,?)")
+      const info = db.prepare("INSERT INTO users (name,phone,email,password_hash,google_id,avatar_url,email_verified) VALUES (?,?,?,?,?,?,1)")
         .run(p.name || "PataHome User", "g." + p.sub, (p.email || "").toLowerCase(), "", p.sub, p.picture || null);
       user = db.prepare("SELECT * FROM users WHERE id=?").get(info.lastInsertRowid);
       db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
@@ -355,9 +406,11 @@ router.add("GET", "/api/listings/:id", (req, res, p) => {
 
 router.add("POST", "/api/listings", (req, res) => {
   const u = requireAuth(req, res); if (!u) return;
-  const me = db.prepare("SELECT phone FROM users WHERE id=?").get(u.id);
+  const me = db.prepare("SELECT phone, email, email_verified FROM users WHERE id=?").get(u.id);
   if (!me || !realPhone(me.phone))
     return send(res, 400, { error: "Add your phone number first (account menu → Change phone number) so tenants can reach you" });
+  if (mailConfigured() && me.email && !me.email_verified)
+    return send(res, 400, { error: "Verify your email first (account menu → Verify email) before posting" });
   const { category, title, description, areaId, price, bedrooms } = req.body || {};
   if (!["rent", "sale"].includes(category)) return send(res, 400, { error: "Invalid category" });
   if (!title || !areaId || !price) return send(res, 400, { error: "title, areaId and price are required" });

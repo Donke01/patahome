@@ -95,7 +95,8 @@ for (const col of [
   "language TEXT DEFAULT 'en'", "avatar_url TEXT", "google_id TEXT",
   "verify_status TEXT DEFAULT 'none'",  // none | pending | verified | rejected
   "dob TEXT", "country TEXT DEFAULT 'Kenya'", "county TEXT", "town TEXT",
-  "id_number TEXT", "verify_docs TEXT", "legal_name TEXT"
+  "id_number TEXT", "verify_docs TEXT", "legal_name TEXT",
+  "email_verified INTEGER DEFAULT 0"
 ]) {
   try { db.exec(`ALTER TABLE users ADD COLUMN ${col}`); } catch (e) { /* exists */ }
 }

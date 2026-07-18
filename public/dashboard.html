@@ -188,6 +188,12 @@
   .menu-sep{height:1px;background:var(--line);margin:6px 4px}
   .menu-label{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);padding:6px 12px 2px}
 
+  /* email verify banner */
+  .email-banner{display:flex;align-items:center;gap:11px;background:#fff7e6;border:1px solid #f0d9a8;border-radius:12px;padding:12px 15px;margin-bottom:16px;font-size:.87rem;color:#8a5a08;flex-wrap:wrap}
+  .email-banner svg{width:19px;height:19px;flex-shrink:0}
+  .email-banner span{flex:1;min-width:150px}
+  .email-banner .btn{background:#b8860b}
+
   /* verification code step */
   @keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}30%,50%,70%{transform:translateX(-7px)}40%,60%{transform:translateX(7px)}}
   .code-illus{width:56px;height:56px;margin:6px auto 14px;border-radius:16px;background:var(--green-light);color:var(--green);display:flex;align-items:center;justify-content:center}
@@ -296,6 +302,7 @@
         <div class="menu-sep"></div>
         <div class="menu-label">Account</div>
         <button class="menu-item" onclick="openSettings('phone')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-3 2a11 11 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>Change phone number</button>
+        <button class="menu-item" id="verifyEmailItem" style="display:none" onclick="closeMenu();openEmailVerify(ME.email)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m21 8-9 5-9-5"/><path d="m15.5 16 2 2 3.5-3.5"/></svg>Verify email</button>
         <button class="menu-item" onclick="openSettings('email')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>Change email</button>
         <button class="menu-item" onclick="openSettings('password')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Change password</button>
         <button class="menu-item" onclick="openSettings('language')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>Change language</button>
@@ -327,7 +334,7 @@
     <label id="phoneLbl">Phone or email</label>
     <input id="aPhone" placeholder="07XXXXXXXX or you@email.com">
     <div id="regEmailWrap" style="display:none">
-      <label>Email (optional)</label>
+      <label>Email</label>
       <input id="aEmail" type="email" placeholder="you@email.com">
     </div>
     <div id="regExtra" style="display:none">
@@ -352,6 +359,12 @@
 
 <!-- ============ DASHBOARD ============ -->
 <div id="dashView" class="wrap" style="display:none">
+
+  <div class="email-banner" id="emailBanner" style="display:none">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+    <span>Verify your email to publish listings and secure your account.</span>
+    <button class="btn btn-primary btn-sm" onclick="openEmailVerify(ME.email)">Verify now</button>
+  </div>
 
   <nav class="pnav" id="pnav">
     <button class="pt on" data-t="listings" onclick="showTab('listings')">My Listings</button>
@@ -549,12 +562,15 @@ async function submitAuth(){
       const ageMs=Date.now()-new Date($("aDob").value).getTime();
       if(ageMs<18*31557600000){$("authErr").textContent="You must be at least 18 years old to use PataHome";return}
       if(!$("aTerms").checked){$("authErr").textContent="Please accept the terms to continue";return}
-      body={name:$("aName").value.trim(),phone:idField,email:$("aEmail").value.trim()||undefined,password:$("aPass").value,
+      const em=$("aEmail").value.trim();
+      if(!em){$("authErr").textContent="Enter your email — we'll send a verification code";return}
+      body={name:$("aName").value.trim(),phone:idField,email:em,password:$("aPass").value,
         dob:$("aDob").value,county:$("aCounty").value.trim(),town:$("aTown").value.trim(),country:"Kenya"};
       path="/api/auth/register";
     }
     const r=await api(path,{method:"POST",body:JSON.stringify(body)});
     saveSession(r);enterDash();
+    if(r.emailVerifyRequired){setTimeout(()=>openEmailVerify(r.emailTarget),500)}
   }catch(e){$("authErr").textContent=e.message}
 }
 function saveSession(r){
@@ -605,6 +621,10 @@ function paintUser(){
   if(ME.verified){b.className="mh-badge ok";b.textContent="✓ Verified owner"}
   else if(ME.verifyStatus==="pending"){b.className="mh-badge pending";b.textContent="Verification pending"}
   else{b.className="mh-badge none";b.textContent="Unverified"}
+  const needEmail=ME.email&&!ME.emailVerified;
+  $("verifyEmailItem").style.display=needEmail?"flex":"none";
+  const banner=$("emailBanner");
+  if(banner)banner.style.display=needEmail?"flex":"none";
 }
 
 /* ---------- dashboard ---------- */
@@ -1010,7 +1030,14 @@ function openSettings(kind){
     save=async()=>{
       try{
         const r=await api("/api/account/change-email",{method:"POST",body:JSON.stringify({email:$("sEmail").value.trim()})});
-        if(r.codeRequired){showCodeStep(r.target);}
+        if(r.codeRequired){
+          showCodeStep({
+            title:"Verify your email", target:r.target, verifyLabel:"Verify & save",
+            confirm:async(code)=>{ME=await api("/api/account/change-email/confirm",{method:"POST",body:JSON.stringify({code})});return ME},
+            resend:()=>api("/api/account/change-email",{method:"POST",body:JSON.stringify({email:r.target})}),
+            done:()=>{paintUser();hide("setModal");toast("Email verified and updated ✓")}
+          });
+        }
         else{ME=r;paintUser();hide("setModal");toast("Email updated")}
       }catch(e){$("setErr").textContent=e.message}
     };
@@ -1035,11 +1062,13 @@ function openSettings(kind){
   show("setModal");
 }
 function pickLang(l){window._lang=l;document.querySelectorAll("#langSeg button").forEach(b=>b.classList.toggle("on",b.dataset.l===l))}
-let _cdTimer=null;
-function showCodeStep(target){
+let _cdTimer=null,_codeCfg=null;
+/* generic code step. cfg={title,target,heading,confirm(code)->user,resend()->promise,done(user),onCancel} */
+function showCodeStep(cfg){
+  _codeCfg=cfg;
   clearInterval(_cdTimer);
-  $("setTitle").textContent="Verify your email";
-  $("setSub").innerHTML=`We sent a 6-digit code to <b>${esc(target)}</b>`;
+  $("setTitle").textContent=cfg.title||"Verify your email";
+  $("setSub").innerHTML=`We sent a 6-digit code to <b>${esc(cfg.target)}</b>`;
   $("setBody").innerHTML=`
     <div class="code-illus">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
@@ -1047,22 +1076,24 @@ function showCodeStep(target){
     <input id="sCode" class="code-input" inputmode="numeric" maxlength="6" placeholder="••••••" autocomplete="one-time-code">
     <div class="resend-row">
       <span id="resendTxt" class="resend-wait">Didn't get it? Resend in <b id="cdNum">30</b>s</span>
-      <button id="resendBtn" class="resend-btn" style="display:none" onclick="resendCode('${esc(target)}')">↻ Resend code</button>
+      <button id="resendBtn" class="resend-btn" style="display:none" onclick="resendCode()">↻ Resend code</button>
     </div>`;
-  $("setActions").innerHTML=`<button class="btn btn-ghost" onclick="hide('setModal')">Cancel</button>
-    <button class="btn btn-primary" onclick="_setSave()">Verify &amp; save</button>`;
+  $("setActions").innerHTML=`<button class="btn btn-ghost" onclick="${cfg.onCancel?"cancelCode()":"hide('setModal')"}">${cfg.cancelLabel||"Cancel"}</button>
+    <button class="btn btn-primary" onclick="_setSave()">${cfg.verifyLabel||"Verify"}</button>`;
   const inp=$("sCode");
   inp.oninput=()=>{inp.value=inp.value.replace(/\D/g,"");if(inp.value.length===6)_setSave()};
   inp.focus();
   window._setSave=async()=>{
     $("setErr").textContent="";
     try{
-      ME=await api("/api/account/change-email/confirm",{method:"POST",body:JSON.stringify({code:$("sCode").value.trim()})});
-      clearInterval(_cdTimer);paintUser();hide("setModal");toast("Email verified and updated ✓");
+      const user=await _codeCfg.confirm($("sCode").value.trim());
+      clearInterval(_cdTimer);
+      if(_codeCfg.done)_codeCfg.done(user);
     }catch(e){$("setErr").textContent=e.message;const i=$("sCode");i.classList.remove("shake");void i.offsetWidth;i.classList.add("shake")}
   };
   startCountdown();
 }
+function cancelCode(){clearInterval(_cdTimer);if(_codeCfg&&_codeCfg.onCancel)_codeCfg.onCancel();hide("setModal")}
 function startCountdown(){
   let s=30;
   $("resendTxt").style.display="inline";$("resendBtn").style.display="none";
@@ -1073,15 +1104,27 @@ function startCountdown(){
     $("cdNum").textContent=s;
   },1000);
 }
-async function resendCode(target){
+async function resendCode(){
   $("setErr").textContent="";
   const btn=$("resendBtn");btn.disabled=true;btn.textContent="Sending…";
   try{
-    await api("/api/account/change-email",{method:"POST",body:JSON.stringify({email:target})});
+    await _codeCfg.resend();
     toast("New code sent");
     btn.textContent="↻ Resend code";btn.disabled=false;
     startCountdown();
   }catch(e){$("setErr").textContent=e.message;btn.textContent="↻ Resend code";btn.disabled=false}
+}
+/* open the settings modal shell then show a code step (for signup / verify-email entry points) */
+function openEmailVerify(target){
+  $("setErr").textContent="";$("setSub").textContent="";$("setBody").innerHTML="";$("setActions").innerHTML="";
+  show("setModal");
+  showCodeStep({
+    title:"Verify your email", target,
+    verifyLabel:"Verify email", cancelLabel:"Later",
+    confirm:async(code)=>{ME=await api("/api/auth/verify-email/confirm",{method:"POST",body:JSON.stringify({code})});return ME},
+    resend:()=>api("/api/auth/verify-email/send",{method:"POST"}),
+    done:()=>{paintUser();hide("setModal");toast("Email verified ✓ — you're all set")}
+  });
 }
 async function saveAccount(patch,msg){
   try{ME=await api("/api/account",{method:"PATCH",body:JSON.stringify(patch)});userName=ME.name;localStorage.setItem("pb_name",userName);paintUser();hide("setModal");toast(msg)}
