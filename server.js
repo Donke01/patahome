@@ -233,7 +233,8 @@ router.add("POST", "/api/account/change-email", async (req, res) => {
     });
   } catch (e) {
     console.error("sendMail failed:", e.message);
-    return send(res, 502, { error: "Couldn't send the code — check the address and try again" });
+    // 400 (not 502/503) — Cloudflare replaces 5xx responses with its own error page
+    return send(res, 400, { error: "Couldn't send the code (" + String(e.message).slice(0, 90) + ")" });
   }
   send(res, 200, { codeRequired: true, target: email });
 });

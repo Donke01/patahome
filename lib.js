@@ -81,18 +81,23 @@ function sendMail({ to, subject, text }) {
     if (!mailConfigured()) return reject(new Error("mail not configured"));
     const host = process.env.SMTP_HOST, port = +(process.env.SMTP_PORT || 587);
     const user = process.env.SMTP_USER, pass = process.env.SMTP_PASS, from = process.env.MAIL_FROM;
-    let sock = net.connect(port, host), buf = "", stage = 0, upgraded = false;
+    const implicitTls = port === 465;   // 465 = TLS from the first byte; 587 = STARTTLS upgrade
+    let sock = implicitTls ? tls.connect(port, host, { servername: host }) : net.connect(port, host);
+    let buf = "", stage = 0;
     const fail = (m) => { try { sock.destroy(); } catch {} ; reject(new Error(m)); };
-    const timer = setTimeout(() => fail("SMTP timeout"), 20000);
+    const timer = setTimeout(() => fail("SMTP timeout — server unreachable (host/port blocked?)"), 20000);
     const write = (line) => sock.write(line + "\r\n");
-    const steps = [
-      { expect: /^220/, send: () => write(`EHLO patahome.co.ke`) },
+    const starttlsSteps = [
       { expect: /^250/, send: () => write("STARTTLS") },
       { expect: /^220/, send: () => {   // upgrade to TLS, then re-EHLO
           sock.removeAllListeners("data");
-          sock = tls.connect({ socket: sock, servername: host }, () => { upgraded = true; write(`EHLO patahome.co.ke`); });
+          sock = tls.connect({ socket: sock, servername: host }, () => write(`EHLO patahome.co.ke`));
           attach();
-        } },
+        } }
+    ];
+    const steps = [
+      { expect: /^220/, send: () => write(`EHLO patahome.co.ke`) },
+      ...(implicitTls ? [] : starttlsSteps),
       { expect: /^250/, send: () => write("AUTH LOGIN") },
       { expect: /^334/, send: () => write(Buffer.from(user).toString("base64")) },
       { expect: /^334/, send: () => write(Buffer.from(pass).toString("base64")) },
