@@ -188,6 +188,20 @@
   .menu-sep{height:1px;background:var(--line);margin:6px 4px}
   .menu-label{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);padding:6px 12px 2px}
 
+  /* verification code step */
+  @keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}30%,50%,70%{transform:translateX(-7px)}40%,60%{transform:translateX(7px)}}
+  .code-illus{width:56px;height:56px;margin:6px auto 14px;border-radius:16px;background:var(--green-light);color:var(--green);display:flex;align-items:center;justify-content:center}
+  .code-illus svg{width:28px;height:28px}
+  .code-input{width:100%;text-align:center;font-family:var(--serif);font-size:1.9rem;font-weight:600;letter-spacing:.5em;padding:12px 0 12px .5em;border:1.5px solid var(--line);border-radius:12px;outline:none;background:var(--bg);color:var(--ink);caret-color:var(--green)}
+  .code-input:focus{border-color:var(--green);box-shadow:0 0 0 3px var(--green-light)}
+  .code-input.shake{animation:shake .4s;border-color:var(--red)}
+  .code-input::placeholder{letter-spacing:.4em;color:var(--line)}
+  .resend-row{text-align:center;margin-top:14px;font-size:.83rem;color:var(--muted)}
+  .resend-wait b{color:var(--ink);font-variant-numeric:tabular-nums}
+  .resend-btn{display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--green);font-weight:700;font-size:.86rem;cursor:pointer;font-family:inherit}
+  .resend-btn:hover{text-decoration:underline}
+  .resend-btn:disabled{color:var(--muted);cursor:default;text-decoration:none}
+
   /* settings modal shared */
   .set-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
   .set-row:last-child{border-bottom:none}
@@ -996,20 +1010,8 @@ function openSettings(kind){
     save=async()=>{
       try{
         const r=await api("/api/account/change-email",{method:"POST",body:JSON.stringify({email:$("sEmail").value.trim()})});
-        if(r.codeRequired){
-          $("setSub").textContent="We sent a 6-digit code to "+r.target+". Enter it below.";
-          $("setBody").innerHTML=inp("sCode","6-digit code","","text");
-          $("sCode").inputMode="numeric";$("sCode").maxLength=6;$("sCode").focus();
-          $("setActions").innerHTML=`<button class="btn btn-ghost" onclick="hide('setModal')">Cancel</button>
-            <button class="btn btn-primary" onclick="_setSave()">Verify</button>`;
-          window._setSave=async()=>{
-            $("setErr").textContent="";
-            try{
-              ME=await api("/api/account/change-email/confirm",{method:"POST",body:JSON.stringify({code:$("sCode").value.trim()})});
-              paintUser();hide("setModal");toast("Email verified and updated");
-            }catch(e){$("setErr").textContent=e.message}
-          };
-        }else{ME=r;paintUser();hide("setModal");toast("Email updated")}
+        if(r.codeRequired){showCodeStep(r.target);}
+        else{ME=r;paintUser();hide("setModal");toast("Email updated")}
       }catch(e){$("setErr").textContent=e.message}
     };
   }else if(kind==="password"){
@@ -1033,6 +1035,54 @@ function openSettings(kind){
   show("setModal");
 }
 function pickLang(l){window._lang=l;document.querySelectorAll("#langSeg button").forEach(b=>b.classList.toggle("on",b.dataset.l===l))}
+let _cdTimer=null;
+function showCodeStep(target){
+  clearInterval(_cdTimer);
+  $("setTitle").textContent="Verify your email";
+  $("setSub").innerHTML=`We sent a 6-digit code to <b>${esc(target)}</b>`;
+  $("setBody").innerHTML=`
+    <div class="code-illus">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+    </div>
+    <input id="sCode" class="code-input" inputmode="numeric" maxlength="6" placeholder="••••••" autocomplete="one-time-code">
+    <div class="resend-row">
+      <span id="resendTxt" class="resend-wait">Didn't get it? Resend in <b id="cdNum">30</b>s</span>
+      <button id="resendBtn" class="resend-btn" style="display:none" onclick="resendCode('${esc(target)}')">↻ Resend code</button>
+    </div>`;
+  $("setActions").innerHTML=`<button class="btn btn-ghost" onclick="hide('setModal')">Cancel</button>
+    <button class="btn btn-primary" onclick="_setSave()">Verify &amp; save</button>`;
+  const inp=$("sCode");
+  inp.oninput=()=>{inp.value=inp.value.replace(/\D/g,"");if(inp.value.length===6)_setSave()};
+  inp.focus();
+  window._setSave=async()=>{
+    $("setErr").textContent="";
+    try{
+      ME=await api("/api/account/change-email/confirm",{method:"POST",body:JSON.stringify({code:$("sCode").value.trim()})});
+      clearInterval(_cdTimer);paintUser();hide("setModal");toast("Email verified and updated ✓");
+    }catch(e){$("setErr").textContent=e.message;const i=$("sCode");i.classList.remove("shake");void i.offsetWidth;i.classList.add("shake")}
+  };
+  startCountdown();
+}
+function startCountdown(){
+  let s=30;
+  $("resendTxt").style.display="inline";$("resendBtn").style.display="none";
+  $("cdNum").textContent=s;
+  clearInterval(_cdTimer);
+  _cdTimer=setInterval(()=>{
+    if(--s<=0){clearInterval(_cdTimer);$("resendTxt").style.display="none";$("resendBtn").style.display="inline-flex";return}
+    $("cdNum").textContent=s;
+  },1000);
+}
+async function resendCode(target){
+  $("setErr").textContent="";
+  const btn=$("resendBtn");btn.disabled=true;btn.textContent="Sending…";
+  try{
+    await api("/api/account/change-email",{method:"POST",body:JSON.stringify({email:target})});
+    toast("New code sent");
+    btn.textContent="↻ Resend code";btn.disabled=false;
+    startCountdown();
+  }catch(e){$("setErr").textContent=e.message;btn.textContent="↻ Resend code";btn.disabled=false}
+}
 async function saveAccount(patch,msg){
   try{ME=await api("/api/account",{method:"PATCH",body:JSON.stringify(patch)});userName=ME.name;localStorage.setItem("pb_name",userName);paintUser();hide("setModal");toast(msg)}
   catch(e){$("setErr").textContent=e.message}
