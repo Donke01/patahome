@@ -25,6 +25,7 @@
   button{font-family:inherit;cursor:pointer}
   input,select,textarea{font-family:inherit}
   @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  @keyframes spin{to{transform:rotate(360deg)}}
   @view-transition{navigation:auto}
   @keyframes vtOut{to{opacity:0;transform:translateX(-26px)}}
   @keyframes vtIn{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:none}}
@@ -314,8 +315,13 @@
   </div>
 </header>
 
+<!-- ============ LOADING GATE (prevents sign-in flash for logged-in users) ============ -->
+<div id="bootLoader" style="min-height:70vh;display:flex;align-items:center;justify-content:center">
+  <div style="width:34px;height:34px;border:3px solid var(--line);border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite"></div>
+</div>
+
 <!-- ============ AUTH ============ -->
-<div id="authView">
+<div id="authView" style="display:none">
   <div class="auth-card">
     <h1>Karibu, Property Owner</h1>
     <div class="sub">Manage your listings, track leads, and boost visibility.</div>
@@ -609,8 +615,8 @@ async function onGoogleCredential(resp){
 function logout(){
   token=null;ME=null;localStorage.removeItem("pb_token");localStorage.removeItem("pb_name");
   closeMenu();
-  $("dashView").style.display="none";$("headerRight").style.display="none";
-  $("authView").style.display="block";
+  $("headerRight").style.display="none";
+  showAuth();
 }
 
 /* ---------- header user menu ---------- */
@@ -635,8 +641,11 @@ function paintUser(){
   if(banner)banner.style.display=needEmail?"flex":"none";
 }
 
+function showAuth(){$("bootLoader").style.display="none";$("dashView").style.display="none";$("authView").style.display="block"}
+
 /* ---------- dashboard ---------- */
 async function enterDash(){
+  $("bootLoader").style.display="none";
   $("authView").style.display="none";
   $("dashView").style.display="block";
   $("headerRight").style.display="flex";
@@ -1199,7 +1208,7 @@ async function doDelete(){
     try{ME=await api("/api/auth/me");userName=ME.name;await enterDash();return}
     catch{token=null;localStorage.removeItem("pb_token")}
   }
-  $("authView").style.display="block";
+  showAuth();
 })();
 </script>
 </body>
