@@ -109,6 +109,9 @@ const publicUser = (u) => ({
   bio: u.bio || "", language: u.language || "en", avatarUrl: u.avatar_url || "",
   dob: u.dob || "", country: u.country || "Kenya", county: u.county || "", town: u.town || "",
   idNumber: u.id_number || "", legalName: u.legal_name || "",
+  gender: u.gender || "", contactPref: u.contact_pref || "", whatsapp: u.whatsapp || "", languages: u.languages || "",
+  businessRole: u.business_role || "", businessSince: u.business_since || "", website: u.website || "", businessAddress: u.business_address || "",
+  idType: u.id_type || "", kraPin: u.kra_pin || "",
   emailVerified: !!u.email_verified,
   hasPassword: !!u.password_hash, needsSetup: !realPhone(u.phone),
   role: u.role
@@ -241,7 +244,9 @@ router.add("GET", "/api/auth/me", (req, res) => {
 router.add("PATCH", "/api/account", (req, res) => {
   const u = requireAuth(req, res); if (!u) return;
   const map = { name: "name", businessName: "business_name", businessType: "business_type", bio: "bio", language: "language",
-    county: "county", town: "town", country: "country", dob: "dob" };
+    county: "county", town: "town", country: "country", dob: "dob",
+    gender: "gender", contactPref: "contact_pref", whatsapp: "whatsapp", languages: "languages", avatarUrl: "avatar_url",
+    businessRole: "business_role", businessSince: "business_since", website: "website", businessAddress: "business_address" };
   const sets = [], params = [];
   for (const [k, col] of Object.entries(map)) if (req.body[k] !== undefined) {
     sets.push(`${col}=?`); params.push(String(req.body[k]).slice(0, 400));
@@ -328,13 +333,16 @@ router.add("POST", "/api/account/change-password", (req, res) => {
 
 router.add("POST", "/api/account/request-verification", (req, res) => {
   const u = requireAuth(req, res); if (!u) return;
-  const { legalName, idNumber, docs } = req.body || {};
+  const { legalName, idType, idNumber, kraPin, docs } = req.body || {};
   if (!legalName || !String(legalName).trim()) return send(res, 400, { error: "Enter your full legal name as it appears on your ID" });
-  if (!/^\d{6,10}$/.test(String(idNumber || "").trim())) return send(res, 400, { error: "Enter a valid national ID number" });
-  const docList = Array.isArray(docs) ? docs.filter(d => typeof d === "string" && d.startsWith("patahome/") && /^[\w\-/]{1,200}$/.test(d)).slice(0, 3) : [];
-  if (cldEnabled() && !docList.length) return send(res, 400, { error: "Upload a photo of your national ID" });
-  db.prepare("UPDATE users SET verify_status='pending', legal_name=?, id_number=?, verify_docs=? WHERE id=? AND verified=0")
-    .run(String(legalName).trim().slice(0, 120), String(idNumber).trim(), JSON.stringify(docList), u.id);
+  const type = ["National ID", "Passport", "Alien ID"].includes(idType) ? idType : "National ID";
+  const idn = String(idNumber || "").trim();
+  if (type === "National ID" && !/^\d{6,10}$/.test(idn)) return send(res, 400, { error: "Enter a valid national ID number" });
+  if (type !== "National ID" && idn.length < 5) return send(res, 400, { error: "Enter a valid ID/passport number" });
+  const docList = Array.isArray(docs) ? docs.filter(d => typeof d === "string" && d.startsWith("patahome/") && /^[\w\-/]{1,200}$/.test(d)).slice(0, 4) : [];
+  if (cldEnabled() && !docList.length) return send(res, 400, { error: "Upload a photo of your ID document" });
+  db.prepare("UPDATE users SET verify_status='pending', legal_name=?, id_type=?, id_number=?, kra_pin=?, verify_docs=? WHERE id=? AND verified=0")
+    .run(String(legalName).trim().slice(0, 120), type, idn, String(kraPin || "").trim().slice(0, 20), JSON.stringify(docList), u.id);
   db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
     .run(u.id, "verify", "Verification submitted", "Our team will review your details and verify your account shortly.");
   send(res, 200, publicUser(db.prepare("SELECT * FROM users WHERE id=?").get(u.id)));
@@ -703,7 +711,8 @@ router.add("GET", "/api/admin/verifications", (req, res) => {
   const rows = db.prepare("SELECT * FROM users WHERE verify_status='pending' ORDER BY id").all();
   send(res, 200, rows.map(u => ({
     id: u.id, name: u.name, legalName: u.legal_name, phone: u.phone, email: u.email,
-    idNumber: u.id_number, county: u.county, town: u.town,
+    idType: u.id_type || "National ID", idNumber: u.id_number, kraPin: u.kra_pin || "",
+    dob: u.dob, county: u.county, town: u.town,
     docs: (() => { try { return JSON.parse(u.verify_docs || "[]"); } catch { return []; } })()
       .map(d => cldEnabled() ? photoUrl(d, "c_limit,w_1000,q_auto:good") : d),
     listings: db.prepare("SELECT COUNT(*) n FROM listings WHERE owner_id=? AND status!='removed'").get(u.id).n

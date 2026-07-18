@@ -189,6 +189,11 @@
   .menu-sep{height:1px;background:var(--line);margin:6px 4px}
   .menu-label{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);padding:6px 12px 2px}
 
+  /* avatar edit block */
+  .avatar-edit{display:flex;align-items:center;gap:14px;margin:6px 0 4px}
+  .ae-pic{width:64px;height:64px;border-radius:50%;background:var(--green);color:#fff;font-family:var(--serif);font-weight:600;font-size:1.35rem;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0}
+  .ae-pic img{width:100%;height:100%;object-fit:cover}
+
   /* email verify banner */
   .email-banner{display:flex;align-items:center;gap:11px;background:#fff7e6;border:1px solid #f0d9a8;border-radius:12px;padding:12px 15px;margin-bottom:16px;font-size:.87rem;color:#8a5a08;flex-wrap:wrap}
   .email-banner svg{width:19px;height:19px;flex-shrink:0}
@@ -985,21 +990,68 @@ async function removeListing(id){
 
 /* ---------- account settings ---------- */
 const inp=(id,ph,val,type)=>`<label>${ph}</label><input id="${id}" ${type?`type="${type}"`:""} value="${esc(val||"")}" placeholder="${esc(ph)}">`;
+const taField=(id,label,ph,val)=>`<label>${label}</label><textarea id="${id}" rows="3" placeholder="${esc(ph)}">${esc(val||"")}</textarea>`;
+const selField=(id,label,opts,val)=>`<label>${label}</label><select id="${id}"><option value="">Choose…</option>`+
+  opts.map(o=>`<option${o===val?" selected":""}>${o}</option>`).join("")+`</select>`;
+let pendingAvatar=null;
+function avatarBlock(){
+  pendingAvatar=null;
+  const cur=ME.avatarUrl?`<img src="${esc(ME.avatarUrl)}" alt="">`:initials(ME.name);
+  return `<div class="avatar-edit">
+    <div class="ae-pic" id="aePic">${cur}</div>
+    <div>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="$('avFile').click()" ${CONFIG&&CONFIG.cloudinary?"":"disabled title='Photo upload not enabled'"}>Upload photo</button>
+      <div class="photo-note" style="margin-top:5px">A clear face photo builds trust. JPG/PNG, max 8&nbsp;MB.</div>
+    </div>
+    <input type="file" id="avFile" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="uploadAvatar(this.files);this.value=''">
+  </div>`;
+}
+async function uploadAvatar(files){
+  if(!files.length)return;
+  const f=files[0];
+  if(!/^image\/(jpeg|png|webp)$/.test(f.type)){toast("Use a JPG, PNG or WebP photo");return}
+  if(f.size>8*1024*1024){toast("Photo is over 8 MB");return}
+  const pic=$("aePic");pic.innerHTML='<div class="spin" style="position:static;color:var(--green);font-size:.66rem">…</div>';
+  try{
+    const cfg=await api("/api/uploads/sign?kind=verify");signCfg=signCfg||cfg;
+    const fd=new FormData();
+    fd.append("file",f);fd.append("api_key",cfg.apiKey);fd.append("timestamp",cfg.timestamp);
+    fd.append("signature",cfg.signature);fd.append("folder",cfg.folder);fd.append("transformation",cfg.transformation);
+    const r=await fetch(`https://api.cloudinary.com/v1_1/${cfg.cloudName}/image/upload`,{method:"POST",body:fd});
+    const d=await r.json();
+    if(!r.ok)throw new Error((d.error&&d.error.message)||"Upload failed");
+    pendingAvatar=`https://res.cloudinary.com/${cfg.cloudName}/image/upload/c_fill,g_face,w_240,h_240,q_auto/${d.public_id}`;
+    pic.innerHTML=`<img src="${pendingAvatar}" alt="">`;
+  }catch(e){toast("Upload failed: "+e.message);pic.innerHTML=ME.avatarUrl?`<img src="${esc(ME.avatarUrl)}" alt="">`:initials(ME.name)}
+}
 function openSettings(kind){
   closeMenu();
   $("setErr").textContent="";
   const body=$("setBody"),acts=$("setActions");
   let title="",sub="",html="",save=null;
   if(kind==="personal"){
-    title="Personal details";sub="Shown to tenants and buyers who contact you.";
-    html=inp("sName","Full name",ME.name)+inp("sBio","Short bio (optional)",ME.bio);
-    save=()=>saveAccount({name:$("sName").value.trim(),bio:$("sBio").value.trim()},"Details saved");
+    title="Personal details";sub="This is what tenants and buyers see when they contact you.";
+    html=avatarBlock()+
+      inp("sName","Full name",ME.name)+
+      selField("sGender","Gender (optional)",["Female","Male","Prefer not to say"],ME.gender)+
+      selField("sPref","Preferred contact method",["Call","WhatsApp","Email"],ME.contactPref)+
+      inp("sWa","WhatsApp number (if different from phone)",ME.whatsapp)+
+      inp("sLangs","Languages you speak (e.g. English, Kiswahili)",ME.languages)+
+      taField("sBio","About you","A short intro — how long you've been renting out homes, your neighbourhoods, response times…",ME.bio);
+    save=()=>saveAccount({name:$("sName").value.trim(),gender:$("sGender").value,contactPref:$("sPref").value,
+      whatsapp:$("sWa").value.trim(),languages:$("sLangs").value.trim(),bio:$("sBio").value.trim(),
+      ...(pendingAvatar?{avatarUrl:pendingAvatar}:{})},"Personal details saved");
   }else if(kind==="business"){
-    title="Business details";sub="Optional — helps build trust with clients.";
-    html=inp("sBiz","Business name",ME.businessName)+
-      `<label>Business type</label><select id="sBizType"><option value="">Choose…</option>`+
-      ["Individual landlord","Property agency","Developer","Caretaker / Manager"].map(t=>`<option ${ME.businessType===t?"selected":""}>${t}</option>`).join("")+`</select>`;
-    save=()=>saveAccount({businessName:$("sBiz").value.trim(),businessType:$("sBizType").value},"Business details saved");
+    title="Business details";sub="For landlords, agents and developers — builds credibility with clients.";
+    html=inp("sBiz","Business or company name",ME.businessName)+
+      selField("sBizType","Business type",["Individual landlord","Property agency","Developer","Caretaker / Manager","Real estate agent"],ME.businessType)+
+      inp("sRole","Your role / title (e.g. Owner, Agent, Manager)",ME.businessRole)+
+      inp("sSince","In business since (year, e.g. 2019)",ME.businessSince)+
+      inp("sWeb","Website or social link (optional)",ME.website)+
+      inp("sAddr","Office / physical address (optional)",ME.businessAddress)+
+      taField("sBizDesc","About your business","Services you offer, areas you cover, what sets you apart…",ME.bio);
+    save=()=>saveAccount({businessName:$("sBiz").value.trim(),businessType:$("sBizType").value,businessRole:$("sRole").value.trim(),
+      businessSince:$("sSince").value.trim(),website:$("sWeb").value.trim(),businessAddress:$("sAddr").value.trim()},"Business details saved");
   }else if(kind==="verify"){
     title="Verify my details";
     if(ME.verified){
@@ -1012,14 +1064,17 @@ function openSettings(kind){
       body.innerHTML=`<div class="set-row"><span class="sr-k">Status</span><span class="sr-v" style="color:#b45309">Pending review</span></div><p style="font-size:.85rem;color:var(--muted);margin-top:10px">We've received your documents. Our team will review and verify your account shortly.</p>`;
       acts.innerHTML=`<button class="btn btn-ghost" onclick="hide('setModal')" style="flex:1;padding:11px">Close</button>`;show("setModal");return;
     }
-    sub="Get the verified badge renters trust. Your details are kept private and only used for verification.";
+    sub="Confirm your identity and ownership to earn the verified badge. Your documents are private and used only for verification.";
     vDocIds=[];
     html=(ME.verifyStatus==="rejected"?`<p style="font-size:.83rem;color:var(--red);background:#faeeed;border-radius:10px;padding:9px 12px;margin-bottom:4px">Your previous request wasn't approved — check your details and try again.</p>`:"")+
+      `<div class="np-label" style="padding-left:0">Identity</div>`+
       inp("vLegal","Full legal name (as on your ID)",ME.legalName||ME.name)+
-      inp("vId","National ID number",ME.idNumber)+
-      `<label>Photo of your national ID</label>
+      selField("vType","ID document type",["National ID","Passport","Alien ID"],ME.idType||"National ID")+
+      inp("vId","ID / passport number",ME.idNumber)+
+      inp("vKra","KRA PIN (optional)",ME.kraPin)+
+      `<label>Upload documents</label>
       <div class="photo-grid" id="vDocGrid"></div>
-      <div class="photo-note" id="vDocNote">Clear photo, all corners visible. Add a title deed or utility bill as a second document if you have one (optional).</div>
+      <div class="photo-note" id="vDocNote">Required: a clear photo of your ID (all corners visible). Recommended: proof of ownership (title deed, tenancy agreement or utility bill) and a selfie holding your ID. Up to 4 images.</div>
       <input type="file" id="vFile" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="uploadVerifyDoc(this.files);this.value=''">`;
     save=()=>doVerify();acts._label="Submit for review";
     setTimeout(renderVDocs,0);
@@ -1157,7 +1212,7 @@ function renderVDocs(){
   if(!CONFIG||!CONFIG.cloudinary){g.innerHTML="";$("vDocNote").textContent="Document upload isn't available right now — submit your details and our team will contact you to complete verification.";return}
   g.innerHTML=vDocIds.map((id,i)=>`<div class="photo-th"><img src="https://res.cloudinary.com/${signCfg&&signCfg.cloudName?signCfg.cloudName:""}/image/upload/c_fill,w_200,h_150,q_auto:eco/${id}" alt="document ${i+1}"><button type="button" class="rm" onclick="vDocIds.splice(${i},1);renderVDocs()">✕</button></div>`).join("")+
     (vUploading?`<div class="photo-th uploading"><div class="spin">Uploading…</div></div>`:"")+
-    (vDocIds.length+vUploading<2?`<button type="button" class="photo-add" onclick="$('vFile').click()"><span>+</span>Add document</button>`:"");
+    (vDocIds.length+vUploading<4?`<button type="button" class="photo-add" onclick="$('vFile').click()"><span>+</span>Add document</button>`:"");
 }
 async function uploadVerifyDoc(files){
   if(!files.length)return;
@@ -1183,7 +1238,8 @@ async function doVerify(){
   if(vUploading){$("setErr").textContent="Wait for the document to finish uploading";return}
   try{
     ME=await api("/api/account/request-verification",{method:"POST",body:JSON.stringify({
-      legalName:$("vLegal").value.trim(),idNumber:$("vId").value.trim(),docs:vDocIds
+      legalName:$("vLegal").value.trim(),idType:$("vType").value,idNumber:$("vId").value.trim(),
+      kraPin:$("vKra").value.trim(),docs:vDocIds
     })});
     paintUser();hide("setModal");toast("Submitted — we'll review and verify you shortly");
   }catch(e){$("setErr").textContent=e.message}

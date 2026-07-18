@@ -280,10 +280,10 @@ function renderTab(){
       </tr>`).join("")+`</table>`;
   }else if(tab==="verifs"){
     const v=cache.verifs||[];
-    $("panel").innerHTML=v.length?`<table><tr><th>Applicant</th><th>ID number</th><th>Location</th><th>Documents</th><th></th></tr>`+
+    $("panel").innerHTML=v.length?`<table><tr><th>Applicant</th><th>ID</th><th>Location</th><th>Documents</th><th></th></tr>`+
       v.map(x=>`<tr>
-        <td><b>${esc(x.legalName||x.name)}</b><div class="muted">${esc(x.name)} · ${esc(x.phone||"")} ${x.email?"· "+esc(x.email):""} · ${x.listings} listing${x.listings===1?"":"s"}</div></td>
-        <td><b>${esc(x.idNumber||"—")}</b></td>
+        <td><b>${esc(x.legalName||x.name)}</b><div class="muted">${esc(x.name)} · ${esc(x.phone||"")} ${x.email?"· "+esc(x.email):""}</div><div class="muted">${x.listings} listing${x.listings===1?"":"s"}${x.dob?" · DOB "+esc(x.dob):""}</div></td>
+        <td>${esc(x.idType||"ID")}: <b>${esc(x.idNumber||"—")}</b>${x.kraPin?`<div class="muted">KRA ${esc(x.kraPin)}</div>`:""}</td>
         <td class="muted">${esc([x.town,x.county].filter(Boolean).join(", ")||"—")}</td>
         <td>${x.docs.length?x.docs.map((d,i)=>`<a href="${esc(d)}" target="_blank" rel="noopener" class="pill ok" style="margin-right:4px;text-decoration:none">Doc ${i+1} ↗</a>`).join(""):'<span class="muted">none</span>'}</td>
         <td style="white-space:nowrap">
