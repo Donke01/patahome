@@ -993,7 +993,25 @@ function openSettings(kind){
   }else if(kind==="email"){
     title="Change email";sub=ME.email?("Current: "+ME.email):"Add an email to your account.";
     html=inp("sEmail","New email",ME.email,"email");
-    save=()=>saveField("/api/account/change-email",{email:$("sEmail").value.trim()},"Email updated");
+    save=async()=>{
+      try{
+        const r=await api("/api/account/change-email",{method:"POST",body:JSON.stringify({email:$("sEmail").value.trim()})});
+        if(r.codeRequired){
+          $("setSub").textContent="We sent a 6-digit code to "+r.target+". Enter it below.";
+          $("setBody").innerHTML=inp("sCode","6-digit code","","text");
+          $("sCode").inputMode="numeric";$("sCode").maxLength=6;$("sCode").focus();
+          $("setActions").innerHTML=`<button class="btn btn-ghost" onclick="hide('setModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="_setSave()">Verify</button>`;
+          window._setSave=async()=>{
+            $("setErr").textContent="";
+            try{
+              ME=await api("/api/account/change-email/confirm",{method:"POST",body:JSON.stringify({code:$("sCode").value.trim()})});
+              paintUser();hide("setModal");toast("Email verified and updated");
+            }catch(e){$("setErr").textContent=e.message}
+          };
+        }else{ME=r;paintUser();hide("setModal");toast("Email updated")}
+      }catch(e){$("setErr").textContent=e.message}
+    };
   }else if(kind==="password"){
     title="Change password";sub=ME.hasPassword?"":"You signed up with Google — set a password to also log in manually.";
     html=(ME.hasPassword?inp("sCur","Current password","","password"):"")+inp("sNew","New password (min 8 chars)","","password");

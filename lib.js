@@ -66,4 +66,64 @@ function makeRouter() {
   return { add, match };
 }
 
-module.exports = { hashPassword, verifyPassword, signToken, verifyToken, km, makeRouter };
+/* ---------- minimal SMTP client (STARTTLS) — zero dependencies ----------
+   Configured via env: SMTP_HOST, SMTP_PORT (default 587), SMTP_USER, SMTP_PASS, MAIL_FROM
+   For iCloud custom domains: SMTP_HOST=smtp.mail.me.com, SMTP_USER=<Apple ID>,
+   SMTP_PASS=<app-specific password>, MAIL_FROM=info@yourdomain */
+const net = require("node:net");
+const tls = require("node:tls");
+
+const mailConfigured = () =>
+  !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS && process.env.MAIL_FROM);
+
+function sendMail({ to, subject, text }) {
+  return new Promise((resolve, reject) => {
+    if (!mailConfigured()) return reject(new Error("mail not configured"));
+    const host = process.env.SMTP_HOST, port = +(process.env.SMTP_PORT || 587);
+    const user = process.env.SMTP_USER, pass = process.env.SMTP_PASS, from = process.env.MAIL_FROM;
+    let sock = net.connect(port, host), buf = "", stage = 0, upgraded = false;
+    const fail = (m) => { try { sock.destroy(); } catch {} ; reject(new Error(m)); };
+    const timer = setTimeout(() => fail("SMTP timeout"), 20000);
+    const write = (line) => sock.write(line + "\r\n");
+    const steps = [
+      { expect: /^220/, send: () => write(`EHLO patahome.co.ke`) },
+      { expect: /^250/, send: () => write("STARTTLS") },
+      { expect: /^220/, send: () => {   // upgrade to TLS, then re-EHLO
+          sock.removeAllListeners("data");
+          sock = tls.connect({ socket: sock, servername: host }, () => { upgraded = true; write(`EHLO patahome.co.ke`); });
+          attach();
+        } },
+      { expect: /^250/, send: () => write("AUTH LOGIN") },
+      { expect: /^334/, send: () => write(Buffer.from(user).toString("base64")) },
+      { expect: /^334/, send: () => write(Buffer.from(pass).toString("base64")) },
+      { expect: /^235/, send: () => write(`MAIL FROM:<${from}>`) },
+      { expect: /^250/, send: () => write(`RCPT TO:<${to}>`) },
+      { expect: /^250/, send: () => write("DATA") },
+      { expect: /^354/, send: () => {
+          const msg = [
+            `From: PataHome <${from}>`, `To: <${to}>`, `Subject: ${subject}`,
+            `Date: ${new Date().toUTCString()}`,
+            `Message-ID: <${Date.now()}.${Math.random().toString(36).slice(2)}@patahome.co.ke>`,
+            "MIME-Version: 1.0", "Content-Type: text/plain; charset=utf-8", "",
+            text, "."
+          ].join("\r\n");
+          sock.write(msg + "\r\n");
+        } },
+      { expect: /^250/, send: () => { write("QUIT"); clearTimeout(timer); resolve(true); } }
+    ];
+    function onData(chunk) {
+      buf += chunk.toString();
+      if (!/\r?\n$/.test(buf)) return;
+      const line = buf.trim().split(/\r?\n/).pop(); buf = "";
+      const step = steps[stage];
+      if (!step) return;
+      if (!step.expect.test(line)) { clearTimeout(timer); return fail(`SMTP error at step ${stage}: ${line.slice(0, 120)}`); }
+      stage++;
+      step.send();
+    }
+    function attach() { sock.on("data", onData); sock.on("error", (e) => { clearTimeout(timer); fail("SMTP connection error: " + e.message); }); }
+    attach();
+  });
+}
+
+module.exports = { hashPassword, verifyPassword, signToken, verifyToken, km, makeRouter, sendMail, mailConfigured };

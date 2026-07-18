@@ -127,8 +127,19 @@ CREATE TABLE IF NOT EXISTS support_tickets (
   status TEXT NOT NULL DEFAULT 'open',         -- open | resolved
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS verify_codes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,                          -- email | phone
+  target TEXT NOT NULL,                        -- the new email/phone being verified
+  code TEXT NOT NULL,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, read);
 CREATE INDEX IF NOT EXISTS idx_followers_owner ON followers(owner_id);
+CREATE INDEX IF NOT EXISTS idx_codes_user ON verify_codes(user_id, kind);
 `);
 
 module.exports = db;

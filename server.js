@@ -5,7 +5,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { URL } = require("node:url");
 const db = require("./db");
-const { hashPassword, verifyPassword, signToken, verifyToken, km, makeRouter } = require("./lib");
+const { hashPassword, verifyPassword, signToken, verifyToken, km, makeRouter, sendMail, mailConfigured } = require("./lib");
 
 const PORT = process.env.PORT || 3000;
 const router = makeRouter();
@@ -210,14 +210,56 @@ router.add("POST", "/api/account/change-phone", (req, res) => {
   } catch (e) { send(res, 409, { error: "That phone is already registered" }); }
 });
 
-router.add("POST", "/api/account/change-email", (req, res) => {
+router.add("POST", "/api/account/change-email", async (req, res) => {
   const u = requireAuth(req, res); if (!u) return;
   const email = (req.body.email || "").trim().toLowerCase();
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return send(res, 400, { error: "Enter a valid email address" });
-  try {
+  const taken = db.prepare("SELECT id FROM users WHERE email=? AND id!=?").get(email, u.id);
+  if (taken) return send(res, 409, { error: "That email is already registered" });
+  if (!mailConfigured()) {
+    // no mail provider configured yet — apply directly (legacy behavior)
     db.prepare("UPDATE users SET email=? WHERE id=?").run(email, u.id);
-    send(res, 200, publicUser(db.prepare("SELECT * FROM users WHERE id=?").get(u.id)));
-  } catch (e) { send(res, 409, { error: "That email is already registered" }); }
+    return send(res, 200, publicUser(db.prepare("SELECT * FROM users WHERE id=?").get(u.id)));
+  }
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  db.prepare("DELETE FROM verify_codes WHERE user_id=? AND kind='email'").run(u.id);
+  db.prepare("INSERT INTO verify_codes (user_id,kind,target,code,expires_at) VALUES (?,?,?,?,datetime('now','+15 minutes'))")
+    .run(u.id, "email", email, code);
+  try {
+    await sendMail({
+      to: email,
+      subject: `${code} is your PataHome verification code`,
+      text: `Karibu!\n\nYour PataHome verification code is: ${code}\n\nEnter it to confirm your email address. The code expires in 15 minutes.\n\nIf you didn't request this, you can ignore this email.\n\n— PataHome · patahome.co.ke`
+    });
+  } catch (e) {
+    console.error("sendMail failed:", e.message);
+    return send(res, 502, { error: "Couldn't send the code — check the address and try again" });
+  }
+  send(res, 200, { codeRequired: true, target: email });
+});
+
+router.add("POST", "/api/account/change-email/confirm", (req, res) => {
+  const u = requireAuth(req, res); if (!u) return;
+  const code = String(req.body.code || "").trim();
+  const row = db.prepare("SELECT * FROM verify_codes WHERE user_id=? AND kind='email'").get(u.id);
+  if (!row) return send(res, 400, { error: "No pending code — request a new one" });
+  if (new Date(row.expires_at + "Z") < new Date()) {
+    db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id);
+    return send(res, 400, { error: "Code expired — request a new one" });
+  }
+  if (row.attempts >= 5) {
+    db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id);
+    return send(res, 400, { error: "Too many attempts — request a new code" });
+  }
+  if (row.code !== code) {
+    db.prepare("UPDATE verify_codes SET attempts=attempts+1 WHERE id=?").run(row.id);
+    return send(res, 400, { error: "Wrong code — check the email and try again" });
+  }
+  try {
+    db.prepare("UPDATE users SET email=? WHERE id=?").run(row.target, u.id);
+  } catch (e) { return send(res, 409, { error: "That email is already registered" }); }
+  db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id);
+  send(res, 200, publicUser(db.prepare("SELECT * FROM users WHERE id=?").get(u.id)));
 });
 
 router.add("POST", "/api/account/change-password", (req, res) => {
