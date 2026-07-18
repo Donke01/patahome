@@ -341,8 +341,7 @@
       <label>Birthday</label>
       <input id="aDob" type="date" max="2010-01-01">
       <label>County</label>
-      <input id="aCounty" list="countyList" placeholder="e.g. Trans Nzoia">
-      <datalist id="countyList"><option value="Baringo"><option value="Bomet"><option value="Bungoma"><option value="Busia"><option value="Elgeyo Marakwet"><option value="Embu"><option value="Garissa"><option value="Homa Bay"><option value="Isiolo"><option value="Kajiado"><option value="Kakamega"><option value="Kericho"><option value="Kiambu"><option value="Kilifi"><option value="Kirinyaga"><option value="Kisii"><option value="Kisumu"><option value="Kitui"><option value="Kwale"><option value="Laikipia"><option value="Lamu"><option value="Machakos"><option value="Makueni"><option value="Mandera"><option value="Marsabit"><option value="Meru"><option value="Migori"><option value="Mombasa"><option value="Murang'a"><option value="Nairobi"><option value="Nakuru"><option value="Nandi"><option value="Narok"><option value="Nyamira"><option value="Nyandarua"><option value="Nyeri"><option value="Samburu"><option value="Siaya"><option value="Taita Taveta"><option value="Tana River"><option value="Tharaka Nithi"><option value="Trans Nzoia"><option value="Turkana"><option value="Uasin Gishu"><option value="Vihiga"><option value="Wajir"><option value="West Pokot"></datalist>
+      <select id="aCounty"><option value="">Select your county…</option></select>
       <label>Town / Estate</label>
       <input id="aTown" placeholder="e.g. Kitale, Milimani">
       <label style="display:flex;align-items:center;gap:9px;font-weight:500;text-transform:none;letter-spacing:0;margin-top:14px;cursor:pointer">
@@ -517,6 +516,15 @@ let userName = localStorage.getItem("pb_name") || "";
 let mode = "login", areas = [], myListings = [], myInquiries = [], editId = null;
 let ME = null, CONFIG = null;
 const LANGS = { en: "English", sw: "Kiswahili" };
+const COUNTIES = ["Baringo","Bomet","Bungoma","Busia","Elgeyo Marakwet","Embu","Garissa","Homa Bay","Isiolo","Kajiado","Kakamega","Kericho","Kiambu","Kilifi","Kirinyaga","Kisii","Kisumu","Kitui","Kwale","Laikipia","Lamu","Machakos","Makueni","Mandera","Marsabit","Meru","Migori","Mombasa","Murang'a","Nairobi","Nakuru","Nandi","Narok","Nyamira","Nyandarua","Nyeri","Samburu","Siaya","Taita Taveta","Tana River","Tharaka Nithi","Trans Nzoia","Turkana","Uasin Gishu","Vihiga","Wajir","West Pokot"];
+function countySelect(id,val){
+  return `<select id="${id}"><option value="">Select your county…</option>`+
+    COUNTIES.map(c=>`<option${c===val?" selected":""}>${c}</option>`).join("")+`</select>`;
+}
+function fillCounties(id,val){
+  const el=document.getElementById(id);if(!el)return;
+  el.innerHTML=`<option value="">Select your county…</option>`+COUNTIES.map(c=>`<option${c===val?" selected":""}>${c}</option>`).join("");
+}
 
 /* ---------- helpers ---------- */
 const $ = (id) => document.getElementById(id);
@@ -1014,7 +1022,7 @@ function openSettings(kind){
   }else if(kind==="complete"){
     title="Complete your profile";sub="Two quick details and you're ready to post listings.";
     html=inp("sPhone","Phone (07XXXXXXXX)","")+
-      '<label>County</label><input id="sCounty" list="countyList" placeholder="e.g. Nairobi" value="'+esc(ME.county||"")+'">'+
+      '<label>County</label>'+countySelect("sCounty",ME.county)+
       inp("sTown","Town / Estate",ME.town);
     save=async()=>{
       try{
@@ -1183,6 +1191,7 @@ async function doDelete(){
 /* ---------- init ---------- */
 (async function(){
   try{CONFIG=await api("/api/config")}catch(e){CONFIG={}}
+  fillCounties("aCounty");
   window.onload=initGoogle;initGoogle();
   const gsiPoll=setInterval(()=>{if(typeof google!=="undefined"){initGoogle();clearInterval(gsiPoll)}},400);
   setTimeout(()=>clearInterval(gsiPoll),8000);
