@@ -875,7 +875,19 @@ ${urls.map((u) => `  <url><loc>${u}</loc></url>`).join("\n")}
 
 router.add("GET", "/robots.txt", (req, res) => {
   res.writeHead(200, { "Content-Type": "text/plain" });
-  res.end(`User-agent: *\nAllow: /\nDisallow: /dashboard.html\nDisallow: /admin.html\nDisallow: /api/\n\nSitemap: ${BASE_URL}/sitemap.xml\n`);
+  // Read-only data endpoints stay crawlable so Googlebot can fully render the pages
+  res.end(`User-agent: *
+Allow: /
+Allow: /api/areas
+Allow: /api/listings
+Allow: /api/config
+Allow: /api/insights
+Disallow: /dashboard.html
+Disallow: /admin.html
+Disallow: /api/
+
+Sitemap: ${BASE_URL}/sitemap.xml
+`);
 });
 
 /* ================= server ================= */
