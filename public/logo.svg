@@ -1,0 +1,11 @@
+<svg width="760" height="600" viewBox="0 0 380 300" xmlns="http://www.w3.org/2000/svg">
+<rect fill="#ffffff" x="0" y="0" width="380" height="300" rx="16"/>
+<g transform="translate(190,105)">
+<path fill="#0B5D3B" d="M-78 -12 L0 -80 L78 -12 L64 -12 L0 -66 L-64 -12 Z"/>
+<path fill="#0B5D3B" d="M-60 -18 L0 -70 L60 -18 L60 62 Q60 72 50 72 L-50 72 Q-60 72 -60 62 Z"/>
+<path fill="#F2A900" d="M0 -22 C-22 -22 -36 -6 -36 12 C-36 36 0 68 0 68 C0 68 36 36 36 12 C36 -6 22 -22 0 -22 Z"/>
+<circle fill="#0B5D3B" cx="0" cy="12" r="14"/>
+</g>
+<text x="190" y="232" text-anchor="middle" font-family="Inter, Helvetica, Arial, sans-serif" font-size="44" font-weight="600" letter-spacing="-1"><tspan fill="#0B5D3B">Pata</tspan><tspan fill="#F2A900">Home</tspan></text>
+<text x="190" y="262" text-anchor="middle" fill="#5a6b62" font-family="Inter, Helvetica, Arial, sans-serif" font-size="13" letter-spacing="3">PATAHOME.CO.KE</text>
+</svg>
