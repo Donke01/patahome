@@ -27,7 +27,7 @@
   :root{
     --brand:#0e8a68; --brand-dark:#0b6b51; --brand-light:#e9f6f1;
     --gold:#c9a35c; --gold-soft:#f6efe1;
-    --ink:#1a2420; --muted:#5f6d66; --line:#d9e3dd; --bg:#fcfdfc;
+    --ink:#1a2420; --muted:#5f6d66; --line:#d9e3dd; --bg:#ffffff;
     --card:#ffffff; --radius:18px;
     --shadow:0 1px 3px rgba(16,40,30,.06), 0 6px 20px rgba(16,40,30,.06);
     --shadow-lift:0 4px 10px rgba(16,40,30,.08), 0 14px 34px rgba(16,40,30,.12);
@@ -281,8 +281,10 @@
   /* ---------- Category tiles ---------- */
   .cats{max-width:1100px;margin:0 auto;padding:26px 24px 0}
   .cat-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
-  .cat-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:22px 10px;border-radius:var(--radius);background:linear-gradient(150deg,#0d6b50,#0e8a68);color:#fff;text-decoration:none;box-shadow:var(--shadow);transition:transform .2s,box-shadow .2s}
-  .cat-tile:hover{transform:translateY(-4px);box-shadow:var(--shadow-lift)}
+  .cat-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:22px 10px;border-radius:var(--radius);background:#fff;border:1px solid var(--line);color:var(--brand);text-decoration:none;box-shadow:var(--shadow);transition:transform .2s,box-shadow .2s,border-color .2s}
+  .cat-tile:hover{transform:translateY(-4px);box-shadow:var(--shadow-lift);border-color:var(--brand)}
+  .cat-tile .ct-l{color:var(--ink);font-weight:600}
+  .cat-tile .ct-ic{color:var(--brand)}
   .ct-ic{width:44px;height:44px;border-radius:13px;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center}
   .ct-ic svg{width:22px;height:22px}
   .ct-l{font-weight:700;font-size:.9rem}
