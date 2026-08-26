@@ -108,7 +108,7 @@
   }
 
   /* ---------- Header ---------- */
-  header{position:sticky;top:0;z-index:1000;background:var(--header-bg);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding:12px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;transition:background .3s}
+  header{position:sticky;top:0;z-index:1000;background:var(--header-bg);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding:14px 24px;min-height:96px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;transition:background .3s}
   .logo{font-size:1.8rem;font-weight:800;color:var(--brand);display:flex;align-items:center;gap:10px;letter-spacing:-.5px;font-family:var(--serif)}
   .logo svg{width:37px;height:37px}
   .logo span b{color:var(--gold);font-weight:700}
@@ -163,7 +163,7 @@
 
   /* ---------- Compact mobile ---------- */
   @media(max-width:640px){
-    header{padding:9px 10px;gap:6px;flex-wrap:nowrap}
+    header{padding:10px 12px;gap:6px;flex-wrap:nowrap;min-height:76px}
     .logo{font-size:1.22rem;gap:6px}
     .logo svg{width:24px;height:24px}
     .header-actions{gap:6px;flex-wrap:nowrap;flex-shrink:0}
@@ -540,6 +540,9 @@
   .foot-socials svg{width:16px;height:16px;fill:currentColor}
   .foot-base{max-width:1200px;margin:22px auto 0;padding-top:16px;position:relative;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:.76rem;color:#8fb8a8}
   .foot-base::before{content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);width:min(640px,86%);height:1px;background:rgba(255,255,255,.18);border-radius:1px}
+  /* Scale the logo down on phones so it doesn't dominate */
+  @media (max-width: 640px){ .logo-mark{height:52px !important} }
+  @media (max-width: 380px){ .logo-mark{height:44px !important} }
 </style>
 </head>
 <body>
@@ -549,7 +552,7 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
   </button>
   <div class="logo">
-    <img src="/logo.svg?v=7d3cf929" alt="PataHome" style="display:block;height:52px;width:auto">
+    <img src="/logo.svg?v=b201" alt="PataHome" class="logo-mark" style="display:block;height:68px;width:auto;max-width:180px">
   </div>
   <div class="header-actions">
     <button class="icon-btn" id="darkBtn" title="Dark mode" onclick="toggleDark()">
