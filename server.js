@@ -146,48 +146,68 @@ const age = (dob) => { const d = new Date(dob); return isNaN(d) ? null : Math.fl
 const authResponse = (res, code, u) =>
   send(res, code, { token: signToken({ id: u.id, name: u.name, role: u.role }), user: publicUser(u) });
 
+/* Sign up with ONE identifier — either a Kenyan phone or an email.
+   Whichever they give is the one we verify; the other is added later in
+   profile settings. Everything else (birthday, county, town) moved there too. */
 router.add("POST", "/api/auth/register", async (req, res) => {
-  const { name, phone, email, password, dob, county, town, country } = req.body || {};
-  if (!name || !phone || !password) return send(res, 400, { error: "name, phone and password are required" });
-  if (!/^0[17]\d{8}$/.test(phone)) return send(res, 400, { error: "Enter a valid Kenyan phone e.g. 0712345678" });
-  // Email is required so every account can be verified (unless mail isn't set up yet)
-  if (mailConfigured() && !email) return send(res, 400, { error: "Email is required" });
-  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return send(res, 400, { error: "Enter a valid email address" });
+  const { name, password } = req.body || {};
+  const identifier = String((req.body && (req.body.identifier ?? req.body.phone ?? req.body.email)) || "").trim();
+  if (!name || !identifier || !password)
+    return send(res, 400, { error: "Name, phone or email, and password are required" });
   if (password.length < 8) return send(res, 400, { error: "Password must be at least 8 characters" });
-  if (dob) {
-    const a = age(dob);
-    if (a === null) return send(res, 400, { error: "Enter a valid date of birth" });
-    if (a < 18) return send(res, 400, { error: "You must be at least 18 years old to use PataHome" });
-    if (a > 120) return send(res, 400, { error: "Enter a valid date of birth" });
+
+  const isEmail = identifier.includes("@");
+  let phone = null, email = null;
+  if (isEmail) {
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(identifier))
+      return send(res, 400, { error: "Enter a valid email address" });
+    if (!mailConfigured())
+      return send(res, 400, { error: "Email sign-up isn't available right now — please use your phone number" });
+    email = identifier.toLowerCase();
+    // phone is NOT NULL UNIQUE, so park a placeholder until they add a real one.
+    // realPhone() rejects it, which is what gates listing creation.
+    phone = "e." + email;
+  } else {
+    if (!/^0[17]\d{8}$/.test(identifier))
+      return send(res, 400, { error: "Enter a valid Kenyan phone e.g. 0712345678, or an email address" });
+    if (!smsConfigured())
+      return send(res, 400, { error: "Phone sign-up isn't available right now — please use your email address" });
+    phone = identifier;
   }
-  const requireEmailVerify = mailConfigured() && !!email;
+
   let user;
   try {
-    const info = db.prepare("INSERT INTO users (name,phone,email,password_hash,dob,county,town,country,email_verified) VALUES (?,?,?,?,?,?,?,?,?)")
-      .run(name.trim(), phone, email ? email.toLowerCase() : null, hashPassword(password),
-           dob || null, (county || "").slice(0, 60), (town || "").slice(0, 80), (country || "Kenya").slice(0, 60),
-           requireEmailVerify ? 0 : 1);
+    // The identifier they signed up with starts unverified; the absent one is
+    // marked verified so it never shows a stale "verify me" prompt.
+    const info = db.prepare("INSERT INTO users (name,phone,email,password_hash,country,email_verified,phone_verified) VALUES (?,?,?,?,?,?,?)")
+      .run(name.trim(), phone, email, hashPassword(password), "Kenya",
+           isEmail ? 0 : 1, isEmail ? 1 : 0);
     user = db.prepare("SELECT * FROM users WHERE id=?").get(info.lastInsertRowid);
     db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
       .run(user.id, "system", "Karibu to PataHome", "Your account is ready. Post your first listing to start receiving leads.");
   } catch (e) {
-    if (String(e).includes("UNIQUE")) return send(res, 409, { error: "Phone or email already registered" });
+    if (String(e).includes("UNIQUE"))
+      return send(res, 409, { error: isEmail ? "That email is already registered" : "That phone number is already registered" });
     throw e;
   }
-  if (requireEmailVerify) {
-    try { await sendEmailCode(user.id, user.email); }
-    catch (e) { console.error("signup mail failed:", e.message); /* account exists; they can resend */ }
+
+  // Send the code for whichever identifier they used. A gateway failure must not
+  // lose the signup — the account exists and they can resend from settings.
+  try {
+    if (isEmail) await sendEmailCode(user.id, email);
+    else await sendPhoneCode(user.id, phone);
+  } catch (e) {
+    console.error(`signup ${isEmail ? "mail" : "sms"} failed:`, e.message);
   }
-  const requirePhoneVerify = smsConfigured();
-  if (requirePhoneVerify) {
-    try { await sendPhoneCode(user.id, phone); }
-    catch (e) { console.error("signup sms failed:", e.message); /* account exists; they can resend */ }
-  }
+
   send(res, 201, {
     token: signToken({ id: user.id, name: user.name, role: user.role }),
     user: publicUser(user),
-    emailVerifyRequired: requireEmailVerify, emailTarget: requireEmailVerify ? user.email : null,
-    phoneVerifyRequired: requirePhoneVerify, phoneTarget: requirePhoneVerify ? phone : null
+    verifyKind: isEmail ? "email" : "phone",
+    verifyTarget: identifier,
+    // kept for older clients still reading the previous field names
+    emailVerifyRequired: isEmail, emailTarget: isEmail ? email : null,
+    phoneVerifyRequired: !isEmail, phoneTarget: isEmail ? null : phone
   });
 });
 
@@ -291,6 +311,12 @@ router.add("PATCH", "/api/account", (req, res) => {
     county: "county", town: "town", country: "country", dob: "dob",
     gender: "gender", contactPref: "contact_pref", whatsapp: "whatsapp", avatarUrl: "avatar_url",
     businessRole: "business_role", businessSince: "business_since", website: "website", businessAddress: "business_address" };
+  // Birthday is collected here rather than at signup, so the 18+ rule lives here.
+  if (req.body.dob !== undefined && String(req.body.dob).trim() !== "") {
+    const a = age(req.body.dob);
+    if (a === null || a > 120) return send(res, 400, { error: "Enter a valid date of birth" });
+    if (a < 18) return send(res, 400, { error: "You must be at least 18 years old to use PataHome" });
+  }
   const sets = [], params = [];
   for (const [k, col] of Object.entries(map)) if (req.body[k] !== undefined) {
     sets.push(`${col}=?`); params.push(String(req.body[k]).slice(0, 400));
@@ -300,14 +326,25 @@ router.add("PATCH", "/api/account", (req, res) => {
   send(res, 200, publicUser(db.prepare("SELECT * FROM users WHERE id=?").get(u.id)));
 });
 
-router.add("POST", "/api/account/change-phone", (req, res) => {
+router.add("POST", "/api/account/change-phone", async (req, res) => {
   const u = requireAuth(req, res); if (!u) return;
   const phone = (req.body.phone || "").trim();
   if (!/^0[17]\d{8}$/.test(phone)) return send(res, 400, { error: "Enter a valid Kenyan phone e.g. 0712345678" });
+  const before = db.prepare("SELECT phone FROM users WHERE id=?").get(u.id);
+  if (before && before.phone === phone)
+    return send(res, 200, publicUser(db.prepare("SELECT * FROM users WHERE id=?").get(u.id)));
   try {
-    db.prepare("UPDATE users SET phone=? WHERE id=?").run(phone, u.id);
-    send(res, 200, publicUser(db.prepare("SELECT * FROM users WHERE id=?").get(u.id)));
-  } catch (e) { send(res, 409, { error: "That phone is already registered" }); }
+    // A new number is unverified until proven — otherwise someone could verify
+    // one phone then swap in another and keep the trusted badge.
+    db.prepare("UPDATE users SET phone=?, phone_verified=0 WHERE id=?").run(phone, u.id);
+  } catch (e) { return send(res, 409, { error: "That phone is already registered" }); }
+  let codeSent = false;
+  if (smsConfigured()) {
+    try { await sendPhoneCode(u.id, phone); codeSent = true; }
+    catch (e) { console.error("change-phone sms failed:", e.message); }
+  }
+  const user = publicUser(db.prepare("SELECT * FROM users WHERE id=?").get(u.id));
+  send(res, 200, Object.assign(user, { verifyKind: "phone", verifyTarget: phone, codeSent }));
 });
 
 router.add("POST", "/api/account/change-email", async (req, res) => {
@@ -458,9 +495,12 @@ router.add("GET", "/api/listings/:id", (req, res, p) => {
 
 router.add("POST", "/api/listings", (req, res) => {
   const u = requireAuth(req, res); if (!u) return;
-  const me = db.prepare("SELECT phone, email, email_verified FROM users WHERE id=?").get(u.id);
+  const me = db.prepare("SELECT phone, email, email_verified, phone_verified FROM users WHERE id=?").get(u.id);
+  // A reachable, verified phone is the core trust signal for a listing.
   if (!me || !realPhone(me.phone))
     return send(res, 400, { error: "Add your phone number first (account menu → Change phone number) so tenants can reach you" });
+  if (smsConfigured() && !me.phone_verified)
+    return send(res, 400, { error: "Verify your phone number first (account menu → Verify phone) before posting" });
   if (mailConfigured() && me.email && !me.email_verified)
     return send(res, 400, { error: "Verify your email first (account menu → Verify email) before posting" });
   const { category, title, description, areaId, price, bedrooms } = req.body || {};

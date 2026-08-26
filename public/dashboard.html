@@ -345,24 +345,17 @@
     </div>
     <label id="phoneLbl">Phone or email</label>
     <input id="aPhone" placeholder="07XXXXXXXX or you@email.com">
-    <div id="regEmailWrap" style="display:none">
-      <label>Email</label>
-      <input id="aEmail" type="email" placeholder="you@email.com">
+    <div id="idHint" style="display:none;font-size:.78rem;color:var(--muted);margin-top:5px">
+      We'll send a verification code to whichever you enter.
     </div>
+    <label>Password</label>
+    <input id="aPass" type="password" placeholder="At least 8 characters">
     <div id="regExtra" style="display:none">
-      <label>Birthday</label>
-      <input id="aDob" type="date" max="2010-01-01">
-      <label>County</label>
-      <select id="aCounty"><option value="">Select your county…</option></select>
-      <label>Town / Estate</label>
-      <input id="aTown" placeholder="e.g. Kitale, Milimani">
       <label style="display:flex;align-items:center;gap:9px;font-weight:500;text-transform:none;letter-spacing:0;margin-top:14px;cursor:pointer">
         <input type="checkbox" id="aTerms" style="width:auto;accent-color:var(--green)">
         I agree to PataHome's terms of use and privacy policy
       </label>
     </div>
-    <label>Password</label>
-    <input id="aPass" type="password" placeholder="At least 8 characters">
     <div class="err" id="authErr"></div>
     <button class="btn btn-primary" style="width:100%;padding:12px" onclick="submitAuth()" id="authBtn">Log In</button>
   </div>
@@ -560,14 +553,15 @@ async function api(path, opts = {}) {
 /* ---------- auth ---------- */
 function setMode(m){
   mode=m;
-  $("tabLogin").classList.toggle("on",m==="login");
-  $("tabReg").classList.toggle("on",m==="register");
-  $("regName").style.display=m==="register"?"block":"none";
-  $("regEmailWrap").style.display=m==="register"?"block":"none";
-  $("regExtra").style.display=m==="register"?"block":"none";
-  $("phoneLbl").textContent=m==="register"?"Phone":"Phone or email";
-  $("aPhone").placeholder=m==="register"?"07XXXXXXXX":"07XXXXXXXX or you@email.com";
-  $("authBtn").textContent=m==="login"?"Log In":"Create Account";
+  const reg=m==="register";
+  $("tabLogin").classList.toggle("on",!reg);
+  $("tabReg").classList.toggle("on",reg);
+  $("regName").style.display=reg?"block":"none";
+  $("regExtra").style.display=reg?"block":"none";
+  $("idHint").style.display=reg?"block":"none";
+  $("phoneLbl").textContent="Phone or email";
+  $("aPhone").placeholder="07XXXXXXXX or you@email.com";
+  $("authBtn").textContent=reg?"Create Account":"Log In";
   $("authErr").textContent="";
 }
 async function submitAuth(){
@@ -579,21 +573,17 @@ async function submitAuth(){
       body=/@/.test(idField)?{email:idField}:{phone:idField};
       body.password=$("aPass").value;path="/api/auth/login";
     }else{
-      if(!$("aDob").value){$("authErr").textContent="Enter your birthday";return}
-      const ageMs=Date.now()-new Date($("aDob").value).getTime();
-      if(ageMs<18*31557600000){$("authErr").textContent="You must be at least 18 years old to use PataHome";return}
+      if(!$("aName").value.trim()){$("authErr").textContent="Enter your name";return}
+      if(!idField){$("authErr").textContent="Enter your phone number or email";return}
       if(!$("aTerms").checked){$("authErr").textContent="Please accept the terms to continue";return}
-      const em=$("aEmail").value.trim();
-      if(!em){$("authErr").textContent="Enter your email — we'll send a verification code";return}
-      body={name:$("aName").value.trim(),phone:idField,email:em,password:$("aPass").value,
-        dob:$("aDob").value,county:$("aCounty").value.trim(),town:$("aTown").value.trim(),country:"Kenya"};
+      body={name:$("aName").value.trim(),identifier:idField,password:$("aPass").value};
       path="/api/auth/register";
     }
     const r=await api(path,{method:"POST",body:JSON.stringify(body)});
     saveSession(r);enterDash();
-    // Verify email first if needed, then phone. Otherwise go straight to phone.
-    if(r.emailVerifyRequired){setTimeout(()=>openEmailVerify(r.emailTarget),500);pendingPhoneVerify=r.phoneVerifyRequired?r.phoneTarget:null}
-    else if(r.phoneVerifyRequired){setTimeout(()=>openPhoneVerify(r.phoneTarget),500)}
+    // Verify whichever identifier they signed up with.
+    if(r.verifyKind==="email")setTimeout(()=>openEmailVerify(r.verifyTarget),500);
+    else if(r.verifyKind==="phone")setTimeout(()=>openPhoneVerify(r.verifyTarget),500);
   }catch(e){$("authErr").textContent=e.message}
 }
 function saveSession(r){
@@ -1041,10 +1031,14 @@ function openSettings(kind){
     html=avatarBlock()+
       inp("sName","Full name",ME.name)+
       selField("sGender","Gender (optional)",["Female","Male","Prefer not to say"],ME.gender)+
+      `<label>Birthday</label><input id="sDob" type="date" max="2010-01-01" value="${esc(ME.dob||"")}">`+
+      '<label>County</label>'+countySelect("sCounty",ME.county)+
+      inp("sTown","Town / Estate",ME.town)+
       selField("sPref","Preferred contact method",["Call","WhatsApp","Email"],ME.contactPref)+
       inp("sWa","WhatsApp number (if different from phone)",ME.whatsapp)+
       taField("sBio","About you","A short intro — how long you've been renting out homes, your neighbourhoods, response times…",ME.bio);
     save=()=>saveAccount({name:$("sName").value.trim(),gender:$("sGender").value,contactPref:$("sPref").value,
+      dob:$("sDob").value,county:$("sCounty").value.trim(),town:$("sTown").value.trim(),
       whatsapp:$("sWa").value.trim(),bio:$("sBio").value.trim(),
       ...(pendingAvatar?{avatarUrl:pendingAvatar}:{})},"Personal details saved");
   }else if(kind==="business"){
@@ -1088,9 +1082,17 @@ function openSettings(kind){
     title=ME.phone?"Change phone number":"Add phone number";
     sub=ME.phone?("Current: "+ME.phone):"Add your phone so tenants and buyers can reach you.";
     html=inp("sPhone",ME.phone?"New phone (07XXXXXXXX)":"Phone (07XXXXXXXX)",ME.phone);
-    save=()=>saveField("/api/account/change-phone",{phone:$("sPhone").value.trim()},ME.phone?"Phone updated":"Phone added");
+    save=async()=>{
+      try{
+        const r=await api("/api/account/change-phone",{method:"POST",body:JSON.stringify({phone:$("sPhone").value.trim()})});
+        ME=r;paintUser();hide("setModal");
+        // a new number is unverified — send them straight to the code step
+        if(r.verifyKind==="phone"&&r.verifyTarget&&!r.phoneVerified){toast("Code sent by SMS");setTimeout(()=>openPhoneVerify(r.verifyTarget),350)}
+        else toast(ME.phone?"Phone updated":"Phone added");
+      }catch(e){$("setErr").textContent=e.message}
+    };
   }else if(kind==="complete"){
-    title="Complete your profile";sub="Two quick details and you're ready to post listings.";
+    title="Add your phone number";sub="Tenants and buyers reach you on this number, so we verify it before you post.";
     html=inp("sPhone","Phone (07XXXXXXXX)","")+
       '<label>County</label>'+countySelect("sCounty",ME.county)+
       inp("sTown","Town / Estate",ME.town);
@@ -1098,8 +1100,12 @@ function openSettings(kind){
       try{
         const r=await api("/api/account/change-phone",{method:"POST",body:JSON.stringify({phone:$("sPhone").value.trim()})});
         ME=r;
-        ME=await api("/api/account",{method:"PATCH",body:JSON.stringify({county:$("sCounty").value.trim(),town:$("sTown").value.trim()})});
-        paintUser();hide("setModal");toast("Profile complete — karibu!");
+        const county=$("sCounty").value.trim(),town=$("sTown").value.trim();
+        if(county||town)ME=await api("/api/account",{method:"PATCH",body:JSON.stringify({county,town})});
+        paintUser();hide("setModal");
+        // change-phone sends a code — go straight into verifying it
+        if(r.verifyKind==="phone"&&r.verifyTarget){toast("Code sent by SMS");setTimeout(()=>openPhoneVerify(r.verifyTarget),350)}
+        else toast("Phone added");
       }catch(e){$("setErr").textContent=e.message}
     };
   }else if(kind==="email"){
@@ -1203,8 +1209,10 @@ function openEmailVerify(target){
     resend:()=>api("/api/auth/verify-email/send",{method:"POST"}),
     done:()=>{
       paintUser();hide("setModal");toast("Email verified ✓");
-      // chain into phone verification if signup also needs it
-      if(pendingPhoneVerify){const t=pendingPhoneVerify;pendingPhoneVerify=null;setTimeout(()=>openPhoneVerify(t),450)}
+      // Email-only signups still need a phone before they can post — ask now
+      // rather than letting them hit the wall at their first listing.
+      if(!ME.phone){setTimeout(()=>{toast("Add your phone number to start posting");openSettings("complete")},450)}
+      else if(pendingPhoneVerify){const t=pendingPhoneVerify;pendingPhoneVerify=null;setTimeout(()=>openPhoneVerify(t),450)}
     }
   });
 }
