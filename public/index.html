@@ -280,14 +280,14 @@
 
   /* ---------- Category tiles ---------- */
   .cats{max-width:1100px;margin:0 auto;padding:26px 24px 0}
-  .cat-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
-  .cat-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:22px 10px;border-radius:var(--radius);background:#fff;border:1px solid var(--line);color:var(--brand);text-decoration:none;box-shadow:var(--shadow);transition:transform .2s,box-shadow .2s,border-color .2s}
+  .cat-row{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}
+  .cat-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:26px 10px;border-radius:var(--radius);background:#fff;border:1px solid var(--line);color:var(--brand);text-decoration:none;box-shadow:var(--shadow);transition:transform .2s,box-shadow .2s,border-color .2s}
   .cat-tile:hover{transform:translateY(-4px);box-shadow:var(--shadow-lift);border-color:var(--brand)}
   .cat-tile .ct-l{color:var(--ink);font-weight:600}
   .cat-tile .ct-ic{color:var(--brand)}
-  .ct-ic{width:44px;height:44px;border-radius:13px;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center}
-  .ct-ic svg{width:22px;height:22px}
-  .ct-l{font-weight:700;font-size:.9rem}
+  .ct-ic{width:60px;height:60px;border-radius:16px;background:var(--brand-light);display:flex;align-items:center;justify-content:center}
+  .ct-ic svg{width:32px;height:32px}
+  .ct-l{font-weight:700;font-size:1.05rem}
 
   /* ---------- Trust row (above footer) ---------- */
   .trustrow{max-width:1100px;margin:0 auto;padding:8px 24px 42px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
@@ -359,11 +359,11 @@
     .bn svg{width:21px;height:21px}
     .bn.on{color:var(--brand)}
     .cats{padding:18px 16px 0}
-    .cat-row{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
-    .cat-tile{padding:13px 4px;gap:6px;border-radius:14px}
-    .ct-ic{width:32px;height:32px;border-radius:9px}
-    .ct-ic svg{width:16px;height:16px}
-    .ct-l{font-size:.66rem}
+    .cat-row{grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+    .cat-tile{padding:14px 4px;gap:8px;border-radius:14px}
+    .ct-ic{width:40px;height:40px;border-radius:11px}
+    .ct-ic svg{width:22px;height:22px}
+    .ct-l{font-size:.78rem;line-height:1.15;text-align:center}
     .trustrow{grid-template-columns:1fr;gap:8px;padding:4px 16px 28px}
     .tr-item{padding:12px 14px}
   }
