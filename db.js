@@ -89,6 +89,44 @@ CREATE TABLE IF NOT EXISTS payments (
 /* -------- migrations (idempotent) -------- */
 // photos: JSON array of Cloudinary public_ids (max 5 per listing)
 try { db.exec("ALTER TABLE listings ADD COLUMN photos TEXT"); } catch (e) { /* column exists */ }
+
+// Expand listings.category to allow 'shortlet' (Airbnb-style furnished nightly rentals).
+// SQLite doesn't support ALTER on CHECK constraints, so if the old CHECK is present we
+// rebuild the table in a transaction. Idempotent — skipped once the new CHECK is in place.
+try {
+  const info = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='listings'").get();
+  if (info && info.sql && info.sql.includes("'vehicle'") && !info.sql.includes("'shortlet'")) {
+    db.exec("BEGIN");
+    db.exec(`CREATE TABLE listings_new (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      category TEXT NOT NULL CHECK (category IN ('rent','sale','shortlet','land','vehicle')),
+      title TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      area_id INTEGER NOT NULL REFERENCES areas(id),
+      price INTEGER NOT NULL CHECK (price > 0),
+      bedrooms INTEGER,
+      lat REAL NOT NULL,
+      lng REAL NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active',
+      featured_until TEXT,
+      photos TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`);
+    db.exec(`INSERT INTO listings_new (id,owner_id,category,title,description,area_id,price,bedrooms,lat,lng,status,featured_until,photos,created_at)
+             SELECT id,owner_id,category,title,description,area_id,price,bedrooms,lat,lng,status,featured_until,photos,created_at FROM listings`);
+    db.exec("DROP TABLE listings");
+    db.exec("ALTER TABLE listings_new RENAME TO listings");
+    db.exec("CREATE INDEX IF NOT EXISTS idx_listings_cat ON listings(category, status)");
+    db.exec("CREATE INDEX IF NOT EXISTS idx_listings_geo ON listings(lat, lng)");
+    db.exec("COMMIT");
+    console.log("✓ Migrated listings table: 'shortlet' category enabled.");
+  }
+} catch (e) {
+  try { db.exec("ROLLBACK"); } catch {}
+  console.error("shortlet migration failed:", e.message);
+}
+
 // richer user profiles for the account system
 for (const col of [
   "business_name TEXT", "business_type TEXT", "bio TEXT",

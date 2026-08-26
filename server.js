@@ -420,7 +420,7 @@ router.add("POST", "/api/listings", (req, res) => {
   if (mailConfigured() && me.email && !me.email_verified)
     return send(res, 400, { error: "Verify your email first (account menu → Verify email) before posting" });
   const { category, title, description, areaId, price, bedrooms } = req.body || {};
-  if (!["rent", "sale"].includes(category)) return send(res, 400, { error: "Invalid category" });
+  if (!["rent", "sale", "shortlet"].includes(category)) return send(res, 400, { error: "Invalid category" });
   if (!title || !areaId || !price) return send(res, 400, { error: "title, areaId and price are required" });
   const area = db.prepare("SELECT * FROM areas WHERE id=?").get(areaId);
   if (!area) return send(res, 400, { error: "Unknown areaId — see GET /api/areas" });
@@ -614,7 +614,8 @@ router.add("GET", "/api/insights", (req, res) => {
     avgRent: rents.length ? Math.round(rents.reduce((s, x) => s + x, 0) / rents.length) : null,
     cheapestRent: rents.length ? Math.min(...rents) : null,
     forSaleNearby: rows.filter(r => r.category === "sale").length,
-    byCategory: Object.fromEntries(["rent", "sale"].map(c => [c, rows.filter(r => r.category === c).length]))
+    shortletNearby: rows.filter(r => r.category === "shortlet").length,
+    byCategory: Object.fromEntries(["rent", "sale", "shortlet"].map(c => [c, rows.filter(r => r.category === c).length]))
   });
 });
 
@@ -843,10 +844,11 @@ router.add("GET", "/api/health", (req, res) => {
    ============================================================ */
 const BASE_URL = (process.env.BASE_URL || "http://localhost:3000").replace(/\/$/, "");
 const CATS = {
-  rentals:  { db: "rent",    label: "Houses & Rooms for Rent", unit: "/month" },
-  "for-sale":{ db: "sale",   label: "Houses for Sale",         unit: "" }
+  rentals:      { db: "rent",     label: "Houses & Rooms for Rent",   unit: "/month" },
+  "for-sale":   { db: "sale",     label: "Houses for Sale",           unit: "" },
+  "short-stays":{ db: "shortlet", label: "Short-Stay & Airbnb Rentals", unit: "/night" }
 };
-const CAT_SLUG = { rent: "rentals", sale: "for-sale" };
+const CAT_SLUG = { rent: "rentals", sale: "for-sale", shortlet: "short-stays" };
 const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const escapeHtml = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const fmtKes = (n) => "KES " + Number(n).toLocaleString("en-KE");
@@ -922,7 +924,7 @@ function listingPage(req, res, p) {
     title: "Listing not found — PataHome", description: "This listing is no longer available.",
     canonical: `${BASE_URL}/`, bodyHtml: `<h1>Listing not found</h1><p>It may have been rented or sold. <a href="/">Browse current listings</a>.</p>` }));
   const catSlug = CAT_SLUG[row.category];
-  const unit = row.category === "rent" ? "/month" : "";
+  const unit = row.category === "rent" ? "/month" : row.category === "shortlet" ? "/night" : "";
   const canonical = `${BASE_URL}/listing/${row.id}/${slugify(row.title)}`;
   const desc = `${row.title} in ${row.area_name}, ${row.county} County — ${fmtKes(row.price)}${unit}. Contact the verified owner directly on PataHome. No middlemen, no viewing fees.`;
   const jsonLd = {

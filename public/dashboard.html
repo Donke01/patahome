@@ -474,7 +474,7 @@
     <div class="sub">Your listing goes live immediately.</div>
     <div id="emCatWrap">
       <label>Category</label>
-      <select id="eCat"><option value="rent">House — For Rent</option><option value="sale">House — For Sale</option></select>
+      <select id="eCat"><option value="rent">House — For Rent (monthly)</option><option value="sale">House — For Sale</option><option value="shortlet">Short-Stay / Airbnb (per night)</option></select>
       <label>Area</label>
       <select id="eArea"></select>
     </div>
@@ -863,7 +863,7 @@ async function sendReply(id){
   }catch(e){toast(e.message)}
 }
 function renderTable(){
-  const CAT={rent:"Rent",sale:"Sale"};
+  const CAT={rent:"Rent",sale:"Sale",shortlet:"Short-Stay"};
   if(!myListings.length){$("table").innerHTML=`<div class="empty">No listings yet — publish your first one to start receiving leads.</div>`;return}
   $("table").innerHTML=`
     <div class="row head"><div>Listing</div><div>Category</div><div>Price</div><div>Leads</div><div>Status</div><div style="text-align:right">Actions</div></div>`+
@@ -871,7 +871,7 @@ function renderTable(){
     <div class="row">
       <div><div class="title">${esc(x.title)}</div><div class="area">${esc(x.area)}, ${esc(x.county)}</div></div>
       <div>${CAT[x.category]||x.category}</div>
-      <div>${fmt(x.price)}${x.category==="rent"?"<span style='color:var(--muted);font-size:.75rem'>/mo</span>":""}</div>
+      <div>${fmt(x.price)}${x.category==="rent"?"<span style='color:var(--muted);font-size:.75rem'>/mo</span>":x.category==="shortlet"?"<span style='color:var(--muted);font-size:.75rem'>/night</span>":""}</div>
       <div class="leads-badge">${x.leads}</div>
       <div><span class="pill ${x.status}">${x.status}</span></div>
       <div class="actions">
