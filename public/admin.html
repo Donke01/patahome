@@ -157,6 +157,7 @@
     <button class="tab on" id="tabL" onclick="setTab('listings')">Listings</button>
     <button class="tab" id="tabU" onclick="setTab('users')">Users</button>
     <button class="tab" id="tabV" onclick="setTab('verifs')">Verifications <span id="vCount" style="background:var(--red);color:#fff;border-radius:999px;padding:1px 8px;font-size:.7rem;display:none"></span></button>
+    <button class="tab" id="tabS" onclick="setTab('support')">Support <span id="sCount" style="background:var(--red);color:#fff;border-radius:999px;padding:1px 8px;font-size:.7rem;display:none"></span></button>
   </div>
   <div class="panel table-scroll" id="panel"></div>
 </div>
@@ -196,12 +197,15 @@ async function enter(name){
 }
 let chart=null, lastUpdated=null;
 async function refresh(){
-  const [o,listings,users,stats,verifs]=await Promise.all([
+  const [o,listings,users,stats,verifs,tickets]=await Promise.all([
     api("/api/admin/overview"),api("/api/admin/listings"),api("/api/admin/users"),
     api("/api/admin/stats").catch(()=>null),
-    api("/api/admin/verifications").catch(()=>[])]);
-  cache={listings,users,verifs};
+    api("/api/admin/verifications").catch(()=>[]),
+    api("/api/admin/support").catch(()=>[])]);
+  cache={listings,users,verifs,tickets};
   const vc=$("vCount");vc.textContent=verifs.length;vc.style.display=verifs.length?"inline-block":"none";
+  const openTix=tickets.filter(t=>t.status==="open").length;
+  const sc=$("sCount");sc.textContent=openTix;sc.style.display=openTix?"inline-block":"none";
   const t=stats?stats.trendPct:0;
   const trend=stats?(t>0?`<span class="trend up">▲ ${t}%</span>`:t<0?`<span class="trend down">▼ ${Math.abs(t)}%</span>`:`<span class="trend flat">— 0%</span>`):"";
   $("stats").innerHTML=`
@@ -264,6 +268,7 @@ function setTab(t){
   $("tabL").classList.toggle("on",t==="listings");
   $("tabU").classList.toggle("on",t==="users");
   $("tabV").classList.toggle("on",t==="verifs");
+  $("tabS").classList.toggle("on",t==="support");
   renderTab();
 }
 function renderTab(){
@@ -302,7 +307,43 @@ function renderTab(){
         <td class="muted">${esc(u.created_at)}</td>
         <td>${u.role!=="admin"?`<button class="btn btn-ghost btn-sm" onclick="setVerified(${u.id},${u.verified?0:1})">${u.verified?"Unverify":"Verify ✓"}</button>`:""}</td>
       </tr>`).join("")+`</table>`;
+  }else if(tab==="support"){
+    const t=cache.tickets||[];
+    if(!t.length){
+      $("panel").innerHTML=`<div style="padding:34px;text-align:center;color:var(--muted)">No support tickets yet — messages from Request Help and the Live Chat widget will appear here.</div>`;
+      return;
+    }
+    const waLink=(p,name,subj)=>{
+      const n=String(p||"").replace(/[^0-9]/g,"").replace(/^0/,"254");
+      if(!n) return "";
+      const msg=encodeURIComponent(`Hi ${name||"there"}, this is PataHome support replying to your message${subj?` about "${subj.slice(0,60)}"`:""}. `);
+      return `https://wa.me/${n}?text=${msg}`;
+    };
+    $("panel").innerHTML=`<table><tr><th>From</th><th>Subject / message</th><th>Received</th><th>Status</th><th></th></tr>`+
+      t.map(x=>{
+        const f=x.from||{}; const wa=waLink(f.phone,f.name,x.subject);
+        const contactLinks=[
+          f.phone?`<a href="tel:${esc(f.phone)}" style="text-decoration:none">📞 ${esc(f.phone)}</a>`:"",
+          wa?`<a href="${wa}" target="_blank" rel="noopener" style="text-decoration:none">💬 WhatsApp</a>`:"",
+          f.email?`<a href="mailto:${esc(f.email)}" style="text-decoration:none">✉️ ${esc(f.email)}</a>`:""
+        ].filter(Boolean).join(" · ");
+        return `<tr>
+        <td><b>${esc(f.name||"—")}</b>${x.source==="live-chat"?' <span class="pill feat">CHAT</span>':""}
+          <div class="muted" style="font-size:.82rem">${contactLinks||"—"}</div></td>
+        <td><b>${esc(x.subject)}</b><div class="muted" style="white-space:normal;max-width:520px;margin-top:4px">${esc(x.message)}</div></td>
+        <td class="muted" style="white-space:nowrap">${esc(x.createdAt)}</td>
+        <td>${x.status==="open"?'<span class="pill warn">open</span>':'<span class="pill ok">resolved</span>'}</td>
+        <td style="white-space:nowrap">${x.status==="open"
+          ?`<button class="btn btn-primary btn-sm" onclick="setTicket(${x.id},'resolved')">Mark resolved ✓</button>`
+          :`<button class="btn btn-ghost btn-sm" onclick="setTicket(${x.id},'open')">Reopen</button>`}</td>
+      </tr>`;
+      }).join("")+`</table>`;
   }
+}
+async function setTicket(id,status){
+  try{await api("/api/admin/support/"+id,{method:"PATCH",body:JSON.stringify({status})});
+    toast(status==="resolved"?"Ticket resolved":"Ticket reopened");await refresh();
+  }catch(e){toast("Error: "+e.message)}
 }
 async function removeListing(id){
   if(!confirm("Remove listing #"+id+" from the site?"))return;

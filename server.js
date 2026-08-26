@@ -701,6 +701,7 @@ router.add("GET", "/api/admin/overview", (req, res) => {
     totalLeads: one("SELECT COUNT(*) FROM leads"),
     inquiries: one("SELECT COUNT(*) FROM inquiries"),
     unrepliedInquiries: one("SELECT COUNT(*) FROM inquiries WHERE owner_reply IS NULL"),
+    openTickets: one("SELECT COUNT(*) FROM support_tickets WHERE status='open'"),
     byCategory: Object.fromEntries(db.prepare("SELECT category, COUNT(*) n FROM listings WHERE status='active' GROUP BY category").all().map(r => [r.category, r.n]))
   });
 });
@@ -795,6 +796,41 @@ router.add("PATCH", "/api/admin/users/:id", (req, res, p) => {
   if (!row) return send(res, 404, { error: "User not found" });
   if (req.body.verified !== undefined)
     db.prepare("UPDATE users SET verified=? WHERE id=?").run(req.body.verified ? 1 : 0, p.id);
+  send(res, 200, { ok: true });
+});
+
+/* -------- admin: support tickets & live-chat inbox -------- */
+router.add("GET", "/api/admin/support", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const rows = db.prepare(`
+    SELECT t.id, t.subject, t.message, t.status, t.created_at,
+           t.user_id, u.name AS user_name, u.phone AS user_phone, u.email AS user_email
+    FROM support_tickets t LEFT JOIN users u ON u.id = t.user_id
+    ORDER BY (t.status='open') DESC, t.id DESC`).all();
+  send(res, 200, rows.map(r => ({
+    id: r.id, subject: r.subject, message: r.message, status: r.status,
+    createdAt: r.created_at,
+    // Anonymous live-chat submissions store name+phone in the subject as "Live chat — Name (Phone)"
+    source: r.user_id ? "user" : "live-chat",
+    from: r.user_id ? { id: r.user_id, name: r.user_name, phone: realPhone(r.user_phone), email: r.user_email }
+                    : parseChatSubject(r.subject)
+  })));
+});
+
+// Parse the "Live chat — Name (Phone)" subject to surface name/phone in the UI.
+function parseChatSubject(s) {
+  const m = String(s || "").match(/^Live chat\s*[—-]\s*(.+?)\s*\((.+?)\)\s*$/);
+  return m ? { id: null, name: m[1], phone: m[2], email: "" } : { id: null, name: "Anonymous", phone: "", email: "" };
+}
+
+router.add("PATCH", "/api/admin/support/:id", (req, res, p) => {
+  if (!requireAdmin(req, res)) return;
+  const row = db.prepare("SELECT id FROM support_tickets WHERE id=?").get(p.id);
+  if (!row) return send(res, 404, { error: "Ticket not found" });
+  const status = req.body && req.body.status;
+  if (status !== "open" && status !== "resolved")
+    return send(res, 400, { error: "status must be 'open' or 'resolved'" });
+  db.prepare("UPDATE support_tickets SET status=? WHERE id=?").run(status, p.id);
   send(res, 200, { ok: true });
 });
 
