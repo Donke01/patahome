@@ -441,6 +441,16 @@
   /* Scale the logo down on phones so it doesn't dominate */
   @media (max-width: 640px){ .logo-mark{height:34px !important;border-radius:9px !important} }
   @media (max-width: 380px){ .logo-mark{height:30px !important;border-radius:7px !important} }
+
+  /* Centre the footer brand block on mobile.
+     Must live AFTER the base .foot-inner rule — the earlier @media block loses
+     on source order because both selectors have the same specificity. */
+  @media (max-width: 640px){
+    .foot-inner{align-items:center;text-align:center}
+    .foot-inner > div{width:100%}
+    .foot-brand{justify-content:center}
+    .foot-tag{margin-left:auto;margin-right:auto;text-align:center}
+  }
 </style>
 </head>
 <body>
