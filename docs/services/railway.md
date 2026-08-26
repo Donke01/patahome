@@ -37,6 +37,9 @@ Set these under **Variables** in the Railway service:
 | `CLOUDINARY_API_KEY`    | See `cloudinary.md`                                  |
 | `CLOUDINARY_API_SECRET` | See `cloudinary.md`                                  |
 | `GOOGLE_CLIENT_ID`      | See `google-signin.md`                               |
+| `INFOBIP_API_KEY`       | See `infobip.md`                                     |
+| `INFOBIP_BASE_URL`      | See `infobip.md` — e.g. `xyz123.api.infobip.com`     |
+| `SMS_SENDER`            | Alphanumeric sender ID, defaults to `PataHome`       |
 
 ## Persistent volume (critical)
 

@@ -5,7 +5,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { URL } = require("node:url");
 const db = require("./db");
-const { hashPassword, verifyPassword, signToken, verifyToken, km, makeRouter, sendMail, mailConfigured } = require("./lib");
+const { hashPassword, verifyPassword, signToken, verifyToken, km, makeRouter, sendMail, mailConfigured, sendSms, smsConfigured } = require("./lib");
 
 const PORT = process.env.PORT || 3000;
 const router = makeRouter();
@@ -113,6 +113,7 @@ const publicUser = (u) => ({
   businessRole: u.business_role || "", businessSince: u.business_since || "", website: u.website || "", businessAddress: u.business_address || "",
   idType: u.id_type || "", kraPin: u.kra_pin || "",
   emailVerified: !!u.email_verified,
+  phoneVerified: !!u.phone_verified,
   hasPassword: !!u.password_hash, needsSetup: !realPhone(u.phone),
   role: u.role
 });
@@ -126,6 +127,18 @@ async function sendEmailCode(userId, email) {
     to: email,
     subject: `${code} is your PataHome verification code`,
     text: `Karibu!\n\nYour PataHome verification code is: ${code}\n\nEnter it to confirm your email address. The code expires in 15 minutes.\n\nIf you didn't request this, you can ignore this email.\n\n— PataHome · patahome.co.ke`
+  });
+  return true;
+}
+// send a fresh SMS verification code to a user's phone
+async function sendPhoneCode(userId, phone) {
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  db.prepare("DELETE FROM verify_codes WHERE user_id=? AND kind='phone'").run(userId);
+  db.prepare("INSERT INTO verify_codes (user_id,kind,target,code,expires_at) VALUES (?,?,?,?,datetime('now','+15 minutes'))")
+    .run(userId, "phone", phone, code);
+  await sendSms({
+    to: phone,
+    text: `${code} is your PataHome verification code. It expires in 15 minutes. Do not share it with anyone.`
   });
   return true;
 }
@@ -165,10 +178,16 @@ router.add("POST", "/api/auth/register", async (req, res) => {
     try { await sendEmailCode(user.id, user.email); }
     catch (e) { console.error("signup mail failed:", e.message); /* account exists; they can resend */ }
   }
+  const requirePhoneVerify = smsConfigured();
+  if (requirePhoneVerify) {
+    try { await sendPhoneCode(user.id, phone); }
+    catch (e) { console.error("signup sms failed:", e.message); /* account exists; they can resend */ }
+  }
   send(res, 201, {
     token: signToken({ id: user.id, name: user.name, role: user.role }),
     user: publicUser(user),
-    emailVerifyRequired: requireEmailVerify, emailTarget: requireEmailVerify ? user.email : null
+    emailVerifyRequired: requireEmailVerify, emailTarget: requireEmailVerify ? user.email : null,
+    phoneVerifyRequired: requirePhoneVerify, phoneTarget: requirePhoneVerify ? phone : null
   });
 });
 
@@ -192,6 +211,31 @@ router.add("POST", "/api/auth/verify-email/confirm", (req, res) => {
   if (row.attempts >= 5) { db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id); return send(res, 400, { error: "Too many attempts — request a new code" }); }
   if (row.code !== code) { db.prepare("UPDATE verify_codes SET attempts=attempts+1 WHERE id=?").run(row.id); return send(res, 400, { error: "Wrong code — check the email and try again" }); }
   db.prepare("UPDATE users SET email_verified=1 WHERE id=?").run(u.id);
+  db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id);
+  send(res, 200, publicUser(db.prepare("SELECT * FROM users WHERE id=?").get(u.id)));
+});
+
+/* verify the signed-in user's own phone with an SMS code */
+router.add("POST", "/api/auth/verify-phone/send", async (req, res) => {
+  const u = requireAuth(req, res); if (!u) return;
+  const row = db.prepare("SELECT * FROM users WHERE id=?").get(u.id);
+  const phone = realPhone(row && row.phone);
+  if (!phone) return send(res, 400, { error: "No phone number on file" });
+  if (row.phone_verified) return send(res, 200, { alreadyVerified: true });
+  if (!smsConfigured()) return send(res, 400, { error: "SMS sending isn't configured yet" });
+  try { await sendPhoneCode(u.id, phone); send(res, 200, { ok: true, target: phone }); }
+  catch (e) { console.error("verify-phone send failed:", e.message); send(res, 400, { error: "Couldn't send the code (" + String(e.message).slice(0, 90) + ")" }); }
+});
+
+router.add("POST", "/api/auth/verify-phone/confirm", (req, res) => {
+  const u = requireAuth(req, res); if (!u) return;
+  const code = String(req.body.code || "").trim();
+  const row = db.prepare("SELECT * FROM verify_codes WHERE user_id=? AND kind='phone'").get(u.id);
+  if (!row) return send(res, 400, { error: "No pending code — request a new one" });
+  if (new Date(row.expires_at + "Z") < new Date()) { db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id); return send(res, 400, { error: "Code expired — request a new one" }); }
+  if (row.attempts >= 5) { db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id); return send(res, 400, { error: "Too many attempts — request a new code" }); }
+  if (row.code !== code) { db.prepare("UPDATE verify_codes SET attempts=attempts+1 WHERE id=?").run(row.id); return send(res, 400, { error: "Wrong code — check the SMS and try again" }); }
+  db.prepare("UPDATE users SET phone_verified=1 WHERE id=?").run(u.id);
   db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id);
   send(res, 200, publicUser(db.prepare("SELECT * FROM users WHERE id=?").get(u.id)));
 });

@@ -13,7 +13,8 @@ we set on the host, and gotchas learned the hard way.
 | 3 | Resend           | Transactional email (OTP, notifications)     | `resend.md`                 |
 | 4 | Cloudinary       | Photo + verification doc storage             | `cloudinary.md`             |
 | 5 | Google Sign-In   | OAuth for one-click signup / login           | `google-signin.md`          |
-| 6 | Domain + iCloud  | patahome.co.ke registrar + inbox hosting     | `domain-and-icloud.md`      |
+| 6 | Infobip          | SMS one-time codes for phone verification    | `infobip.md`                |
+| 7 | Domain + iCloud  | patahome.co.ke registrar + inbox hosting     | `domain-and-icloud.md`      |
 
 ## Complete env var reference
 

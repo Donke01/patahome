@@ -95,6 +95,57 @@ async function sendMail({ to, subject, text }) {
   return smtpSend({ to, subject, text });
 }
 
+/* ---------- SMS via Infobip HTTPS API ----------
+   Configured via env:
+     INFOBIP_API_KEY   — from the Infobip dashboard (API keys)
+     INFOBIP_BASE_URL  — your personal base URL, e.g. xxxxx.api.infobip.com
+     SMS_SENDER        — alphanumeric sender ID (default "PataHome")
+   Uses HTTPS so it works on hosts that block SMTP/SMPP ports. */
+const smsConfigured = () =>
+  !!(process.env.INFOBIP_API_KEY && process.env.INFOBIP_BASE_URL);
+
+/* Normalise a Kenyan number to E.164 without the plus: 0712345678 -> 254712345678 */
+function normalizePhone(phone) {
+  let p = String(phone || "").replace(/[^0-9+]/g, "");
+  if (p.startsWith("+")) p = p.slice(1);
+  if (p.startsWith("0")) p = "254" + p.slice(1);
+  else if (/^[17]\d{8}$/.test(p)) p = "254" + p;   // bare 7xxxxxxxx / 1xxxxxxxx
+  return p;
+}
+
+async function sendSms({ to, text }) {
+  if (!smsConfigured()) throw new Error("SMS not configured");
+  const base = String(process.env.INFOBIP_BASE_URL).replace(/^https?:\/\//, "").replace(/\/$/, "");
+  const r = await fetch(`https://${base}/sms/2/text/advanced`, {
+    method: "POST",
+    headers: {
+      Authorization: "App " + process.env.INFOBIP_API_KEY,
+      "Content-Type": "application/json",
+      Accept: "application/json"
+    },
+    body: JSON.stringify({
+      messages: [{
+        destinations: [{ to: normalizePhone(to) }],
+        from: process.env.SMS_SENDER || "PataHome",
+        text
+      }]
+    }),
+    signal: AbortSignal.timeout(15000)
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const msg = d?.requestError?.serviceException?.text || d?.message || `Infobip error ${r.status}`;
+    throw new Error(msg);
+  }
+  // Infobip returns 200 even when an individual message is rejected — check the status group.
+  const m = d?.messages?.[0];
+  const group = m?.status?.groupName;
+  if (group && !["PENDING", "DELIVERED"].includes(group)) {
+    throw new Error(m.status.description || `SMS rejected (${group})`);
+  }
+  return true;
+}
+
 function smtpSend({ to, subject, text }) {
   return new Promise((resolve, reject) => {
     if (!mailConfigured()) return reject(new Error("mail not configured"));
@@ -150,4 +201,4 @@ function smtpSend({ to, subject, text }) {
   });
 }
 
-module.exports = { hashPassword, verifyPassword, signToken, verifyToken, km, makeRouter, sendMail, mailConfigured };
+module.exports = { hashPassword, verifyPassword, signToken, verifyToken, km, makeRouter, sendMail, mailConfigured, sendSms, smsConfigured, normalizePhone };
