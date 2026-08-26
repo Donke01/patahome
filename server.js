@@ -846,7 +846,7 @@ const BASE_URL = (process.env.BASE_URL || "http://localhost:3000").replace(/\/$/
 const CATS = {
   rentals:      { db: "rent",     label: "Houses & Rooms for Rent",   unit: "/month" },
   "for-sale":   { db: "sale",     label: "Houses for Sale",           unit: "" },
-  "short-stays":{ db: "shortlet", label: "Short-Stay & Airbnb Rentals", unit: "/night" }
+  "short-stays":{ db: "shortlet", label: "Airbnb Rentals in Kenya", unit: "/night" }
 };
 const CAT_SLUG = { rent: "rentals", sale: "for-sale", shortlet: "short-stays" };
 const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");

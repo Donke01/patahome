@@ -474,7 +474,7 @@
     <div class="sub">Your listing goes live immediately.</div>
     <div id="emCatWrap">
       <label>Category</label>
-      <select id="eCat"><option value="rent">House — For Rent (monthly)</option><option value="sale">House — For Sale</option><option value="shortlet">Short-Stay / Airbnb (per night)</option></select>
+      <select id="eCat"><option value="rent">House — For Rent (monthly)</option><option value="sale">House — For Sale</option><option value="shortlet">Airbnb (per night)</option></select>
       <label>Area</label>
       <select id="eArea"></select>
     </div>
@@ -863,7 +863,7 @@ async function sendReply(id){
   }catch(e){toast(e.message)}
 }
 function renderTable(){
-  const CAT={rent:"Rent",sale:"Sale",shortlet:"Short-Stay"};
+  const CAT={rent:"Rent",sale:"Sale",shortlet:"Airbnb"};
   if(!myListings.length){$("table").innerHTML=`<div class="empty">No listings yet — publish your first one to start receiving leads.</div>`;return}
   $("table").innerHTML=`
     <div class="row head"><div>Listing</div><div>Category</div><div>Price</div><div>Leads</div><div>Status</div><div style="text-align:right">Actions</div></div>`+
