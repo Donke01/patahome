@@ -133,17 +133,24 @@ async function sendSms({ to, text }) {
     signal: AbortSignal.timeout(15000)
   });
   const d = await r.json().catch(() => ({}));
+  const masked = normalizePhone(to).replace(/^(\d{6})\d+(\d{3})$/, "$1***$2");
   if (!r.ok) {
     const msg = d?.requestError?.serviceException?.text || d?.message || `Infobip error ${r.status}`;
+    console.error(`[sms] HTTP ${r.status} to ${masked}: ${msg}`);
     throw new Error(msg);
   }
   // Infobip returns 200 even when an individual message is rejected — check the status group.
   const m = d?.messages?.[0];
   const group = m?.status?.groupName;
+  const messageId = m?.messageId || "?";
   if (group && !["PENDING", "DELIVERED"].includes(group)) {
+    console.error(`[sms] rejected to ${masked} id=${messageId} group=${group}: ${m?.status?.description || ""}`);
     throw new Error(m.status.description || `SMS rejected (${group})`);
   }
-  return true;
+  // PENDING means Infobip accepted it — NOT that the carrier delivered it.
+  // Log the id so it can be traced in the Infobip portal's delivery reports.
+  console.log(`[sms] accepted to ${masked} id=${messageId} group=${group || "?"} status=${m?.status?.name || "?"}`);
+  return { messageId, group };
 }
 
 function smtpSend({ to, subject, text }) {

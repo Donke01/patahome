@@ -1159,7 +1159,7 @@ function showCodeStep(cfg){
     </div>
     <input id="sCode" class="code-input" inputmode="numeric" maxlength="6" placeholder="••••••" autocomplete="one-time-code">
     <div class="resend-row">
-      <span id="resendTxt" class="resend-wait">Didn't get it? Resend in <b id="cdNum">30</b>s</span>
+      <span id="resendTxt" class="resend-wait">Didn't get it? Resend in <b id="cdNum">60</b>s</span>
       <button id="resendBtn" class="resend-btn" style="display:none" onclick="resendCode()">↻ Resend code</button>
     </div>`;
   $("setActions").innerHTML=`<button class="btn btn-ghost" onclick="${cfg.onCancel?"cancelCode()":"hide('setModal')"}">${cfg.cancelLabel||"Cancel"}</button>
@@ -1179,7 +1179,7 @@ function showCodeStep(cfg){
 }
 function cancelCode(){clearInterval(_cdTimer);if(_codeCfg&&_codeCfg.onCancel)_codeCfg.onCancel();hide("setModal")}
 function startCountdown(){
-  let s=30;
+  let s=60;   // must match the server-side resend cooldown
   $("resendTxt").style.display="inline";$("resendBtn").style.display="none";
   $("cdNum").textContent=s;
   clearInterval(_cdTimer);

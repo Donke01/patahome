@@ -243,6 +243,12 @@ router.add("POST", "/api/auth/verify-phone/send", async (req, res) => {
   if (!phone) return send(res, 400, { error: "No phone number on file" });
   if (row.phone_verified) return send(res, 200, { alreadyVerified: true });
   if (!smsConfigured()) return send(res, 400, { error: "SMS sending isn't configured yet" });
+  // Cooldown: repeat taps burn SMS credit and can trip carrier throttling.
+  const last = db.prepare("SELECT created_at FROM verify_codes WHERE user_id=? AND kind='phone'").get(u.id);
+  if (last) {
+    const secs = Math.round((Date.now() - new Date(last.created_at + "Z").getTime()) / 1000);
+    if (secs < 60) return send(res, 429, { error: `Please wait ${60 - secs}s before requesting another code`, retryIn: 60 - secs });
+  }
   try { await sendPhoneCode(u.id, phone); send(res, 200, { ok: true, target: phone }); }
   catch (e) { console.error("verify-phone send failed:", e.message); send(res, 400, { error: "Couldn't send the code (" + String(e.message).slice(0, 90) + ")" }); }
 });
