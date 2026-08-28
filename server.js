@@ -130,6 +130,15 @@ async function sendEmailCode(userId, email) {
   });
   return true;
 }
+/* Phone verification can be switched off without touching the Infobip config —
+   useful while a sender ID is still pending operator approval. Set
+   PHONE_VERIFY=off in the environment to disable; remove it to re-enable.
+   When off: phone signups still work, no codes are sent, and posting a listing
+   no longer requires a verified phone. Existing phone_verified flags are left
+   untouched, so re-enabling picks up exactly where it left off. */
+const phoneVerifyEnabled = () =>
+  smsConfigured() && String(process.env.PHONE_VERIFY || "").toLowerCase() !== "off";
+
 // send a fresh SMS verification code to a user's phone
 async function sendPhoneCode(userId, phone) {
   const code = String(Math.floor(100000 + Math.random() * 900000));
@@ -170,10 +179,10 @@ router.add("POST", "/api/auth/register", async (req, res) => {
   } else {
     if (!/^0[17]\d{8}$/.test(identifier))
       return send(res, 400, { error: "Enter a valid Kenyan phone e.g. 0712345678, or an email address" });
-    if (!smsConfigured())
-      return send(res, 400, { error: "Phone sign-up isn't available right now — please use your email address" });
     phone = identifier;
   }
+  // Only ask for an SMS code when phone verification is actually switched on.
+  const verifyPhone = !isEmail && phoneVerifyEnabled();
 
   let user;
   try {
@@ -193,21 +202,24 @@ router.add("POST", "/api/auth/register", async (req, res) => {
 
   // Send the code for whichever identifier they used. A gateway failure must not
   // lose the signup — the account exists and they can resend from settings.
-  try {
-    if (isEmail) await sendEmailCode(user.id, email);
-    else await sendPhoneCode(user.id, phone);
-  } catch (e) {
-    console.error(`signup ${isEmail ? "mail" : "sms"} failed:`, e.message);
+  const willVerify = isEmail || verifyPhone;
+  if (willVerify) {
+    try {
+      if (isEmail) await sendEmailCode(user.id, email);
+      else await sendPhoneCode(user.id, phone);
+    } catch (e) {
+      console.error(`signup ${isEmail ? "mail" : "sms"} failed:`, e.message);
+    }
   }
 
   send(res, 201, {
     token: signToken({ id: user.id, name: user.name, role: user.role }),
     user: publicUser(user),
-    verifyKind: isEmail ? "email" : "phone",
-    verifyTarget: identifier,
+    verifyKind: willVerify ? (isEmail ? "email" : "phone") : null,
+    verifyTarget: willVerify ? identifier : null,
     // kept for older clients still reading the previous field names
     emailVerifyRequired: isEmail, emailTarget: isEmail ? email : null,
-    phoneVerifyRequired: !isEmail, phoneTarget: isEmail ? null : phone
+    phoneVerifyRequired: verifyPhone, phoneTarget: verifyPhone ? phone : null
   });
 });
 
@@ -242,7 +254,7 @@ router.add("POST", "/api/auth/verify-phone/send", async (req, res) => {
   const phone = realPhone(row && row.phone);
   if (!phone) return send(res, 400, { error: "No phone number on file" });
   if (row.phone_verified) return send(res, 200, { alreadyVerified: true });
-  if (!smsConfigured()) return send(res, 400, { error: "SMS sending isn't configured yet" });
+  if (!phoneVerifyEnabled()) return send(res, 400, { error: "Phone verification is temporarily unavailable" });
   // Cooldown: repeat taps burn SMS credit and can trip carrier throttling.
   const last = db.prepare("SELECT created_at FROM verify_codes WHERE user_id=? AND kind='phone'").get(u.id);
   if (last) {
@@ -345,12 +357,13 @@ router.add("POST", "/api/account/change-phone", async (req, res) => {
     db.prepare("UPDATE users SET phone=?, phone_verified=0 WHERE id=?").run(phone, u.id);
   } catch (e) { return send(res, 409, { error: "That phone is already registered" }); }
   let codeSent = false;
-  if (smsConfigured()) {
+  const wantVerify = phoneVerifyEnabled();
+  if (wantVerify) {
     try { await sendPhoneCode(u.id, phone); codeSent = true; }
     catch (e) { console.error("change-phone sms failed:", e.message); }
   }
   const user = publicUser(db.prepare("SELECT * FROM users WHERE id=?").get(u.id));
-  send(res, 200, Object.assign(user, { verifyKind: "phone", verifyTarget: phone, codeSent }));
+  send(res, 200, Object.assign(user, { verifyKind: wantVerify ? "phone" : null, verifyTarget: wantVerify ? phone : null, codeSent }));
 });
 
 router.add("POST", "/api/account/change-email", async (req, res) => {
@@ -450,7 +463,7 @@ router.add("DELETE", "/api/account", (req, res) => {
 
 /* ================= public config ================= */
 router.add("GET", "/api/config", (req, res) => {
-  send(res, 200, { googleClientId: GOOGLE_CLIENT_ID || null, cloudinary: cldEnabled() });
+  send(res, 200, { googleClientId: GOOGLE_CLIENT_ID || null, cloudinary: cldEnabled(), phoneVerify: phoneVerifyEnabled() });
 });
 
 /* ================= areas ================= */
@@ -505,7 +518,7 @@ router.add("POST", "/api/listings", (req, res) => {
   // A reachable, verified phone is the core trust signal for a listing.
   if (!me || !realPhone(me.phone))
     return send(res, 400, { error: "Add your phone number first (account menu → Change phone number) so tenants can reach you" });
-  if (smsConfigured() && !me.phone_verified)
+  if (phoneVerifyEnabled() && !me.phone_verified)
     return send(res, 400, { error: "Verify your phone number first (account menu → Verify phone) before posting" });
   if (mailConfigured() && me.email && !me.email_verified)
     return send(res, 400, { error: "Verify your email first (account menu → Verify email) before posting" });

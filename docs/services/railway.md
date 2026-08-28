@@ -39,6 +39,7 @@ Set these under **Variables** in the Railway service:
 | `GOOGLE_CLIENT_ID`      | See `google-signin.md`                               |
 | `INFOBIP_API_KEY`       | See `infobip.md`                                     |
 | `INFOBIP_BASE_URL`      | See `infobip.md` — e.g. `xyz123.api.infobip.com`     |
+| `PHONE_VERIFY`          | Set to `off` to pause SMS verification; unset to enable |
 | `SMS_SENDER`            | Alphanumeric sender ID, defaults to `PataHome`       |
 
 ## Persistent volume (critical)

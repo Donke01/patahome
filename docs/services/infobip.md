@@ -14,6 +14,27 @@ ports are blocked.
 | `INFOBIP_API_KEY`   | `a1b2c3d4...`                  | Dashboard → Developer Tools → API keys |
 | `INFOBIP_BASE_URL`  | `xyz123.api.infobip.com`       | Your personal base URL, shown on the API keys page. Protocol optional — the code strips `https://` if present. |
 | `SMS_SENDER`        | `PataHome`                     | Alphanumeric sender ID. Optional; defaults to `PataHome`. |
+| `PHONE_VERIFY`      | `off`                          | Kill switch — see below. Leave unset to keep verification on. |
+
+## Turning phone verification off temporarily
+
+Kenyan sender IDs need operator approval, and unapproved traffic gets throttled
+or dropped. Rather than ripping the feature out while that's pending, set:
+
+```
+PHONE_VERIFY=off
+```
+
+With it off:
+
+- Phone signup still works — no code is sent, nothing is blocked.
+- `POST /api/listings` no longer requires a verified phone.
+- The "Verify phone" item disappears from account settings (the client reads
+  `phoneVerify` from `GET /api/config`).
+- Existing `phone_verified` flags are **left untouched**, so re-enabling picks
+  up exactly where it left off — nobody is retroactively marked verified.
+
+Remove the variable to switch verification back on.
 
 All three go into Railway → Variables. `smsConfigured()` in `lib.js` returns
 true only when `INFOBIP_API_KEY` **and** `INFOBIP_BASE_URL` are both set — until

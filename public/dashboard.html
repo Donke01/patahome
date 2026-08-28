@@ -638,7 +638,8 @@ function paintUser(){
   $("verifyEmailItem").style.display=needEmail?"flex":"none";
   const banner=$("emailBanner");
   if(banner)banner.style.display=needEmail?"flex":"none";
-  const needPhone=ME.phone&&!ME.phoneVerified;
+  // hide the prompt entirely when phone verification is switched off server-side
+  const needPhone=ME.phone&&!ME.phoneVerified&&!(CONFIG&&CONFIG.phoneVerify===false);
   const vp=$("verifyPhoneItem");
   if(vp)vp.style.display=needPhone?"flex":"none";
 }
