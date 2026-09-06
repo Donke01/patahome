@@ -22,7 +22,7 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
   :root{
@@ -452,8 +452,9 @@
     .foot-tag{margin-left:auto;margin-right:auto;text-align:center}
   }
 </style>
+<link rel="stylesheet" href="/refresh.css?v=20260906">
 </head>
-<body>
+<body class="page-browse">
 
 <header>
   <button class="ham" id="hamBtn" onclick="toggleNav(event)" aria-label="Open menu">
@@ -966,6 +967,9 @@ function toggleFavView(){
 function useMyLocation(){
   const st=document.getElementById("locStatus");
   if(!navigator.geolocation){st.textContent="Geolocation not supported — pick an area instead.";return}
+  const btn=document.getElementById("gpsBtn");
+  if(btn.dataset.locating==="1")return;
+  btn.dataset.locating="1";
   st.textContent="Locating…";
   navigator.geolocation.getCurrentPosition(
     p=>{
@@ -974,11 +978,19 @@ function useMyLocation(){
       for(const[name,[la,ln]]of Object.entries(AREAS)){const d=dist(userLoc[0],userLoc[1],la,ln);if(d<bd){bd=d;best=name}}
       userLocName=bd<40?("near "+best):"your location";
       st.textContent="Location set — showing homes nearest to you";
-      document.getElementById("gpsBtn").classList.add("active");
+      btn.classList.add("active");
+      delete btn.dataset.locating;
       document.getElementById("citySelect").value="";
       afterLocation();
     },
-    ()=>{st.textContent="Couldn't get GPS — pick an area from the dropdown instead."}
+    e=>{
+      delete btn.dataset.locating;
+      btn.classList.remove("active");
+      st.textContent=e&&e.code===1
+        ?"Location permission is off — pick an area instead."
+        :"Couldn’t get your location in time — pick an area instead.";
+    },
+    {enableHighAccuracy:false,timeout:10000,maximumAge:300000}
   );
 }
 function useCity(name){
@@ -1314,10 +1326,10 @@ async function paintAccount(){
     }catch(e){}
   }
   try{if(inBrowser)typewriter()}catch(e){}
-  if(inBrowser&&navigator.geolocation){
-    document.getElementById("locStatus").textContent="Detecting your location for nearby listings…";
-    useMyLocation();
-  }
+  // Precise location is requested only after an explicit tap. Apart from being
+  // less surprising, this avoids an indefinite “Locating…” state when a browser
+  // blocks or ignores a permission prompt.
+  if(P.get("nearby")==="1")useMyLocation();
 })();
 
 /* ---------- live chat ---------- */

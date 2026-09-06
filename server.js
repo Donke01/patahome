@@ -66,6 +66,7 @@ const listingView = (row, userLat, userLng) => ({
   lat: row.lat,
   lng: row.lng,
   status: row.status,
+  statusChangedAt: row.status_changed_at || null,
   photos: parsePhotos(row.photos),
   photoUrls: cldEnabled() ? parsePhotos(row.photos).map(id => ({
     thumb: photoUrl(id, "c_fill,w_480,h_320,q_auto:eco"),
@@ -547,11 +548,27 @@ router.add("PATCH", "/api/listings/:id", (req, res, p) => {
   const row = db.prepare("SELECT * FROM listings WHERE id=?").get(p.id);
   if (!row) return send(res, 404, { error: "Listing not found" });
   if (row.owner_id !== u.id && u.role !== "admin") return send(res, 403, { error: "Not your listing" });
-  const allowed = ["title", "description", "price", "bedrooms", "status"];
+  const body = req.body || {};
+  const allowed = ["title", "description", "price", "bedrooms"];
   const sets = [], params = [];
-  for (const k of allowed) if (req.body[k] !== undefined) { sets.push(`${k}=?`); params.push(req.body[k]); }
-  if (req.body.photos !== undefined) {
-    const photos = req.body.photos;
+  for (const k of allowed) if (body[k] !== undefined) { sets.push(`${k}=?`); params.push(body[k]); }
+
+  // A listing can be relisted, but it cannot be both rented and sold. Validate
+  // the lifecycle on the server as well as in the owner UI so direct API calls
+  // cannot make a listing disappear under an incompatible status.
+  if (body.status !== undefined) {
+    if (row.status === "removed")
+      return send(res, 409, { error: "Removed listings cannot be relisted. Create a new listing instead." });
+    const status = String(body.status);
+    const rentable = row.category === "rent" || row.category === "shortlet";
+    const permitted = rentable ? ["active", "rented"] : ["active", "sold"];
+    if (!permitted.includes(status))
+      return send(res, 400, { error: rentable ? "Rental listings can be marked rented or relisted" : "Sale listings can be marked sold or relisted" });
+    sets.push("status=?"); params.push(status);
+    if (status !== row.status) sets.push("status_changed_at=datetime('now')");
+  }
+  if (body.photos !== undefined) {
+    const photos = body.photos;
     if (!Array.isArray(photos) || photos.length > CLD.maxPhotos || !photos.every(validPhotoId))
       return send(res, 400, { error: `photos must be up to ${CLD.maxPhotos} uploaded photo ids` });
     // free storage for photos the owner removed
@@ -560,6 +577,15 @@ router.add("PATCH", "/api/listings/:id", (req, res, p) => {
   }
   if (!sets.length) return send(res, 400, { error: "Nothing to update" });
   db.prepare(`UPDATE listings SET ${sets.join(",")} WHERE id=?`).run(...params, row.id);
+  if (body.status !== undefined && String(body.status) !== row.status) {
+    const status = String(body.status);
+    const verb = status === "active" ? "relisted" : `marked ${status}`;
+    const next = status === "active"
+      ? "It is visible to new renters and buyers again."
+      : "It is now hidden from public search. You can relist it at any time.";
+    db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
+      .run(row.owner_id, "system", `Listing ${verb}`, `“${row.title}” was ${verb}. ${next}`);
+  }
   send(res, 200, listingView(db.prepare(`${LISTING_SQL} WHERE l.id=?`).get(row.id)));
 });
 
@@ -570,7 +596,7 @@ router.add("DELETE", "/api/listings/:id", (req, res, p) => {
   if (row.owner_id !== u.id && u.role !== "admin") return send(res, 403, { error: "Not your listing" });
   // reclaim photo storage before soft-deleting
   for (const id of parsePhotos(row.photos)) cldDestroy(id);
-  db.prepare("UPDATE listings SET status='removed', photos='[]' WHERE id=?").run(row.id);
+  db.prepare("UPDATE listings SET status='removed', status_changed_at=datetime('now'), photos='[]' WHERE id=?").run(row.id);
   send(res, 200, { ok: true });
 });
 

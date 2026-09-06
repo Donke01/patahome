@@ -1,0 +1,144 @@
+/* PataHome 2026 visual system — intentional, calm, and built for property search. */
+:root{
+  --brand:#087b61;
+  --brand-dark:#075542;
+  --brand-light:#eaf7f1;
+  --gold:#b7792d;
+  --gold-soft:#fff6e8;
+  --ink:#152b27;
+  --muted:#61716d;
+  --line:#e2eae6;
+  --bg:#ffffff;
+  --card:#ffffff;
+  --surface:#f6f8f7;
+  --radius:20px;
+  --shadow:0 1px 2px rgba(16,45,37,.04),0 8px 24px rgba(16,45,37,.06);
+  --shadow-lift:0 3px 6px rgba(16,45,37,.05),0 20px 38px rgba(16,45,37,.13);
+  --serif:"DM Serif Display", Georgia, serif;
+}
+
+*{text-rendering:optimizeLegibility}
+body{font-family:"Manrope",Inter,system-ui,sans-serif;background:#fff;color:var(--ink);letter-spacing:-.01em}
+body.dark{--surface:#111b18}
+::selection{background:#ccefe1;color:#063d31}
+:focus-visible{outline:3px solid #b7792d!important;outline-offset:3px!important}
+
+/* Shared rhythm and components */
+header{min-height:72px;padding:12px clamp(16px,3vw,42px);background:rgba(255,255,255,.94);border-color:var(--line);box-shadow:0 1px 0 rgba(15,42,34,.03)}
+.logo,.foot-brand{font-family:var(--serif);letter-spacing:-.035em}
+.logo{font-weight:400}
+.btn{font-family:"Manrope",Inter,sans-serif;font-weight:750;border-radius:12px;letter-spacing:-.01em}
+.btn-primary{background:var(--brand);box-shadow:0 6px 16px rgba(8,123,97,.18)}
+.btn-primary:hover{background:var(--brand-dark);box-shadow:0 10px 22px rgba(8,123,97,.22)}
+.btn-ghost{border-color:#b9cec5;color:var(--brand-dark)}
+.btn-ghost:hover{background:var(--brand-light);border-color:var(--brand)}
+.icon-btn,.ham,.acct-chip,.avatar-btn{border-color:var(--line);background:#fff}
+.icon-btn:hover,.ham:hover,.acct-chip:hover,.avatar-btn:hover{border-color:#96c7b8;background:var(--brand-light)}
+input,select,textarea{border-color:#d7e2dd!important}
+input:focus,select:focus,textarea:focus{border-color:var(--brand)!important;box-shadow:0 0 0 4px rgba(8,123,97,.1)}
+
+/* A quiet, editorial home page: white canvas, one considered focal point. */
+.page-home .hero{padding:28px clamp(16px,4vw,56px) 10px;background:#fff;color:var(--ink)}
+.page-home .slider{max-width:1180px;min-height:330px;border-radius:26px;box-shadow:0 18px 48px rgba(9,56,44,.16);border:1px solid rgba(255,255,255,.26)}
+.page-home .sl-1{background:radial-gradient(circle at 86% 16%,rgba(157,219,192,.28),transparent 28%),linear-gradient(120deg,#073f34 0%,#087b61 58%,#119171 100%)}
+.page-home .sl-2{background:radial-gradient(circle at 88% 18%,rgba(255,255,255,.16),transparent 26%),linear-gradient(125deg,#604614,#b7792d 66%,#d39a47)}
+.page-home .sl-3{background:radial-gradient(circle at 84% 20%,rgba(255,255,255,.2),transparent 26%),linear-gradient(125deg,#1b4f54,#287b78 65%,#43a99a)}
+.page-home .sl-4{background:radial-gradient(circle at 84% 20%,rgba(255,255,255,.17),transparent 26%),linear-gradient(125deg,#36456e,#596d9d 62%,#7186ba)}
+.page-home .sl-in{padding:46px 60px 52px}
+.page-home .sl-h2,.page-home #heroHead{letter-spacing:-.045em}
+.page-home .sl-p,#heroSub{font-weight:500;line-height:1.7}
+.page-home .search-wrap{max-width:760px;margin:-30px auto 0;z-index:4}
+.page-home .searchbar{border:1px solid #dce7e1;border-radius:15px;box-shadow:0 15px 36px rgba(14,52,42,.15)}
+.page-home .searchbar input{font-weight:550}
+.page-home .searchbar button{background:#0c4035}
+.page-home .searchbar button:hover{background:var(--brand-dark)}
+.page-home .cats{max-width:1180px;padding:36px 24px 0}
+.page-home .cat-row{gap:12px}
+.page-home .cat-tile{min-height:156px;border-radius:18px;box-shadow:none;background:#fff;border-color:var(--line)}
+.page-home .cat-tile:hover{border-color:#88bcad;box-shadow:var(--shadow-lift)}
+.page-home .ct-ic{background:var(--brand-light);border-radius:14px}
+.page-home .latest{max-width:1180px;padding-top:58px}
+.page-home .latest-head h2{font-size:clamp(1.7rem,3vw,2.25rem);letter-spacing:-.04em}
+.page-home .lcard{border-radius:18px;box-shadow:none}
+.page-home .lcard:hover{box-shadow:var(--shadow-lift);border-color:#b8d4c9}
+.page-home .lc-img{height:156px;background:#e8f0ec}
+.page-home .trustrow{max-width:1180px;gap:12px}
+.page-home .tr-item{border-radius:16px;box-shadow:none;background:var(--surface)}
+
+/* Listing discovery follows a clean search → refine → compare rhythm. */
+.page-browse .hero{background:linear-gradient(135deg,#f7fbf9 0%,#eff8f4 100%);color:var(--ink);padding:42px 24px 38px;border-bottom:1px solid var(--line)}
+.page-browse .hero::before,.page-browse .hero::after{display:none}
+.page-browse .hero .kicker{color:var(--brand);letter-spacing:2px}
+.page-browse .hero .kicker::before,.page-browse .hero .kicker::after{background:#a8cdbf}
+.page-browse .browse-h{font-size:clamp(2rem,4vw,3rem);letter-spacing:-.045em}
+.page-browse .browse-p{color:var(--muted);opacity:1}
+.page-browse .searchbar{border:1px solid #d6e5de;box-shadow:0 12px 30px rgba(12,67,51,.09)}
+.page-browse .searchbar button{background:#0c4035}
+.page-browse .loc-btn{background:#fff;border-color:#bcd6cb;color:var(--brand-dark)}
+.page-browse .loc-btn:hover{background:var(--brand-light)}
+.page-browse .wrap{max-width:1280px}
+.page-browse .tabs{padding-top:22px}
+.page-browse .tab{border-radius:999px;box-shadow:none}
+.page-browse .filters{padding:16px 0 20px;border-bottom:1px solid var(--line)}
+.page-browse .filters select{min-height:42px;background:#fff}
+.page-browse .cards{gap:16px}
+.page-browse .card{border-radius:18px;box-shadow:none}
+.page-browse .card:hover{box-shadow:var(--shadow-lift);border-color:#accdc1}
+.page-browse .card-img{height:184px;background:#e9f1ed}
+.page-browse .card-body{padding:17px 18px 18px}
+.page-browse .map-panel{border-radius:18px;overflow:hidden;border:1px solid var(--line);box-shadow:none}
+.page-browse .insights{border-left-width:4px;box-shadow:none;background:#fcfefd}
+
+/* Owner workspaces favour fast scanning and decisive actions. */
+.page-dashboard{background:#fff}
+.page-dashboard .wrap{max-width:1180px;padding-top:34px}
+.page-dashboard .pnav{gap:7px;padding-bottom:18px}
+.page-dashboard .pt{border-radius:999px;background:#fff}
+.page-dashboard .pt.on{background:#0c4035}
+.page-dashboard .table,.page-dashboard .chart-card,.page-dashboard .help-card{box-shadow:none;border-color:var(--line)}
+.page-dashboard .row{min-height:64px}
+.page-dashboard .row.head{background:#f2f8f5;color:var(--brand-dark)}
+.page-dashboard .overview-head h2,.page-dashboard .section-head h2{letter-spacing:-.035em}
+.page-dashboard .stat{box-shadow:none;border-color:var(--line);border-radius:16px}
+.page-dashboard .top-card{background:linear-gradient(145deg,#073f34,#087b61);border-radius:16px}
+.page-dashboard .modal{border:1px solid var(--line);box-shadow:0 24px 70px rgba(13,52,42,.2)}
+.page-dashboard .pill.active{background:#e3f5ed;color:#075542}
+.page-dashboard .pill.rented{background:#f1f3f2;color:#53635e}
+.page-dashboard .pill.sold{background:#fff1df;color:#8a5516}
+.status-action{border:1px solid transparent!important}
+.status-action.sold{background:#fff6e8;color:#875417;border-color:#f2d7ac!important}
+.status-action.sold:hover{background:#ffe9c8}
+.status-action.rented{background:#edf4f1;color:#245b4c;border-color:#c8dfd5!important}
+.status-action.rented:hover{background:#dcece5}
+.status-note{font-size:.74rem;color:var(--muted);margin-top:4px;line-height:1.4}
+.status-modal-icon{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:#fff1df;color:#9a6017;font-size:1.35rem;margin-bottom:12px}
+.status-modal-icon.rented{background:#e7f5ef;color:#087b61}
+
+/* Avoid clipped management actions at laptop/tablet widths. */
+@media(max-width:1100px) and (min-width:801px){
+  .page-dashboard .row{grid-template-columns:2fr .8fr 1fr .55fr 1fr}
+  .page-dashboard .row.head{grid-template-columns:2fr .8fr 1fr .55fr 1fr}
+  .page-dashboard .row.head>div:last-child{display:none}
+  .page-dashboard .row .actions{grid-column:1/-1;justify-content:flex-start;padding-top:2px}
+}
+
+/* Keep the mobile UI generous and easy to tap. */
+@media(max-width:760px){
+  header{min-height:58px;padding:9px 12px}
+  .page-home .hero{padding:16px 12px 6px}
+  .page-home .slider{min-height:250px;border-radius:19px}
+  .page-home .sl-in{padding:26px 18px 34px}
+  .page-home .search-wrap{margin:-22px 6px 0}
+  .page-home .cats{padding:30px 14px 0}
+  .page-home .latest{padding:42px 16px}
+  .page-browse .hero{padding:26px 16px 30px}
+  .page-browse .card-img{height:168px}
+  .page-dashboard .wrap{padding:22px 14px 50px}
+  .page-dashboard .actions{gap:5px}
+  .page-dashboard .actions .btn{padding:7px 9px}
+  .page-dashboard .status-note{grid-column:1/-1}
+}
+
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important}
+}

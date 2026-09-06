@@ -10,7 +10,7 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
     --green:#0e8a68; --green-dark:#0b6b51; --green-light:#e9f6f1;
@@ -280,8 +280,9 @@
   .reply-box input{flex:1}
   .badge-new{background:var(--amber);color:#fff;font-size:.68rem;font-weight:800;border-radius:999px;padding:2px 9px}
 </style>
+<link rel="stylesheet" href="/refresh.css?v=20260906">
 </head>
-<body>
+<body class="page-dashboard">
 
 <header>
   <a class="logo" href="/">
@@ -498,6 +499,20 @@
   </div>
 </div>
 
+<!-- ============ LISTING LIFECYCLE CONFIRMATION ============ -->
+<div class="overlay" id="statusModal" onclick="if(event.target===this)hide('statusModal')">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="smTitle">
+    <button class="close-x" onclick="hide('statusModal')" aria-label="Close">✕</button>
+    <div class="status-modal-icon" id="smIcon" aria-hidden="true">✓</div>
+    <h2 id="smTitle">Mark listing as sold?</h2>
+    <div class="sub" id="smText"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="hide('statusModal')">Keep it live</button>
+      <button class="btn btn-primary" id="smConfirm" onclick="confirmStatusChange()">Mark as sold</button>
+    </div>
+  </div>
+</div>
+
 <!-- ============ SETTINGS MODAL ============ -->
 <div class="overlay" id="setModal" onclick="if(event.target===this)hide('setModal')">
   <div class="modal">
@@ -519,7 +534,7 @@ const API = ""; // same origin
 let token = localStorage.getItem("pb_token") || null;
 let userName = localStorage.getItem("pb_name") || "";
 let mode = "login", areas = [], myListings = [], myInquiries = [], editId = null;
-let ME = null, CONFIG = null;
+let ME = null, CONFIG = null, pendingStatusAction = null;
 let pendingPhoneVerify = null;   // phone to verify after the email step, set at signup
 const LANGS = { en: "English", sw: "Kiswahili" };
 const COUNTIES = ["Baringo","Bomet","Bungoma","Busia","Elgeyo Marakwet","Embu","Garissa","Homa Bay","Isiolo","Kajiado","Kakamega","Kericho","Kiambu","Kilifi","Kirinyaga","Kisii","Kisumu","Kitui","Kwale","Laikipia","Lamu","Machakos","Makueni","Mandera","Marsabit","Meru","Migori","Mombasa","Murang'a","Nairobi","Nakuru","Nandi","Narok","Nyamira","Nyandarua","Nyeri","Samburu","Siaya","Taita Taveta","Tana River","Tharaka Nithi","Trans Nzoia","Turkana","Uasin Gishu","Vihiga","Wajir","West Pokot"];
@@ -768,7 +783,7 @@ const FAQS=[
   ["How do leads work?","When a renter or buyer taps Contact Owner on your listing, your phone number is shared with them and it counts as a lead. Their messages appear in your Feedback tab — reply promptly to close faster."],
   ["Can I add photos?","Yes — up to 5 photos per listing (JPG, PNG or WebP, max 8 MB each). Listings with photos receive far more leads. Add them when creating or editing a listing."],
   ["What are followers?","People who follow you from your listing pages. They're potential clients interested in your future posts — you can see their contacts in the Followers tab."],
-  ["How do I mark a house as rented or sold?","In My Listings, click Edit on the listing and change its Status. It stops showing on the public site but stays in your history."],
+  ["How do I mark a house as rented or sold?","Use the Mark rented or Mark sold button beside an active listing. We ask you to confirm, hide it from public search, preserve its leads and history, and let you relist it at any time."],
   ["How do I contact PataHome?","Use the Request Help tab, or email info@patahome.co.ke — we respond as fast as we can."]
 ];
 let faqDone=false;
@@ -865,18 +880,56 @@ function renderTable(){
   if(!myListings.length){$("table").innerHTML=`<div class="empty">No listings yet — publish your first one to start receiving leads.</div>`;return}
   $("table").innerHTML=`
     <div class="row head"><div>Listing</div><div>Category</div><div>Price</div><div>Leads</div><div>Status</div><div style="text-align:right">Actions</div></div>`+
-    myListings.map(x=>`
+    myListings.map(x=>{
+      const rentable=x.category==="rent"||x.category==="shortlet";
+      const nextStatus=rentable?"rented":"sold";
+      const closeLabel=rentable?"Mark rented":"Mark sold";
+      const lifecycle=x.status==="active"
+        ?`<button class="btn btn-sm status-action ${nextStatus}" onclick="openStatusConfirm(${x.id},'${nextStatus}')">${closeLabel}</button>`
+        :`<button class="btn btn-ghost btn-sm" onclick="openStatusConfirm(${x.id},'active')">Relist</button>`;
+      const statusNote=x.status==="active"?"Visible in public search":"Hidden from public search";
+      return `
     <div class="row">
       <div><div class="title">${esc(x.title)}</div><div class="area">${esc(x.area)}, ${esc(x.county)}</div></div>
       <div>${CAT[x.category]||x.category}</div>
       <div>${fmt(x.price)}${x.category==="rent"?"<span style='color:var(--muted);font-size:.75rem'>/mo</span>":x.category==="shortlet"?"<span style='color:var(--muted);font-size:.75rem'>/night</span>":""}</div>
       <div class="leads-badge">${x.leads}</div>
-      <div><span class="pill ${x.status}">${x.status}</span></div>
+      <div><span class="pill ${x.status}">${x.status}</span><div class="status-note">${statusNote}</div></div>
       <div class="actions">
+        ${lifecycle}
         <button class="btn btn-ghost btn-sm" onclick="openEdit(${x.id})">Edit</button>
         <button class="btn btn-danger btn-sm" onclick="removeListing(${x.id})">Remove</button>
       </div>
-    </div>`).join("");
+    </div>`;
+    }).join("");
+}
+
+function openStatusConfirm(id,status){
+  const listing=myListings.find(x=>x.id===id);
+  if(!listing)return;
+  pendingStatusAction={id,status,title:listing.title};
+  const relisting=status==="active";
+  const rented=status==="rented";
+  $("smIcon").textContent=relisting?"↗":rented?"⌂":"✓";
+  $("smIcon").classList.toggle("rented",rented||relisting);
+  $("smTitle").textContent=relisting?"Relist this property?":rented?"Mark as rented?":"Mark as sold?";
+  $("smText").textContent=relisting
+    ?`“${listing.title}” will be visible in public search again and can receive new enquiries.`
+    :`“${listing.title}” will be removed from public search. Your leads and listing history stay safe, and you can relist it anytime.`;
+  $("smConfirm").textContent=relisting?"Relist property":rented?"Mark as rented":"Mark as sold";
+  show("statusModal");
+}
+async function confirmStatusChange(){
+  if(!pendingStatusAction)return;
+  const {id,status}=pendingStatusAction,btn=$("smConfirm");
+  btn.disabled=true;btn.textContent="Saving…";
+  try{
+    await api(`/api/listings/${id}`,{method:"PATCH",body:JSON.stringify({status})});
+    hide("statusModal");
+    toast(status==="active"?"Listing relisted — it is live again.":`Listing marked ${status} — it is now hidden from search.`);
+    await refresh();
+  }catch(e){toast(e.message)}
+  finally{btn.disabled=false;pendingStatusAction=null;}
 }
 
 /* ---------- photo uploads (direct to Cloudinary — nothing touches our server) ---------- */
@@ -954,7 +1007,12 @@ function openEdit(id){
   $("emTitle").textContent="Edit Listing";$("emSave").textContent="Save Changes";
   $("emCatWrap").style.display="none";$("emStatusWrap").style.display="block";
   $("eTitle").value=x.title;$("eDesc").value=x.description||"";$("ePrice").value=x.price;
-  $("eBeds").value=x.bedrooms==null?"":x.bedrooms;$("eStatus").value=x.status;$("emErr").textContent="";
+  $("eBeds").value=x.bedrooms==null?"":x.bedrooms;
+  const rentable=x.category==="rent"||x.category==="shortlet";
+  $("eStatus").innerHTML=rentable
+    ?'<option value="active">Active</option><option value="rented">Rented out</option>'
+    :'<option value="active">Active</option><option value="sold">Sold</option>';
+  $("eStatus").value=x.status;$("emErr").textContent="";
   preparePhotoSection();
   show("editModal");
 }

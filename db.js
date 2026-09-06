@@ -127,6 +127,10 @@ try {
   console.error("shortlet migration failed:", e.message);
 }
 
+// Keeps a small, useful lifecycle audit for listings which are no longer live.
+// This is deliberately nullable so existing listings retain their original history.
+try { db.exec("ALTER TABLE listings ADD COLUMN status_changed_at TEXT"); } catch (e) { /* column exists */ }
+
 // richer user profiles for the account system
 for (const col of [
   "business_name TEXT", "business_type TEXT", "bio TEXT",
