@@ -61,7 +61,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--brand)!important;box-
 .page-home .latest-head h2{font-size:clamp(1.7rem,3vw,2.25rem);letter-spacing:-.04em}
 .page-home .lcard{border-radius:18px;box-shadow:none}
 .page-home .lcard:hover{box-shadow:var(--shadow-lift);border-color:#b8d4c9}
-.page-home .lc-img{height:156px;background:#e8f0ec}
+.page-home .lc-img{background:#e8f0ec}
 .page-home .trustrow{max-width:1180px;gap:12px}
 .page-home .tr-item{border-radius:16px;box-shadow:none;background:var(--surface)}
 
@@ -84,7 +84,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--brand)!important;box-
 .page-browse .cards{gap:16px}
 .page-browse .card{border-radius:18px;box-shadow:none}
 .page-browse .card:hover{box-shadow:var(--shadow-lift);border-color:#accdc1}
-.page-browse .card-img{height:184px;background:#e9f1ed}
+.page-browse .card-img{background:#e9f1ed}
 .page-browse .card-body{padding:17px 18px 18px}
 .page-browse .map-panel{border-radius:18px;overflow:hidden;border:1px solid var(--line);box-shadow:none}
 .page-browse .insights{border-left-width:4px;box-shadow:none;background:#fcfefd}
@@ -132,7 +132,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--brand)!important;box-
   .page-home .cats{padding:30px 14px 0}
   .page-home .latest{padding:42px 16px}
   .page-browse .hero{padding:26px 16px 30px}
-  .page-browse .card-img{height:168px}
   .page-dashboard .wrap{padding:22px 14px 50px}
   .page-dashboard .actions{gap:5px}
   .page-dashboard .actions .btn{padding:7px 9px}
