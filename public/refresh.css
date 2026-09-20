@@ -192,6 +192,24 @@ body.dark footer{background:var(--footer-bg)!important;border-top-color:var(--si
   .page-browse .browse-p{max-width:34ch;margin-left:auto;margin-right:auto}
 }
 
+/* Final hero reduction: a compact banner with the search action preserved. */
+.page-home .hero{padding:4px 8px 9px}
+.page-home .slider{min-height:145px;border-radius:12px 20px 12px 20px}
+.page-home .sl-in{min-height:145px;padding:15px 24px 28px}
+.page-home .sl-h2{font-size:clamp(1.35rem,2.8vw,2rem);margin:4px auto 0}
+.page-home .sl-p,.page-home .sl-trust,.page-home .stats{display:none}
+.page-home .sl-dots{padding-bottom:9px}
+.page-home .search-wrap{margin-top:-10px}
+.page-home .search-quick{display:none}
+.page-home .search-proofrow{margin-top:6px}
+@media(max-width:760px){
+  .page-home .slider{min-height:118px}
+  .page-home .sl-in{min-height:118px;padding:12px 12px 24px}
+  .page-home .sl-h2{font-size:clamp(1.2rem,6.2vw,1.55rem);max-width:22ch}
+  .page-home .sl-dots{padding-bottom:7px}
+  .page-home .search-wrap{margin-top:-8px}
+}
+
 /* Compact footer: retain every link while reducing vertical footprint. */
 footer{padding:16px 20px 10px!important;font-size:.78rem}
 footer .foot-inner{gap:14px 24px}
