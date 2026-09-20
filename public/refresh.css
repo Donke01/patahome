@@ -191,3 +191,17 @@ body.dark footer{background:var(--footer-bg)!important;border-top-color:var(--si
   .page-browse .browse-h{max-width:16ch;margin-left:auto;margin-right:auto}
   .page-browse .browse-p{max-width:34ch;margin-left:auto;margin-right:auto}
 }
+
+/* Compact footer: retain every link while reducing vertical footprint. */
+footer{padding:16px 20px 10px!important;font-size:.78rem}
+footer .foot-inner{gap:14px 24px}
+footer .footer-brand-logo{height:48px}
+footer .foot-tag{margin-top:3px;line-height:1.25}
+footer .foot-links{gap:18px 26px}
+footer .foot-links h4{margin-bottom:4px}
+footer .foot-links a{padding:1px 0}
+footer .foot-socials{gap:7px;margin-top:6px}
+footer .foot-socials a{width:29px;height:29px}
+footer .foot-socials svg{width:13px;height:13px}
+footer .foot-base{margin-top:10px;padding-top:8px;font-size:.68rem}
+@media(max-width:760px){footer{padding:14px 14px 8px!important}footer .foot-inner{gap:10px}.page-home footer .footer-brand-logo,footer .footer-brand-logo{height:45px}.page-home footer .foot-links{gap:8px 18px}}
