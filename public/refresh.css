@@ -204,6 +204,12 @@ body.dark footer{background:var(--footer-bg)!important;border-top-color:var(--si
   .page-home .sl-dots{padding-bottom:2px}
 }
 
+@media(max-width:760px){
+  /* The slide is decorative on small screens; keep the search action visible. */
+  .page-home .slider{display:none}
+  .page-home .search-wrap{margin-top:6px}
+}
+
 /* Remove residual hero line spacing. */
 .page-home .hero{padding:0 6px 5px}
 .page-home .slider{min-height:104px;border-radius:10px 16px 10px 16px}
