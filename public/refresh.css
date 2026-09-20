@@ -144,3 +144,49 @@ body.dark footer{background:var(--footer-bg)!important;border-top-color:var(--si
 @media(max-width:1100px) and (min-width:801px){.page-dashboard .row,.page-dashboard .row.head{grid-template-columns:2fr .8fr 1fr .55fr 1fr}.page-dashboard .row.head>div:last-child{display:none}.page-dashboard .row .actions{grid-column:1/-1;justify-content:flex-start;padding-top:2px}}
 @media(max-width:760px){header{min-height:60px;padding:9px 12px}.logo .brand-logo{height:47px}.page-home .hero{padding:14px 12px 18px}.page-home .slider{min-height:270px;border-radius:7px 23px 7px 23px}.page-home .slider::after{right:-142px;top:-150px;width:320px;height:320px}.page-home .sl-in{padding:31px 20px 42px}.page-home .sl-dots{padding-left:20px;padding-bottom:16px}.page-home .search-wrap{margin:-28px 6px 0}.page-home .searchbar::before{display:none}.page-home .search-quick{justify-content:flex-start}.page-home .search-proofrow{justify-content:flex-start;gap:8px 15px;padding:0 7px;font-size:.7rem}.page-home .cats{padding:33px 14px 0}.page-home .area-discovery{padding:52px 16px 6px}.page-home .area-rail{display:flex;overflow:auto;margin-right:-16px;padding:0 16px 10px 0;scroll-snap-type:x mandatory}.page-home .area-card{min-width:166px;scroll-snap-align:start}.page-home .latest{padding:50px 16px}.page-browse .hero{padding:35px 16px 36px}.page-browse .hero::after{right:-200px}.page-browse .sort-label{width:100%;margin-left:0}.page-dashboard .wrap{padding:24px 14px 50px}.page-dashboard .actions{gap:5px}.page-dashboard .actions .btn{padding:7px 9px}.page-dashboard .status-note{grid-column:1/-1}footer .footer-brand-logo{height:66px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important}}
+
+/* Centered presentation and mobile-safe hero composition. */
+.page-home .sl-in{justify-content:center;text-align:center}
+.page-home .sl-txt{margin:0 auto;text-align:center}
+.page-home .sl-art{position:absolute;right:6%;opacity:.42;pointer-events:none}
+.page-home .stats,.page-home .sl-trust{justify-content:center}
+.page-home .area-copy{text-align:center;margin-left:auto;margin-right:auto}
+.page-home .latest-head{justify-content:center;align-items:center;text-align:center}
+.page-home .latest-head>div{display:flex;flex-direction:column;align-items:center}
+.page-home .trustrow{justify-items:stretch;text-align:center}
+.page-home .tr-item{justify-content:center;text-align:center}
+.page-home .tr-item>div{min-width:0}
+.page-browse .hero{text-align:center}
+.page-browse .hero .wrap{margin-left:auto;margin-right:auto}
+.page-browse .hero .searchbar,.page-browse .hero .loc-row{margin-left:auto;margin-right:auto}
+
+@media(max-width:760px){
+  .page-home .logo{align-items:center}
+  .page-home .hero{padding:10px 10px 18px}
+  .page-home .slider{min-height:0;border-radius:14px 24px 14px 24px}
+  .page-home .sl-in{display:block;min-height:286px;padding:30px 18px 48px}
+  .page-home .sl-txt{max-width:100%;width:100%}
+  .page-home .sl-art{display:none}
+  .page-home .sl-h2{font-size:clamp(1.62rem,8vw,2.15rem);line-height:1.08;margin:8px auto 10px;max-width:18ch}
+  .page-home .sl-p,#heroSub{max-width:34ch;margin-left:auto;margin-right:auto;font-size:.8rem;line-height:1.5}
+  .page-home .sl-trust{justify-content:center;gap:7px 12px}
+  .page-home .stats{margin-top:20px;gap:0;justify-content:center}
+  .page-home .stat{padding:0 10px;margin-right:10px}
+  .page-home .stat:last-child{padding-right:0;margin-right:0;border-right:0}
+  .page-home .sl-dots{justify-content:center;padding-left:0;padding-bottom:16px}
+  .page-home .search-wrap{margin:-20px 4px 0}
+  .page-home .searchbar{width:100%}
+  .page-home .search-proofrow{justify-content:center;text-align:center}
+  .page-home .cats{padding-top:28px}
+  .page-home .area-discovery{text-align:center}
+  .page-home .area-copy h2{max-width:20ch;margin-left:auto;margin-right:auto}
+  .page-home .area-rail{padding-left:16px}
+  .page-home .latest-head{flex-direction:column;gap:10px}
+  .page-home .latest-grid{width:100%}
+  .page-home .trustrow{justify-items:stretch;text-align:center}
+  .page-home .tr-item{flex-direction:column;gap:8px;padding:14px 12px}
+  .page-home .tr-ic{margin:0 auto}
+  .page-browse .hero{padding:30px 16px 32px}
+  .page-browse .browse-h{max-width:16ch;margin-left:auto;margin-right:auto}
+  .page-browse .browse-p{max-width:34ch;margin-left:auto;margin-right:auto}
+}
