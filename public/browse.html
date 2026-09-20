@@ -452,7 +452,7 @@
     .foot-tag{margin-left:auto;margin-right:auto;text-align:center}
   }
 </style>
-  <link rel="stylesheet" href="/refresh.css?v=20260906-4">
+  <link rel="stylesheet" href="/refresh.css?v=20260920-1">
 </head>
 <body class="page-browse">
 
@@ -1140,6 +1140,7 @@ function render(){
           ${x.beds!==null?`<span>${BED_SVG}${x.beds===0?"Bedsitter":x.beds+" BR"}</span>`:""}
           <span>${CLOCK_SVG}${x.posted}</span>
         </div>
+        <div class="listing-trust ${x.verified?"":"unverified"}">${x.verified?"Verified owner":"Direct owner listing"}</div>
         <div class="card-actions">
           <button class="btn btn-primary" onclick="event.stopPropagation();openContact(${x.id})">Contact Owner</button>
           <button class="btn btn-ghost" onclick="event.stopPropagation();openDetail(${x.id})">Details</button>

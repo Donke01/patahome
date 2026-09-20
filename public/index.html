@@ -556,7 +556,7 @@
     .foot-tag{margin-left:auto;margin-right:auto;text-align:center}
   }
 </style>
-  <link rel="stylesheet" href="/refresh.css?v=20260906-4">
+  <link rel="stylesheet" href="/refresh.css?v=20260920-1">
 </head>
 <body class="page-home">
 
@@ -690,6 +690,17 @@
       <button id="searchBtn" onclick="closeSugg();doSearch()"><span class="sp"></span>Search</button>
     </div>
     <div class="sugg" id="sugg"></div>
+    <div class="search-quick" aria-label="Popular searches">
+      <a href="/browse.html?cat=rent">For rent</a>
+      <a href="/browse.html?cat=sale">For sale</a>
+      <a href="/browse.html?cat=shortlet">Short stays</a>
+      <a class="nearby" href="/browse.html?nearby=1">⌖ Near me</a>
+    </div>
+  </div>
+  <div class="search-proofrow" aria-label="Why use PataHome">
+    <span><b>✓</b> Verified owners</span>
+    <span><b>✓</b> Direct conversations</span>
+    <span><b>✓</b> No viewing fees</span>
   </div>
 </section>
 
@@ -703,6 +714,16 @@
     <a class="cat-tile reveal d2" href="/browse.html?cat=rent&beds=2"><span class="ct-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3"/><path d="M2 13a2 2 0 0 1 4 0v2h12v-2a2 2 0 0 1 4 0v3a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z"/><path d="M4 20v1M20 20v1"/></svg></span><span class="ct-l">2 Bedroom+</span></a>
     <a class="cat-tile reveal d2" href="/browse.html?cat=sale"><span class="ct-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m11 12 9-9M15 5l3 3"/></svg></span><span class="ct-l">For Sale</span></a>
   </div>
+</section>
+
+<!-- Kenyan area discovery, powered by live listings rather than a fixed promotion list. -->
+<section class="area-discovery" aria-labelledby="areaHeading">
+  <div class="area-copy reveal">
+    <div class="eyebrow">Explore Kenya</div>
+    <h2 id="areaHeading">Find a home in the places that matter to you.</h2>
+    <p>Start with an area, then compare direct-owner listings with confidence.</p>
+  </div>
+  <div class="area-rail" id="areaRail" aria-live="polite"></div>
 </section>
 
 <!-- Latest listings preview -->
@@ -811,11 +832,13 @@ const ICONS = {
 };
 const CAT = {
   rent:{label:"For Rent",unit:"/month",grad:"linear-gradient(140deg,#0d6b50,#14735a)",gal:["home","sofa","shower"],badge:"rent"},
-  sale:{label:"For Sale",unit:"",grad:"linear-gradient(140deg,#20272e,#3d4b56)",gal:["home","tree","key"],badge:"sale"}
+  sale:{label:"For Sale",unit:"",grad:"linear-gradient(140deg,#20272e,#3d4b56)",gal:["home","tree","key"],badge:"sale"},
+  shortlet:{label:"Short Stay",unit:"/night",grad:"linear-gradient(140deg,#815021,#b87530)",gal:["home","sofa","key"],badge:"shortlet"}
 };
 const AMENITIES = {
   rent:["Secure compound","Water 24/7","Parking","Near matatu route"],
-  sale:["Ready title","Gated community","Mains power","Borehole"]
+  sale:["Ready title","Gated community","Mains power","Borehole"],
+  shortlet:["Furnished","WiFi included","Kitchen","Flexible check-in"]
 };
 
 /* ================= STATE ================= */
@@ -1096,7 +1119,30 @@ function renderLatest(){
         <div class="lc-price">${fmt(x.price)} <small>${c.unit}</small></div>
         <div class="lc-t">${esc(x.title)}</div>
         <div class="lc-a">${PIN_SVG}${esc(x.area)}</div>
+        <div class="lc-signal"><span>${x.verified?"✓ Verified owner":"Direct owner"}</span>${x.beds!==null?`<span>${x.beds===0?"Bedsitter":x.beds+" BR"}</span>`:""}</div>
       </div>
+    </a>`;
+  }).join("");
+}
+
+function renderAreaDiscovery(){
+  const rail=document.getElementById("areaRail");
+  if(!rail)return;
+  const rows=Object.keys(AREAS).map(area=>({
+    area,
+    count:LISTINGS.filter(x=>x.area===area).length
+  })).sort((a,b)=>b.count-a.count||a.area.localeCompare(b.area));
+  if(!rows.length){rail.parentElement.style.display="none";return}
+  rail.innerHTML=rows.slice(0,8).map(({area,count},i)=>{
+    const [name,county]=area.split(", ");
+    const detail=count
+      ?`${count} live listing${count===1?"":"s"}`
+      :`Explore ${county||"this area"}`;
+    return `<a class="area-card" style="--area-index:${i}" href="/browse.html?q=${encodeURIComponent(name)}">
+      <span class="area-orbit" aria-hidden="true"><i></i></span>
+      <span class="area-name">${esc(name)}</span>
+      <span class="area-detail">${esc(detail)}</span>
+      <span class="area-go" aria-hidden="true">↗</span>
     </a>`;
   }).join("");
 }
@@ -1467,7 +1513,7 @@ async function paintAccount(){
     return;
   }
   try{animateStats()}catch(e){}
-  try{renderLatest()}catch(e){}
+  try{renderLatest();renderAreaDiscovery()}catch(e){}
   if(inBrowser&&!reduceMotion){
     try{
       const lockAll=()=>{lockSubHeight();lockHeadHeight()};
