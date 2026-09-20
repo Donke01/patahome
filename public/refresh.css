@@ -205,3 +205,30 @@ footer .foot-socials a{width:29px;height:29px}
 footer .foot-socials svg{width:13px;height:13px}
 footer .foot-base{margin-top:10px;padding-top:8px;font-size:.68rem}
 @media(max-width:760px){footer{padding:14px 14px 8px!important}footer .foot-inner{gap:10px}.page-home footer .footer-brand-logo,footer .footer-brand-logo{height:45px}.page-home footer .foot-links{gap:8px 18px}}
+
+/* Compact discovery hero: prioritize the search and listings above the fold. */
+.page-home .hero{padding-top:12px;padding-bottom:16px}
+.page-home .slider{min-height:270px}
+.page-home .sl-in{padding:32px 48px 40px}
+.page-home .sl-art{width:170px}
+.page-home .search-wrap{margin-top:-24px}
+.page-home .search-quick{margin-top:8px}
+.page-home .search-proofrow{margin-top:10px}
+.page-home .cats{padding-top:30px}
+@media(max-width:760px){
+  .page-home .hero{padding:8px 8px 12px}
+  .page-home .slider{min-height:0}
+  .page-home .sl-in{min-height:218px;padding:22px 14px 38px}
+  .page-home .sl-h2{font-size:clamp(1.5rem,7.2vw,1.95rem);margin-top:5px;margin-bottom:7px}
+  .page-home .sl-p,#heroSub{font-size:.76rem;line-height:1.38;margin-bottom:7px}
+  .page-home .sl-trust{font-size:.7rem;gap:5px 10px}
+  .page-home .stats{margin-top:14px}
+  .page-home .stat{padding:0 8px;margin-right:8px}
+  .page-home .stat .num{font-size:.92rem}
+  .page-home .stat .cap{font-size:.5rem}
+  .page-home .sl-dots{padding-bottom:11px}
+  .page-home .search-wrap{margin-top:-15px}
+  .page-home .search-quick{margin-top:7px}
+  .page-home .search-proofrow{margin-top:8px;font-size:.68rem}
+  .page-home .cats{padding-top:22px}
+}
