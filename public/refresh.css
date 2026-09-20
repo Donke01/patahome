@@ -192,6 +192,24 @@ body.dark footer{background:var(--footer-bg)!important;border-top-color:var(--si
   .page-browse .browse-p{max-width:34ch;margin-left:auto;margin-right:auto}
 }
 
+/* Remove residual hero line spacing. */
+.page-home .hero{padding:0 6px 5px}
+.page-home .slider{min-height:104px;border-radius:10px 16px 10px 16px}
+.page-home .sl-in{min-height:104px;padding:8px 18px 22px}
+.page-home .sl-h2{line-height:.96;margin:0 auto;max-width:24ch}
+.page-home .sl-dots{padding-bottom:5px}
+.page-home .search-wrap{margin-top:-5px}
+.page-home .search-proofrow{display:none}
+.page-home .cats{padding-top:8px}
+@media(max-width:760px){
+  .page-home .slider{min-height:86px}
+  .page-home .sl-in{min-height:86px;padding:7px 10px 19px}
+  .page-home .sl-h2{font-size:clamp(1.1rem,5.8vw,1.4rem)}
+  .page-home .sl-dots{padding-bottom:3px}
+  .page-home .search-wrap{margin-top:-4px}
+  .page-home .cats{padding-top:6px}
+}
+
 /* Final hero reduction: a compact banner with the search action preserved. */
 .page-home .hero{padding:4px 8px 9px}
 .page-home .slider{min-height:145px;border-radius:12px 20px 12px 20px}
