@@ -206,8 +206,10 @@ body.dark footer{background:var(--footer-bg)!important;border-top-color:var(--si
 
 @media(max-width:760px){
   /* The slide is decorative on small screens; keep the search action visible. */
-  .page-home .slider{display:none}
-  .page-home .search-wrap{margin-top:6px}
+  .page-home .slider{display:block;height:112px;min-height:112px;overflow:hidden}
+  .page-home .sl-in{display:block;min-height:112px;padding:13px 10px 23px}
+  .page-home .sl-h2{display:block;font-size:1.22rem;line-height:1;margin:0 auto;max-width:22ch}
+  .page-home .search-wrap{margin-top:-7px}
 }
 
 /* Remove residual hero line spacing. */
