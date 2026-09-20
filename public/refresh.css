@@ -192,6 +192,18 @@ body.dark footer{background:var(--footer-bg)!important;border-top-color:var(--si
   .page-browse .browse-p{max-width:34ch;margin-left:auto;margin-right:auto}
 }
 
+/* Half-height hero banner. */
+.page-home .slider{min-height:58px;border-radius:8px 14px 8px 14px}
+.page-home .sl-in{min-height:58px;padding:5px 14px 15px}
+.page-home .sl-h2{font-size:clamp(1rem,2.2vw,1.35rem);line-height:.92}
+.page-home .sl-dots{padding-bottom:3px}
+@media(max-width:760px){
+  .page-home .slider{min-height:46px}
+  .page-home .sl-in{min-height:46px;padding:4px 8px 13px}
+  .page-home .sl-h2{font-size:clamp(.9rem,5vw,1.15rem)}
+  .page-home .sl-dots{padding-bottom:2px}
+}
+
 /* Remove residual hero line spacing. */
 .page-home .hero{padding:0 6px 5px}
 .page-home .slider{min-height:104px;border-radius:10px 16px 10px 16px}
