@@ -206,6 +206,13 @@ footer .foot-socials svg{width:13px;height:13px}
 footer .foot-base{margin-top:10px;padding-top:8px;font-size:.68rem}
 @media(max-width:760px){footer{padding:14px 14px 8px!important}footer .foot-inner{gap:10px}.page-home footer .footer-brand-logo,footer .footer-brand-logo{height:45px}.page-home footer .foot-links{gap:8px 18px}}
 
+/* Slim navigation chrome. */
+header{min-height:58px;padding:6px clamp(14px,3vw,36px)}
+header .logo .brand-logo{height:48px}
+header .brand-tagline{font-size:.42rem;margin-top:-6px}
+header .header-actions{gap:8px}
+@media(max-width:760px){header{min-height:50px;padding:5px 10px}header .logo .brand-logo{height:39px}header .brand-tagline{font-size:.38rem;margin-top:-5px}header .header-actions{gap:5px}}
+
 /* Compact discovery hero: prioritize the search and listings above the fold. */
 .page-home .hero{padding-top:12px;padding-bottom:16px}
 .page-home .slider{min-height:270px}
