@@ -415,8 +415,8 @@ header .header-actions{gap:8px}
 
 /* Unified hero surface and desktop-safe panel proportions. */
 .page-home .slider{
-  min-height:132px;
-  height:132px;
+  min-height:160px;
+  height:160px;
   overflow:hidden;
   background:#f5f8f6;
 }
@@ -427,14 +427,14 @@ header .header-actions{gap:8px}
   overflow:hidden;
 }
 .page-home .slider .hero-track .sl-in{
-  min-height:132px;
-  height:132px;
-  padding:14px 28px 26px;
+  min-height:160px;
+  height:160px;
+  padding:18px 28px 34px;
   box-sizing:border-box;
   overflow:hidden;
 }
 .page-home .slider .hero-track .sl-txt{max-width:760px;width:100%;min-width:0;overflow:hidden}
-.page-home .slider .hero-track #heroHead{max-width:30ch;font-size:clamp(1.15rem,2.3vw,1.45rem)}
+.page-home .slider .hero-track #heroHead{max-width:42ch;font-size:clamp(1.15rem,2.3vw,1.45rem)}
 body.dark .page-home .slider,
 body.dark .page-home .slider .hero-track .slide-h{background:var(--card)!important}
 @media(max-width:760px){
