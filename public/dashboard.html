@@ -50,6 +50,7 @@
     .header-right{gap:6px;flex-wrap:nowrap;flex-shrink:0}
     .header-right .btn{padding:7px 10px;font-size:.72rem;white-space:nowrap}
     .wrap{padding:18px 14px 50px}
+    .auth-card{margin:5vh auto;padding:22px 16px}
   }
   .who{font-size:.85rem;color:var(--muted)}
   .btn{border:none;border-radius:10px;padding:9px 16px;font-weight:600;font-size:.88rem;transition:.15s}
@@ -66,6 +67,8 @@
 
   /* auth card */
   .auth-card{max-width:400px;margin:8vh auto;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:30px;box-shadow:var(--shadow);animation:fadeUp .4s both}
+  #gsiBtn{width:100%;max-width:100%;overflow:hidden}
+  #gsiBtn>div{max-width:100%!important}
   .auth-card h1{font-family:var(--serif);font-size:1.35rem;font-weight:600;color:var(--green-dark);margin-bottom:4px}
   .auth-card .sub{font-size:.85rem;color:var(--muted);margin-bottom:14px}
   .auth-tabs{display:flex;gap:6px;margin-bottom:14px}
@@ -280,7 +283,7 @@
   .reply-box input{flex:1}
   .badge-new{background:var(--amber);color:#fff;font-size:.68rem;font-weight:800;border-radius:999px;padding:2px 9px}
 </style>
-  <link rel="stylesheet" href="/refresh.css?v=20260922-1">
+  <link rel="stylesheet" href="/refresh.css?v=20260922-2">
 </head>
 <body class="page-dashboard">
 
@@ -634,7 +637,7 @@ function initGoogle(){
   el.style.display="block";$("orDiv").style.display="flex";
   google.accounts.id.renderButton(el,{
     theme:"outline",size:"large",shape:"pill",text:"continue_with",logo_alignment:"left",
-    width:Math.min(el.parentElement.clientWidth-4,380)
+    width:Math.max(240,Math.min(el.clientWidth||el.parentElement.clientWidth-4,380))
   });
 }
 async function onGoogleCredential(resp){
