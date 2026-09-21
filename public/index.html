@@ -556,7 +556,7 @@
     .foot-tag{margin-left:auto;margin-right:auto;text-align:center}
   }
 </style>
-  <link rel="stylesheet" href="/refresh.css?v=20260921-27">
+  <link rel="stylesheet" href="/refresh.css?v=20260921-28">
 </head>
 <body class="page-home">
 
@@ -603,6 +603,7 @@
 
 <section class="hero">
   <div class="slider" id="heroSlider">
+    <div class="hero-track" id="heroTrack">
     <div class="slide-h sl-1 on" data-href="/browse.html">
       <div class="sl-in">
         <div class="sl-txt">
@@ -674,6 +675,7 @@
  <path d="M40 150c4-12 14-18 26-18s22 6 26 18" stroke="#ffd9a8"/>
 </svg></div>
       </div>
+    </div>
     </div>
     <div class="sl-dots" id="slDots">
       <button class="sl-dot on" onclick="goSlide(0)" aria-label="Slide 1"></button>
@@ -1078,6 +1080,16 @@ function sizeSlider(){
 (function initSlider(){
   const el=document.getElementById("heroSlider");
   if(!el)return;
+  const track=document.getElementById("heroTrack");
+  if(track&&!track.dataset.looped){
+    [...track.querySelectorAll(".slide-h")].forEach(s=>{
+      const c=s.cloneNode(true);
+      c.classList.remove("on","out");
+      c.querySelectorAll("[id]").forEach(n=>n.removeAttribute("id"));
+      track.appendChild(c);
+    });
+    track.dataset.looped="1";
+  }
   sizeSlider();
   addEventListener("load",sizeSlider);
   if(document.fonts&&document.fonts.ready)document.fonts.ready.then(sizeSlider);

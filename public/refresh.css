@@ -385,27 +385,29 @@ header .header-actions{gap:8px}
   .page-home .slider .slide-h{transition:none}
 }
 
-/* Continuous Skylink-style rolling hero track. */
-@keyframes pataHeroRoll{
-  0%{transform:translateX(100%)}
-  5%{transform:translateX(0)}
-  20%{transform:translateX(0)}
-  25%{transform:translateX(-100%)}
-  100%{transform:translateX(-100%)}
+/* True Skylink-style marquee: one duplicated strip with no per-slide pause. */
+@keyframes pataHeroMarquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.page-home .slider .hero-track{
+  display:flex;
+  width:800%;
+  height:100%;
+  animation:pataHeroMarquee 16.8s linear infinite;
+  will-change:transform;
 }
-.page-home .slider .slide-h{
+.page-home .slider .hero-track .slide-h{
+  position:relative;
+  inset:auto;
+  flex:0 0 12.5%;
+  width:12.5%;
+  height:100%;
   opacity:1;
-  animation:pataHeroRoll 16.8s linear infinite;
+  transform:none!important;
   transition:none;
   pointer-events:auto;
   cursor:pointer;
 }
-.page-home .slider .slide-h:nth-child(1){animation-delay:0s}
-.page-home .slider .slide-h:nth-child(2){animation-delay:-4.2s}
-.page-home .slider .slide-h:nth-child(3){animation-delay:-8.4s}
-.page-home .slider .slide-h:nth-child(4){animation-delay:-12.6s}
 .page-home .slider .sl-dots{display:none}
 @media(prefers-reduced-motion:reduce){
-  .page-home .slider .slide-h{animation:none}
-  .page-home .slider .slide-h:not(:first-child){display:none}
+  .page-home .slider .hero-track{animation:none}
+  .page-home .slider .hero-track .slide-h:not(:first-child){display:none}
 }
