@@ -411,3 +411,27 @@ header .header-actions{gap:8px}
   .page-home .slider .hero-track{animation:none}
   .page-home .slider .hero-track .slide-h:not(:first-child){display:none}
 }
+
+/* Unified hero surface and desktop-safe panel proportions. */
+.page-home .slider{
+  min-height:132px;
+  height:132px;
+  overflow:hidden;
+  background:#f5f8f6;
+}
+.page-home .slider .hero-track .slide-h{
+  background:#f5f8f6!important;
+  color:var(--ink);
+}
+.page-home .slider .hero-track .sl-in{
+  min-height:132px;
+  height:132px;
+  padding:14px 42px 26px;
+}
+.page-home .slider .hero-track .sl-txt{max-width:920px;width:100%}
+body.dark .page-home .slider,
+body.dark .page-home .slider .hero-track .slide-h{background:var(--card)!important}
+@media(max-width:760px){
+  .page-home .slider{min-height:112px;height:112px}
+  .page-home .slider .hero-track .sl-in{min-height:112px;height:112px;padding:13px 10px 23px}
+}
