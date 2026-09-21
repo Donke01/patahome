@@ -422,16 +422,22 @@ header .header-actions{gap:8px}
 .page-home .slider .hero-track .slide-h{
   background:#f5f8f6!important;
   color:var(--ink);
+  min-width:12.5%;
+  overflow:hidden;
 }
 .page-home .slider .hero-track .sl-in{
   min-height:132px;
   height:132px;
-  padding:14px 42px 26px;
+  padding:14px 28px 26px;
+  box-sizing:border-box;
+  overflow:hidden;
 }
-.page-home .slider .hero-track .sl-txt{max-width:920px;width:100%}
+.page-home .slider .hero-track .sl-txt{max-width:760px;width:100%;min-width:0;overflow:hidden}
+.page-home .slider .hero-track #heroHead{max-width:30ch;font-size:clamp(1.15rem,2.3vw,1.45rem)}
 body.dark .page-home .slider,
 body.dark .page-home .slider .hero-track .slide-h{background:var(--card)!important}
 @media(max-width:760px){
   .page-home .slider{min-height:112px;height:112px}
   .page-home .slider .hero-track .sl-in{min-height:112px;height:112px;padding:13px 10px 23px}
+  .page-home .slider .hero-track #heroHead{font-size:clamp(1.22rem,6.4vw,1.48rem);max-width:30ch}
 }
