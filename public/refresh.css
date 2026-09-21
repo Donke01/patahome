@@ -342,3 +342,32 @@ header .header-actions{gap:8px}
   .page-home .search-proofrow{margin-top:8px;font-size:.68rem}
   .page-home .cats{padding-top:22px}
 }
+
+/* Final pre-listing compression pass (kept last so it wins the cascade). */
+.page-home .hero{padding:0 6px 5px}
+.page-home .slider{min-height:104px;height:104px;border-radius:10px 16px 10px 16px}
+.page-home .sl-in{min-height:104px;height:104px;padding:8px 18px 22px}
+.page-home .sl-art,.page-home .sl-p,.page-home .sl-trust,.page-home .stats,.page-home .search-quick,.page-home .search-proofrow{display:none}
+.page-home .sl-h2{font-size:clamp(1rem,2.2vw,1.35rem);line-height:.92;margin:0 auto}
+.page-home .sl-dots{padding-bottom:3px}
+.page-home .search-wrap{margin-top:-5px}
+.page-home .cats{padding-top:8px}
+.page-home .cat-tile{min-height:96px;padding:15px 8px;gap:7px}
+.page-home .ct-ic{width:42px;height:42px}
+.page-home .ct-ic svg{width:24px;height:24px}
+.page-home .area-discovery{padding-top:28px}
+.page-home .area-card{min-height:92px;padding:13px}
+.page-home .latest{padding-top:28px}
+@media(max-width:760px){
+  .page-home .slider{min-height:112px;height:112px}
+  .page-home .sl-in{min-height:112px;height:112px;padding:13px 10px 23px}
+  .page-home .sl-h2{font-size:1.22rem;line-height:1}
+  .page-home .search-wrap{margin-top:-7px}
+  .page-home .cats{padding-top:6px}
+  .page-home .cat-tile{min-height:82px;padding:11px 5px;gap:5px}
+  .page-home .ct-ic{width:36px;height:36px}
+  .page-home .ct-ic svg{width:21px;height:21px}
+  .page-home .area-discovery{padding-top:24px}
+  .page-home .area-card{min-height:88px}
+  .page-home .latest{padding-top:24px}
+}
