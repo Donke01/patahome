@@ -443,3 +443,33 @@ body.dark .page-home .slider .hero-track .slide-h{background:var(--card)!importa
   .page-home .slider .hero-track .sl-in{min-height:112px;height:112px;padding:13px 10px 23px}
   .page-home .slider .hero-track #heroHead{font-size:clamp(1.22rem,6.4vw,1.48rem);max-width:30ch}
 }
+
+/* Owner dashboard overview: surface the most important actions before tabs. */
+.page-dashboard .owner-overview{
+  margin:0 0 24px;
+  padding:24px;
+  border:1px solid var(--line);
+  border-radius:10px 24px 10px 24px;
+  background:linear-gradient(135deg,#f7fcfa 0%,#fff 72%);
+}
+.page-dashboard .owner-overview-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:20px}
+.page-dashboard .overview-kicker{font:500 .64rem var(--mono);letter-spacing:.14em;color:var(--brand);margin-bottom:7px}
+.page-dashboard .owner-overview h1{font:650 clamp(1.45rem,3vw,2.2rem) var(--display);letter-spacing:-.065em;line-height:1.02;color:var(--ink)}
+.page-dashboard .owner-overview p{margin-top:7px;color:var(--muted);font-size:.88rem}
+.page-dashboard .overview-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.page-dashboard .overview-card{display:flex;align-items:center;gap:11px;min-width:0;padding:13px 14px;border:1px solid var(--line);border-radius:8px 16px 8px 16px;background:#fff}
+.page-dashboard .overview-card.attention{border-color:#ead9b9;background:#fffaf0}
+.page-dashboard .overview-icon{display:grid;place-items:center;width:32px;height:32px;flex:0 0 32px;border-radius:8px;background:#e9fff5;color:var(--brand-dark);font-size:1.05rem}
+.page-dashboard .overview-card.attention .overview-icon{background:#f9e8c7;color:#8a5a08}
+.page-dashboard .overview-card div{display:flex;flex-direction:column;min-width:0}
+.page-dashboard .overview-card strong{font:650 1.35rem/1 var(--display);letter-spacing:-.05em;color:var(--ink)}
+.page-dashboard .overview-card span:not(.overview-icon){margin-top:4px;color:var(--muted);font-size:.7rem;white-space:nowrap}
+body.dark .page-dashboard .owner-overview{background:linear-gradient(135deg,#14251f 0%,var(--card) 72%)}
+body.dark .page-dashboard .overview-card{background:var(--card)}
+@media(max-width:760px){
+  .page-dashboard .owner-overview{padding:18px;margin-bottom:18px}
+  .page-dashboard .owner-overview-head{align-items:flex-start;flex-direction:column;gap:13px;margin-bottom:15px}
+  .page-dashboard .owner-overview-head .btn{width:100%}
+  .page-dashboard .overview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .page-dashboard .overview-card{padding:11px 10px}
+}

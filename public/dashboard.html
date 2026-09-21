@@ -280,7 +280,7 @@
   .reply-box input{flex:1}
   .badge-new{background:var(--amber);color:#fff;font-size:.68rem;font-weight:800;border-radius:999px;padding:2px 9px}
 </style>
-  <link rel="stylesheet" href="/refresh.css?v=20260921-34">
+  <link rel="stylesheet" href="/refresh.css?v=20260922-1">
 </head>
 <body class="page-dashboard">
 
@@ -371,6 +371,23 @@
     <span>Verify your email to publish listings and secure your account.</span>
     <button class="btn btn-primary btn-sm" onclick="openEmailVerify(ME.email)">Verify now</button>
   </div>
+
+  <section class="owner-overview" aria-labelledby="ownerOverviewTitle">
+    <div class="owner-overview-head">
+      <div>
+        <div class="overview-kicker">OWNER CONTROL CENTRE</div>
+        <h1 id="ownerOverviewTitle">Welcome back<span id="ownerGreetingName"></span>.</h1>
+        <p>See what needs attention and keep your homes moving.</p>
+      </div>
+      <button class="btn btn-primary" onclick="openAdd()">+ New Listing</button>
+    </div>
+    <div class="overview-grid">
+      <div class="overview-card"><span class="overview-icon">⌂</span><div><strong id="oActive">–</strong><span>Active listings</span></div></div>
+      <div class="overview-card"><span class="overview-icon">↗</span><div><strong id="oLeads">–</strong><span>Total leads</span></div></div>
+      <div class="overview-card attention"><span class="overview-icon">✉</span><div><strong id="oUnread">–</strong><span>Replies needed</span></div></div>
+      <div class="overview-card"><span class="overview-icon">◷</span><div><strong id="oWeek">–</strong><span>Leads this week</span></div></div>
+    </div>
+  </section>
 
   <nav class="pnav" id="pnav">
     <button class="pt on" data-t="listings" onclick="showTab('listings')">My Listings</button>
@@ -688,10 +705,15 @@ async function refresh(){
   $("sActive").textContent=active.length;
   $("sLeads").textContent=totalLeads;
   const unreplied=myInquiries.filter(x=>!x.reply).length;
+  const greetingName=(ME&&ME.name?String(ME.name).trim().split(/\s+/)[0]:"");
+  if($("ownerGreetingName"))$("ownerGreetingName").textContent=greetingName?`, ${greetingName}`:"";
+  if($("oActive"))$("oActive").textContent=active.length;
+  if($("oLeads"))$("oLeads").textContent=totalLeads;
+  if($("oUnread"))$("oUnread").textContent=unreplied;
   $("sInq").textContent=unreplied;
   badge("bFeedback",unreplied);
   if(notifs){window._notifs=notifs;badge("bNotifs",activeTab==="notifs"?0:notifs.unread)}
-  if(stats)renderStats(stats);
+  if(stats){renderStats(stats);if($("oWeek"))$("oWeek").textContent=stats.thisWeek}
   lastUpdated=Date.now();tickUpdated();
   renderTable();
   renderInbox();
