@@ -371,3 +371,16 @@ header .header-actions{gap:8px}
   .page-home .area-card{min-height:88px}
   .page-home .latest{padding-top:24px}
 }
+
+/* Skylink-inspired hero motion: a clean, continuous horizontal handoff. */
+.page-home .slider .slide-h{
+  opacity:1;
+  transform:translateX(100%);
+  transition:transform .72s cubic-bezier(.22,1,.36,1);
+  will-change:transform;
+}
+.page-home .slider .slide-h.on{opacity:1;transform:translateX(0)}
+.page-home .slider .slide-h.out{opacity:1;transform:translateX(-100%)}
+@media(prefers-reduced-motion:reduce){
+  .page-home .slider .slide-h{transition:none}
+}
