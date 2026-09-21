@@ -391,7 +391,7 @@ header .header-actions{gap:8px}
   display:flex;
   width:800%;
   height:100%;
-  animation:pataHeroMarquee 26s linear infinite;
+  animation:pataHeroMarquee 38s linear infinite;
   will-change:transform;
 }
 .page-home .slider .hero-track .slide-h{
