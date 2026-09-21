@@ -389,7 +389,7 @@ header .header-actions{gap:8px}
 @keyframes pataHeroMarquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 .page-home .slider .hero-track{
   display:flex;
-  width:800%;
+  width:640%;
   height:100%;
   animation:pataHeroMarquee 38s linear infinite;
   will-change:transform;
@@ -405,6 +405,7 @@ header .header-actions{gap:8px}
   transition:none;
   pointer-events:auto;
   cursor:pointer;
+  border-right:1px solid #dce8e3;
 }
 .page-home .slider .sl-dots{display:none}
 @media(prefers-reduced-motion:reduce){
@@ -437,6 +438,7 @@ header .header-actions{gap:8px}
 body.dark .page-home .slider,
 body.dark .page-home .slider .hero-track .slide-h{background:var(--card)!important}
 @media(max-width:760px){
+  .page-home .slider .hero-track{width:800%}
   .page-home .slider{min-height:112px;height:112px}
   .page-home .slider .hero-track .sl-in{min-height:112px;height:112px;padding:13px 10px 23px}
   .page-home .slider .hero-track #heroHead{font-size:clamp(1.22rem,6.4vw,1.48rem);max-width:30ch}
