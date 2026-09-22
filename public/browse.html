@@ -415,6 +415,45 @@
   .dots{position:absolute;bottom:9px;left:50%;transform:translateX(-50%);display:flex;gap:5px;z-index:5}
   .dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.45)}
   .dot.on{background:#fff}
+  #detailModal .modal{max-width:840px}
+  #detailModal .gallery{height:clamp(230px,42vw,440px);margin-bottom:8px;background:#edf2ef}
+  #detailModal .gallery .slide{background:#edf2ef!important}
+  #detailModal .gallery .slide img{object-fit:contain!important}
+  .gallery-image-button{position:absolute;inset:0;border:0;background:none;cursor:zoom-in;z-index:2}
+  .gal-nav{z-index:6}
+  .gallery-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:15px;color:var(--muted);font-size:.78rem}
+  .gallery-thumbs{display:flex;gap:7px;overflow-x:auto;padding:2px 0 6px;scrollbar-width:thin}
+  .gallery-thumb{width:62px;height:46px;flex:0 0 62px;padding:0;border:2px solid transparent;border-radius:6px;overflow:hidden;background:#edf2ef;cursor:pointer}
+  .gallery-thumb.on{border-color:var(--brand)}
+  .gallery-thumb img{width:100%;height:100%;object-fit:cover}
+  .gallery-all{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:7px;padding:7px 10px;font-weight:700;white-space:nowrap}
+  .photo-viewer{position:fixed;inset:0;z-index:2000;background:rgba(9,18,15,.86);display:none;align-items:center;justify-content:center;padding:20px}
+  .photo-viewer.show{display:flex}
+  .photo-viewer-panel{display:flex;flex-direction:column;width:min(1120px,100%);height:min(850px,96dvh);background:var(--card);color:var(--ink);border-radius:14px;overflow:hidden}
+  .photo-viewer-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 18px;border-bottom:1px solid var(--line)}
+  .photo-viewer-head strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .photo-viewer-head button,.photo-viewer-back{border:0;background:none;color:var(--ink);font-weight:700;padding:7px;cursor:pointer}
+  .photo-viewer-body{min-height:0;flex:1;overflow:auto;padding:18px}
+  .photo-grid-all{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+  .photo-grid-all button{border:0;padding:0;background:#edf2ef;border-radius:9px;overflow:hidden;aspect-ratio:4/3;cursor:zoom-in}
+  .photo-grid-all img{width:100%;height:100%;object-fit:cover;display:block}
+  .photo-stage{height:100%;display:flex;flex-direction:column;align-items:center;gap:8px}
+  .photo-stage-main{min-height:0;flex:1;width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .photo-stage-main img{max-width:calc(100% - 88px);max-height:100%;width:auto;height:auto;object-fit:contain}
+  .photo-stage-main button{flex:0 0 36px;width:36px;height:36px;border:1px solid var(--line);border-radius:50%;background:var(--card);color:var(--ink);font-size:1.4rem;cursor:pointer}
+  .photo-stage-thumbs{display:flex;gap:7px;max-width:100%;overflow-x:auto;padding:4px}
+  .photo-stage-thumbs button{flex:0 0 55px;width:55px;height:42px;padding:0;border:2px solid transparent;border-radius:5px;overflow:hidden;cursor:pointer;background:#edf2ef}
+  .photo-stage-thumbs button.on{border-color:var(--brand)}
+  .photo-stage-thumbs img{width:100%;height:100%;object-fit:cover}
+  @media(max-width:640px){
+    #detailModal .modal{padding:15px}
+    #detailModal .gallery{height:clamp(235px,62vw,360px)}
+    .photo-viewer{padding:0}
+    .photo-viewer-panel{width:100%;height:100dvh;border-radius:0}
+    .photo-grid-all{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .photo-viewer-body{padding:12px}
+    .photo-stage-main img{max-width:calc(100% - 78px)}
+  }
   .chips{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0}
   .chip{background:var(--brand-light);color:var(--brand);font-size:.74rem;font-weight:700;padding:5px 13px;border-radius:999px}
 
@@ -619,6 +658,7 @@
   <div class="modal">
     <button class="close-x" onclick="closeModal('detailModal')">✕</button>
     <div class="gallery" id="gallery"></div>
+    <div class="gallery-footer" id="galleryFooter"></div>
     <h2 id="dTitle"></h2>
     <div class="sub" id="dSub"></div>
     <div class="chips" id="dChips"></div>
@@ -634,6 +674,14 @@
       <button class="btn btn-primary" id="dContactBtn">Contact Owner</button>
       <button class="btn btn-ghost" id="dMapBtn">View on Map</button>
     </div>
+  </div>
+</div>
+
+<!-- Full photo gallery; only real listing photos appear here. -->
+<div class="photo-viewer" id="photoViewer" role="dialog" aria-modal="true" aria-label="Listing photos" onclick="if(event.target===this)closePhotoViewer()">
+  <div class="photo-viewer-panel">
+    <div class="photo-viewer-head"><strong id="photoViewerTitle"></strong><button type="button" onclick="closePhotoViewer()" aria-label="Close photos">✕ Close</button></div>
+    <div class="photo-viewer-body" id="photoViewerBody"></div>
   </div>
 </div>
 
@@ -1200,19 +1248,68 @@ function renderGallery(){
   const c=CAT[galItem.cat];
   const hasPhotos=galItem.photos&&galItem.photos.length;
   const slides=hasPhotos
-    ?galItem.photos.map((p,i)=>`<div class="slide ${i===galIdx?"on":""}" style="background:#0d1512"><img src="${p.full}" alt="photo ${i+1}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" loading="lazy"></div>`).join("")
+    ?galItem.photos.map((p,i)=>`<div class="slide ${i===galIdx?"on":""}"><img src="${esc(p.full)}" alt="${esc(galItem.title)}, photo ${i+1} of ${galItem.photos.length}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain" loading="${i===galIdx?"eager":"lazy"}"></div>`).join("")
     :c.gal.map((e,i)=>`<div class="slide ${i===galIdx?"on":""}" style="background:${c.grad}">${ICONS[e]}</div>`).join("");
   const n=hasPhotos?galItem.photos.length:c.gal.length;
   document.getElementById("gallery").innerHTML=slides+
-    (n>1?`<button class="gal-nav gal-prev" onclick="galStep(-1)">‹</button>
-     <button class="gal-nav gal-next" onclick="galStep(1)">›</button>
-     <div class="dots">${Array.from({length:n},(_,i)=>`<span class="dot ${i===galIdx?"on":""}"></span>`).join("")}</div>`:"");
+    (hasPhotos?`<button class="gallery-image-button" onclick="openPhotoViewer(${galIdx})" aria-label="Expand photo ${galIdx+1} of ${n}"></button>`:"")+
+    (n>1?`<button class="gal-nav gal-prev" onclick="galStep(-1)" aria-label="Previous photo">‹</button>
+     <button class="gal-nav gal-next" onclick="galStep(1)" aria-label="Next photo">›</button>`:"");
+  document.getElementById("galleryFooter").innerHTML=hasPhotos
+    ?`<div><span>${galIdx+1} / ${n} photos</span><div class="gallery-thumbs">${galItem.photos.map((p,i)=>`<button class="gallery-thumb ${i===galIdx?"on":""}" onclick="galIdx=${i};renderGallery()" aria-label="View photo ${i+1}"><img src="${esc(p.thumb||p.full)}" alt="" loading="lazy"></button>`).join("")}</div></div><button class="gallery-all" onclick="openPhotoViewer()">View all ${n} photos</button>`
+    :"";
 }
 function galStep(n){
   const len=(galItem.photos&&galItem.photos.length)||CAT[galItem.cat].gal.length;
   galIdx=(galIdx+n+len)%len;
   renderGallery();
 }
+let photoViewerMode="grid",photoViewerIndex=0,photoViewerReturnFocus=null,photoViewerScroll="";
+function openPhotoViewer(index){
+  if(!galItem?.photos?.length)return;
+  photoViewerReturnFocus=document.activeElement;
+  photoViewerScroll=document.body.style.overflow;
+  document.body.style.overflow="hidden";
+  photoViewerMode=Number.isInteger(index)?"photo":"grid";
+  photoViewerIndex=Number.isInteger(index)?index:galIdx;
+  document.getElementById("photoViewerTitle").textContent=galItem.title;
+  document.getElementById("photoViewer").classList.add("show");
+  renderPhotoViewer();
+  document.querySelector("#photoViewer .photo-viewer-head button").focus();
+}
+function closePhotoViewer(){
+  document.getElementById("photoViewer").classList.remove("show");
+  document.body.style.overflow=photoViewerScroll;
+  photoViewerReturnFocus?.focus?.();
+}
+function renderPhotoViewer(){
+  const photos=galItem.photos,body=document.getElementById("photoViewerBody");
+  if(photoViewerMode==="grid"){
+    body.innerHTML=`<div class="photo-grid-all">${photos.map((p,i)=>`<button onclick="showPhoto(${i})" aria-label="Open photo ${i+1} of ${photos.length}"><img src="${esc(p.thumb||p.full)}" alt="${esc(galItem.title)}, photo ${i+1}" loading="lazy"></button>`).join("")}</div>`;
+  }else{
+    const p=photos[photoViewerIndex];
+    body.innerHTML=`<div class="photo-stage"><button class="photo-viewer-back" onclick="photoViewerMode='grid';renderPhotoViewer()">← All photos</button><div class="photo-stage-main"><button onclick="photoStep(-1)" aria-label="Previous photo">‹</button><img src="${esc(p.full)}" alt="${esc(galItem.title)}, photo ${photoViewerIndex+1} of ${photos.length}"><button onclick="photoStep(1)" aria-label="Next photo">›</button></div><span>${photoViewerIndex+1} / ${photos.length}</span><div class="photo-stage-thumbs">${photos.map((item,i)=>`<button class="${i===photoViewerIndex?"on":""}" onclick="showPhoto(${i})" aria-label="View photo ${i+1}"><img src="${esc(item.thumb||item.full)}" alt="" loading="lazy"></button>`).join("")}</div></div>`;
+    body.querySelector(".photo-stage-thumbs .on")?.scrollIntoView({block:"nearest",inline:"nearest"});
+  }
+}
+function showPhoto(index){photoViewerMode="photo";photoViewerIndex=index;galIdx=index;renderPhotoViewer();renderGallery()}
+function photoStep(direction){showPhoto((photoViewerIndex+direction+galItem.photos.length)%galItem.photos.length)}
+document.addEventListener("keydown",e=>{
+  if(!document.getElementById("photoViewer").classList.contains("show"))return;
+  if(e.key==="Escape"){closePhotoViewer();e.preventDefault()}
+  if(photoViewerMode==="photo"&&e.key==="ArrowLeft"){photoStep(-1);e.preventDefault()}
+  if(photoViewerMode==="photo"&&e.key==="ArrowRight"){photoStep(1);e.preventDefault()}
+});
+let photoTouchX=null;
+document.getElementById("photoViewerBody").addEventListener("touchstart",e=>{
+  if(photoViewerMode==="photo")photoTouchX=e.touches[0]?.clientX??null;
+},{passive:true});
+document.getElementById("photoViewerBody").addEventListener("touchend",e=>{
+  if(photoTouchX===null||photoViewerMode!=="photo")return;
+  const dx=(e.changedTouches[0]?.clientX??photoTouchX)-photoTouchX;
+  photoTouchX=null;
+  if(Math.abs(dx)>55)photoStep(dx<0?1:-1);
+},{passive:true});
 async function openContact(id){
   const x=LISTINGS.find(y=>y.id===id),c=CAT[x.cat];
   contactId=id;
