@@ -257,6 +257,16 @@ body.dark footer{background:var(--footer-bg)!important;border-top-color:var(--si
   .page-browse .modal-actions .btn{min-height:44px}
 }
 
+@media(max-width:640px){
+  .page-browse .overlay{padding:0;align-items:flex-end}
+  .page-browse .overlay .modal{max-height:92dvh;padding:16px;border-radius:18px 18px 0 0}
+  .page-browse #detailModal .gallery{height:clamp(210px,42dvh,300px);min-height:210px;border-radius:13px;margin-bottom:14px}
+  .page-browse #detailModal .modal-actions{flex-direction:row;gap:9px;margin-top:18px}
+  .page-browse #detailModal .modal-actions .btn{flex:1;min-height:46px}
+  .page-browse .modal h2{font-size:1.15rem;line-height:1.2}
+  .page-browse .modal .sub{font-size:.8rem;line-height:1.45}
+}
+
 /* Half-height hero banner. */
 .page-home .slider{min-height:58px;border-radius:8px 14px 8px 14px}
 .page-home .sl-in{min-height:58px;padding:5px 14px 15px}
