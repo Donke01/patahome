@@ -1204,7 +1204,11 @@ async function renderAreaDiscovery(){
   const o=await areaOrigin();
   if(!o)return;
   rows.forEach(r=>r.km=kmBetween(o.lat,o.lng,r.lat,r.lng));
-  rows.sort((a,b)=>a.km-b.km);
+  // Nearest first, but within the same distance band areas that actually have
+  // listings come before empty ones, so a quiet region doesn't open with a row
+  // of "No listings yet" cards.
+  const band=km=>km<25?0:km<75?1:km<200?2:3;
+  rows.sort((a,b)=>band(a.km)-band(b.km)||(b.count>0)-(a.count>0)||a.km-b.km);
   draw();
   rail.scrollLeft=0;
   const basis=document.getElementById("areaBasis");
