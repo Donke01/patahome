@@ -452,7 +452,7 @@
     .foot-tag{margin-left:auto;margin-right:auto;text-align:center}
   }
 </style>
-  <link rel="stylesheet" href="/refresh.css?v=20260922-2">
+  <link rel="stylesheet" href="/refresh.css?v=20260922-3">
 </head>
 <body class="page-browse">
 
@@ -1121,8 +1121,8 @@ function render(){
     const CAM='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h3l2-2h6l2 2h3v13H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
     return `<div class="card" style="animation-delay:${Math.min(i*60,420)}ms" onclick="openDetail(${x.id})">
       <div class="card-img" style="background:${c.grad}">
-        ${x.photos.length?`<img class="ph" src="${x.photos[0].thumb}" alt="${esc(x.title)}" loading="lazy">`:`<span class="wm">${ICONS[c.gal[0]]}</span>`}
-        ${x.photos.length?`<span class="photo-count">${CAM}${x.photos.length}</span>`:""}
+        ${x.photos.length?`<div class="card-photo-grid">${x.photos.slice(0,4).map((p,pi)=>`<img class="ph ph-${pi+1}" src="${esc(p.thumb)}" alt="${esc(x.title)}, photo ${pi+1}" loading="lazy">`).join("")}</div>`:`<span class="wm">${ICONS[c.gal[0]]}</span>`}
+        ${x.photos.length?`<span class="photo-count">${CAM} View all ${x.photos.length} photo${x.photos.length===1?"":"s"}</span>`:""}
         <span class="badge ${c.badge}">${c.label}</span>
         ${isNew?`<span class="new-badge">NEW</span>`:""}
         <button class="heart ${favs.has(x.id)?"on":""}" onclick="event.stopPropagation();toggleFav(${x.id})">${favs.has(x.id)?"♥":"♡"}</button>
@@ -1136,6 +1136,7 @@ function render(){
           ${x.beds!==null?`<span>${BED_SVG}${x.beds===0?"Bedsitter":x.beds+" BR"}</span>`:""}
           <span>${CLOCK_SVG}${x.posted}</span>
         </div>
+        <div class="availability-note">${x.status==="active"?"Available now":"Listing closed — view details"}</div>
         <div class="listing-trust ${x.verified?"":"unverified"}">${x.verified?"Verified owner":"Direct owner listing"}</div>
         <div class="card-actions">
           <button class="btn btn-primary" onclick="event.stopPropagation();openContact(${x.id})">Contact Owner</button>
