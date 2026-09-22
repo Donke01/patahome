@@ -753,3 +753,50 @@ header .brand-tagline{font-size:.56rem!important}
 .page-browse .more-btn small{font-weight:500;opacity:.7;margin-left:4px}
 .page-browse .more-spin{display:inline-block;width:14px;height:14px;margin-right:8px;vertical-align:-2px;border:2px solid rgba(0,107,77,.25);border-top-color:var(--brand);border-radius:50%;animation:moreSpin .7s linear infinite}
 @keyframes moreSpin{to{transform:rotate(360deg)}}
+
+/* ===== Footer redesign — compact, bold essentials, same on every page ===== */
+footer.pf{background:#0f1a16!important;color:#b9c6c0!important;border-top:0!important;padding:26px clamp(16px,4vw,48px) 14px!important;font-size:.875rem!important;text-align:left}
+footer.pf a{color:#dfe8e3;text-decoration:none}
+footer.pf a:hover{color:#fff}
+footer.pf b,footer.pf strong{color:#fff;font-weight:700}
+.pf-top,.pf-links,.pf-base{max-width:1240px;margin:0 auto}
+.pf-top{display:flex;align-items:center;justify-content:space-between;gap:20px;padding-bottom:18px;border-bottom:1px solid rgba(255,255,255,.09)}
+.pf-brand{font-family:var(--display);font-weight:750;font-size:1.5rem!important;letter-spacing:-.05em;color:#fff!important}
+.pf-brand b{color:#5fd3a0!important}
+.pf-tag{margin:4px 0 0;font-size:.875rem;line-height:1.45}
+.pf-tag span{color:#9fb0a8}
+.pf-actions{display:flex;gap:10px;flex-shrink:0}
+.pf-btn{display:inline-flex;align-items:center;padding:10px 16px;border-radius:8px;background:#5fd3a0;color:#0b231a!important;font-weight:750;font-size:.875rem;white-space:nowrap}
+.pf-btn:hover{background:#7fe0b5}
+.pf-wa{display:inline-flex;align-items:center;gap:7px;padding:10px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.18);white-space:nowrap;font-size:.875rem}
+.pf-wa svg{width:17px;height:17px;fill:#5fd3a0}
+.pf-wa:hover{border-color:#5fd3a0}
+.pf-links{display:grid;grid-template-columns:1.3fr 1fr 1.2fr auto;gap:18px 28px;padding:16px 0}
+.pf-col h4{margin:0 0 6px;font:600 .68rem var(--mono);letter-spacing:.14em;text-transform:uppercase;color:#7f948b!important}
+.pf-col p{margin:0;display:flex;flex-wrap:wrap;gap:4px 14px;line-height:1.6}
+.pf-social{display:flex;gap:8px}
+.pf-social a{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.07)}
+.pf-social a:hover{background:#5fd3a0}
+.pf-social svg{width:15px;height:15px;fill:#dfe8e3}
+.pf-social a:hover svg{fill:#0b231a}
+.pf-base{display:flex;justify-content:space-between;gap:10px;padding-top:12px;border-top:1px solid rgba(255,255,255,.09);font-size:.75rem!important;color:#7f948b}
+.pf-base *{font-size:inherit!important}
+body.dark footer.pf{background:#070d0b!important}
+@media(max-width:760px){
+  footer.pf{padding:20px 16px calc(12px + env(safe-area-inset-bottom))!important;text-align:center}
+  .pf-top{flex-direction:column;gap:12px;padding-bottom:14px}
+  .pf-brand{font-size:1.3rem!important}
+  .pf-tag{font-size:.8125rem}
+  .pf-tag span{display:block}
+  .pf-actions{width:100%;gap:8px}
+  .pf-btn,.pf-wa{flex:1;justify-content:center;padding:10px 8px;font-size:.8125rem}
+  /* each group collapses to one line: LABEL  link · link · link */
+  .pf-links{grid-template-columns:1fr;gap:8px;padding:12px 0}
+  .pf-col{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
+  .pf-col h4{margin:0;font-size:.62rem}
+  .pf-col p{gap:2px 12px;font-size:.8125rem;justify-content:center}
+  .pf-social a{width:30px;height:30px}
+  .pf-base{flex-direction:column;align-items:center;gap:2px;padding-top:10px;font-size:.7rem!important}
+}
+/* the floating WhatsApp / chat buttons shouldn't sit on top of the footer text on phones */
+@media(max-width:760px){body:has(footer.pf) footer.pf{padding-bottom:calc(76px + env(safe-area-inset-bottom))!important}}
