@@ -219,6 +219,8 @@ body.dark footer{background:var(--footer-bg)!important;border-top-color:var(--si
 .page-home .lc-img img{object-fit:contain;background:#edf2ef}
 @media(max-width:640px){
   .page-home .lc-img{aspect-ratio:4/3}
+  .page-home .latest-grid{grid-template-columns:1fr}
+  .page-home .lc-img{width:100%}
 }
 
 /* Booking-style browse results: image, details, then an action/price rail. */
@@ -234,11 +236,14 @@ body.dark footer{background:var(--footer-bg)!important;border-top-color:var(--si
 .page-browse .card-body .card-actions .btn{width:100%;padding:8px 12px}
 @media(max-width:900px){
   .page-browse .card{display:block;min-height:0}
+  .page-browse .card,.page-browse .card-img,.page-browse .card-body{width:100%;box-sizing:border-box}
   .page-browse .card-img{height:auto;min-height:0;aspect-ratio:4/3}
+  .page-browse .card-photo-grid{height:100%;min-height:0}
   .page-browse .card-body{display:block;padding:16px 17px 17px}
   .page-browse .card-body .price{text-align:left;margin-bottom:2px}
   .page-browse .card-body .listing-trust{margin-top:10px}
-  .page-browse .card-body .card-actions{display:flex;flex-direction:row;min-width:0;margin-top:13px}
+  .page-browse .card-body .card-actions{display:flex;flex-direction:row;flex-wrap:wrap;min-width:0;margin-top:13px}
+  .page-browse .card-body .card-actions .btn{flex:1 1 130px;min-width:0}
 }
 
 /* Half-height hero banner. */
