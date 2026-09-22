@@ -267,6 +267,29 @@ body.dark footer{background:var(--footer-bg)!important;border-top-color:var(--si
   .page-browse .modal .sub{font-size:.8rem;line-height:1.45}
 }
 
+/* Restore the original PataHome listing presentation. */
+.page-browse .card{grid-template-columns:250px minmax(0,1fr);min-height:205px}
+.page-browse .card-img{height:100%;min-height:205px;background:initial}
+.page-browse .card-photo-grid{display:none}
+.page-browse #detailModal .modal{max-width:480px;box-sizing:content-box}
+.page-browse #detailModal .gallery{height:195px;min-height:0;aspect-ratio:auto;background:initial}
+.page-browse #detailModal .gallery .slide{background:initial!important}
+.page-browse #detailModal .gallery .slide img{object-fit:cover!important}
+.page-home .lc-img{height:124px;min-height:0;aspect-ratio:auto;background:#e8f0ec}
+.page-home .lc-img img{object-fit:cover;background:transparent}
+@media(max-width:900px){
+  .page-browse .card-img{height:178px;min-height:178px;aspect-ratio:auto}
+}
+@media(max-width:640px){
+  .page-browse .overlay{padding:20px;align-items:center;overflow:visible}
+  .page-browse .overlay .modal{max-height:90vh;padding:26px;border-radius:18px}
+  .page-browse #detailModal .gallery{height:195px;min-height:0}
+  .page-browse #detailModal .modal-actions{flex-direction:row;gap:10px;margin-top:20px}
+  .page-browse #detailModal .modal-actions .btn{min-height:0}
+  .page-home .lc-img{height:92px;aspect-ratio:auto}
+  .page-home .latest-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
 /* Half-height hero banner. */
 .page-home .slider{min-height:58px;border-radius:8px 14px 8px 14px}
 .page-home .sl-in{min-height:58px;padding:5px 14px 15px}
