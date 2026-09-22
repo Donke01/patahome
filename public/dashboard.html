@@ -283,7 +283,7 @@
   .reply-box input{flex:1}
   .badge-new{background:var(--amber);color:#fff;font-size:.68rem;font-weight:800;border-radius:999px;padding:2px 9px}
 </style>
-  <link rel="stylesheet" href="/refresh.css?v=20260922-14">
+  <link rel="stylesheet" href="/refresh.css?v=20260922-15">
 </head>
 <body class="page-dashboard">
 
@@ -804,10 +804,11 @@ async function loadNotifs(){
   const data=window._notifs||await api("/api/my/notifications").catch(()=>({unread:0,notifications:[]}));
   $("notifList").innerHTML=data.notifications.length?
     data.notifications.map(n=>`
-      <div class="notif ${n.read?"":"unread"} is-clickable" data-card-tab="notifs" tabindex="0" role="link">
+      <div class="notif ${n.read?"":"unread"} notif-expandable" onclick="toggleNotification(${n.id})" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleNotification(${n.id})}">
         <span class="n-ic">${N_ICONS[n.kind]||N_ICONS.system}</span>
         <div><div class="n-t">${esc(n.title)}</div><div class="n-b">${esc(n.body)}</div></div>
         <span class="n-at">${esc(n.at)}</span>
+        <div class="n-detail" id="notifDetail${n.id}" hidden><strong>What happened</strong><div>${esc(n.body)}</div><small>${esc(n.at)} · ${esc(n.kind)}</small></div>
       </div>`).join("")
     :`<div class="empty" style="background:var(--card);border:1px solid var(--line);border-radius:12px">Nothing yet — leads, messages and new followers will appear here.</div>`;
   if(data.unread>0){
@@ -815,6 +816,11 @@ async function loadNotifs(){
     window._notifs={...data,unread:0};
   }
   badge("bNotifs",0);
+}
+function toggleNotification(id){
+  const detail=$("notifDetail"+id); if(!detail)return;
+  detail.hidden=!detail.hidden;
+  const card=detail.closest(".notif"); if(card)card.classList.toggle("expanded",!detail.hidden);
 }
 async function loadTickets(){
   const list=await api("/api/my/support").catch(()=>[]);
