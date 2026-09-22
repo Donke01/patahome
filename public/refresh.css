@@ -656,3 +656,35 @@ body.dark .page-home .slider .hero-track .sl-txt h1{color:var(--ink)}
   #detailModal .pgrid .pg-more-m{display:flex;font-size:.8rem}
   #detailModal .pgrid .gal-zoom{font-size:.68rem;padding:5px 10px}
 }
+
+/* Promise band — replaces the three separate trust cards above the footer. */
+.page-home .promise{max-width:1240px;margin:8px auto 40px;padding:0 16px}
+.page-home .pr-inner{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:space-between;gap:28px;
+  padding:30px 36px;border-radius:12px 28px 12px 28px;border:1px solid #d3e8de;
+  background:radial-gradient(120% 140% at 0% 0%,#f3fbf7 0%,#e7f5ee 55%,#dcefe5 100%)}
+.page-home .pr-copy{position:relative;z-index:1;min-width:0}
+.page-home .pr-kicker{font:500 .64rem var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--brand);margin-bottom:8px}
+.page-home .pr-h{font-family:var(--display);font-weight:650;letter-spacing:-.05em;line-height:1.08;font-size:clamp(1.35rem,2.6vw,1.95rem);color:var(--ink);margin:0 0 14px;max-width:24ch}
+.page-home .pr-h span{color:var(--brand)}
+.page-home .pr-points{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+.page-home .pr-points li{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:99px;background:rgba(255,255,255,.85);border:1px solid #d3e8de;font-size:.8rem;font-weight:600;color:var(--brand-dark)}
+.page-home .pr-points svg{width:16px;height:16px;color:var(--brand)}
+.page-home .pr-cta{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:9px;flex-shrink:0}
+.page-home .pr-btn{display:inline-block;padding:13px 24px;border-radius:8px;background:var(--brand-dark);color:#fff;font-weight:700;font-size:.9rem;text-decoration:none;white-space:nowrap;transition:background .2s,transform .2s}
+.page-home .pr-btn:hover{background:var(--brand);transform:translateY(-2px)}
+.page-home .pr-link{font-size:.8rem;font-weight:600;color:var(--brand-dark);text-decoration:underline;text-underline-offset:3px}
+.page-home .pr-art{position:absolute;right:210px;bottom:-6px;width:210px;height:auto;color:rgba(0,107,77,.13);z-index:0;pointer-events:none}
+body.dark .page-home .pr-inner{background:linear-gradient(135deg,#14251f,#0f3327);border-color:#2a4a3e}
+body.dark .page-home .pr-points li{background:rgba(255,255,255,.06);border-color:#2a4a3e;color:var(--ink)}
+body.dark .page-home .pr-link{color:var(--ink)}
+@media(max-width:900px){.page-home .pr-art{right:-20px;opacity:.7}}
+@media(max-width:640px){
+  .page-home .promise{margin:4px auto 26px;padding:0 12px}
+  .page-home .pr-inner{flex-direction:column;align-items:center;text-align:center;gap:18px;padding:24px 18px}
+  .page-home .pr-h{margin-left:auto;margin-right:auto}
+  .page-home .pr-points{justify-content:center}
+  .page-home .pr-points li{font-size:.74rem;padding:6px 10px}
+  .page-home .pr-cta{width:100%}
+  .page-home .pr-btn{width:100%;text-align:center}
+  .page-home .pr-art{width:150px;right:-30px;bottom:-10px}
+}
