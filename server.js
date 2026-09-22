@@ -69,7 +69,7 @@ const listingView = (row, userLat, userLng) => ({
   statusChangedAt: row.status_changed_at || null,
   photos: parsePhotos(row.photos),
   photoUrls: cldEnabled() ? parsePhotos(row.photos).map(id => ({
-    thumb: photoUrl(id, "c_fill,w_480,h_320,q_auto:eco"),
+    thumb: photoUrl(id, "c_limit,w_720,h_720,q_auto:eco"), // whole photo, no crop
     full: photoUrl(id, "c_limit,w_1280,q_auto:good")
   })) : [],
   featured: !!(row.featured_until && row.featured_until > new Date().toISOString()),

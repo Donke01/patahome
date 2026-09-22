@@ -452,7 +452,7 @@
     .foot-tag{margin-left:auto;margin-right:auto;text-align:center}
   }
 </style>
-  <link rel="stylesheet" href="/refresh.css?v=20260923-3">
+  <link rel="stylesheet" href="/refresh.css?v=20260923-4">
 </head>
 <body class="page-browse">
 
@@ -1140,7 +1140,7 @@ function render(){
     const CAM='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h3l2-2h6l2 2h3v13H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
     return `<div class="card" style="animation-delay:${Math.min(i*60,420)}ms" onclick="openDetail(${x.id})">
       <div class="card-img" style="background:${c.grad}">
-        ${x.photos.length?`<img class="ph" src="${x.photos[0].thumb}" alt="${esc(x.title)}" loading="lazy">`:`<span class="wm">${ICONS[c.gal[0]]}</span>`}
+        ${x.photos.length?`<img class="ph-bg" src="${x.photos[0].thumb}" alt="" aria-hidden="true" loading="lazy"><img class="ph" src="${x.photos[0].thumb}" alt="${esc(x.title)}" loading="lazy">`:`<span class="wm">${ICONS[c.gal[0]]}</span>`}
         ${x.photos.length?`<span class="photo-count">${CAM} View all ${x.photos.length} photo${x.photos.length===1?"":"s"}</span>`:""}
         <span class="badge ${c.badge}">${c.label}</span>
         ${isNew?`<span class="new-badge">NEW</span>`:""}
@@ -1243,7 +1243,7 @@ function renderGallery(){
   const c=CAT[galItem.cat];
   const hasPhotos=galItem.photos&&galItem.photos.length;
   const slides=hasPhotos
-    ?galItem.photos.map((p,i)=>`<div class="slide ${i===galIdx?"on":""}" style="background:#0d1512"><img src="${p.full}" alt="photo ${i+1}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" loading="lazy"></div>`).join("")
+    ?galItem.photos.map((p,i)=>`<div class="slide ${i===galIdx?"on":""}" style="background:#0d1512"><img class="ph-bg" src="${p.thumb}" alt="" aria-hidden="true" loading="lazy"><img class="ph-full" src="${p.full}" alt="photo ${i+1}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain" loading="lazy"></div>`).join("")
     :c.gal.map((e,i)=>`<div class="slide ${i===galIdx?"on":""}" style="background:${c.grad}">${ICONS[e]}</div>`).join("");
   const n=hasPhotos?galItem.photos.length:c.gal.length;
   document.getElementById("gallery").innerHTML=slides+
