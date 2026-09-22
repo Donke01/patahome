@@ -846,3 +846,52 @@ body.dark .page-home .area-card .area-km{background:var(--card);color:var(--ink)
   .page-home .cat-tile .ct-s{display:none}
 }
 @media(max-width:380px){.page-home .cat-tile .ct-l{font-size:.7rem!important}}
+
+/* ===== Listing popup: two-column layout under the photo grid =====
+   Photo grid rules above are untouched; this only arranges the details. */
+#detailModal .modal.dm{max-width:940px!important;width:calc(100% - 32px);padding:22px!important;border-radius:18px!important;box-sizing:border-box}
+#detailModal .modal.dm .gallery{margin-bottom:0}
+.dm-body{display:grid;grid-template-columns:minmax(0,1fr) 300px;grid-template-areas:"main side" "main actions";column-gap:28px;align-items:start;margin-top:20px}
+.dm-main{grid-area:main;min-width:0}
+.dm-side{grid-area:side;border:1px solid var(--line);border-radius:14px;padding:16px;background:linear-gradient(160deg,#fbfefc,#f1f9f5)}
+.dm-actions{grid-area:actions;display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:10px}
+.dm-actions .btn{min-height:46px;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-weight:700}
+.dm-actions #dMapBtn svg{width:17px;height:17px}
+.dm-actions .dm-follow{grid-column:1/-1;min-height:40px!important;border:0!important;background:transparent!important;color:var(--brand)!important;font-size:.85rem;text-decoration:underline;text-underline-offset:3px}
+.dm-kicker{display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:.8125rem;color:var(--muted);margin-bottom:6px}
+.dm-cat{font:700 .64rem var(--mono,monospace);letter-spacing:.1em;text-transform:uppercase;padding:4px 9px;border-radius:99px;background:#e6f6ee;color:var(--brand-dark)}
+.dm-cat.sale{background:#fff2dc;color:#86541a}.dm-cat.shortlet{background:#fdeee0;color:#8a4a1a}
+#detailModal .dm-main h2{font-family:var(--display);font-size:clamp(1.35rem,1rem + 1.4vw,1.85rem)!important;line-height:1.15;letter-spacing:-.04em;margin:0 0 8px;padding:0}
+.dm-price{font-family:var(--display);font-weight:700;font-size:1.5rem;letter-spacing:-.03em;color:var(--brand-dark);margin-bottom:12px}
+.dm-price small{font-size:.9rem;font-weight:500;color:var(--muted);letter-spacing:0}
+.dm-facts{display:flex;flex-wrap:wrap;gap:8px;padding-bottom:16px;border-bottom:1px solid var(--line)}
+.dm-facts span{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:9px;background:#f4f7f5;font-size:.8125rem;font-weight:600;color:var(--ink)}
+.dm-facts svg{width:15px;height:15px;color:var(--brand)}
+.dm-sec{padding-top:16px}
+.dm-sec h4{margin:0 0 9px;font:600 .68rem var(--mono,monospace);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+#detailModal .dm-sec .chips{margin:0;gap:7px}
+.dm-desc{margin:0;font-size:.9375rem;line-height:1.6;color:var(--ink);white-space:pre-line}
+.dm-owner{display:flex;align-items:center;gap:12px}
+.dm-owner .avatar{width:46px!important;height:46px!important;flex-shrink:0;font-size:1.1rem!important}
+.dm-owner-txt{min-width:0}
+.dm-listed{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.dm-owner .name{font-weight:750;font-size:1rem;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dm-owner .verify{display:flex;align-items:center;gap:4px;margin-top:2px;font-size:.75rem;font-weight:600;color:var(--brand)}
+.dm-owner .verify svg{width:12px;height:12px}
+.dm-side .phone{margin-top:12px;padding:9px 11px;border-radius:9px;background:#fff;border:1px dashed #cfe3d9;font-size:.8125rem;color:var(--muted);text-align:center}
+.dm-link{display:inline-block;margin-top:10px;font-size:.8125rem;font-weight:700;color:var(--brand);text-decoration:none}
+.dm-perks{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:.75rem;font-weight:600;color:var(--brand-dark)}
+body.dark .dm-side{background:var(--card)}body.dark .dm-facts span{background:rgba(255,255,255,.06)}body.dark .dm-side .phone{background:transparent}
+@media(max-width:900px){
+  #detailModal .modal.dm{padding:16px!important}
+  .dm-body{grid-template-columns:1fr;grid-template-areas:"main" "side" "actions";margin-top:16px}
+  .dm-side{margin-top:18px}
+  /* keep the call-to-action within thumb reach while scrolling the details */
+  .dm-actions{position:sticky;bottom:-16px;z-index:5;margin:14px -16px -16px;padding:10px 16px calc(12px + env(safe-area-inset-bottom));background:var(--card,#fff);border-top:1px solid var(--line);box-shadow:0 -10px 24px rgba(7,33,25,.08)}
+  .dm-actions .dm-follow{min-height:30px!important;font-size:.8rem}
+}
+@media(max-width:640px){
+  #detailModal .modal.dm{width:100%;padding:16px!important;border-radius:18px 18px 0 0!important}
+  .dm-price{font-size:1.3rem}
+  .dm-facts span{font-size:.75rem;padding:5px 9px}
+}

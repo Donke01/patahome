@@ -452,7 +452,7 @@
     .foot-tag{margin-left:auto;margin-right:auto;text-align:center}
   }
 </style>
-  <link rel="stylesheet" href="/refresh.css?v=20260923-14">
+  <link rel="stylesheet" href="/refresh.css?v=20260923-15">
 </head>
 <body class="page-browse">
 
@@ -601,26 +601,44 @@
 
 <!-- Detail modal -->
 <div class="overlay" id="detailModal" onclick="if(event.target===this)closeModal('detailModal')">
-  <div class="modal">
-    <button class="close-x" onclick="closeModal('detailModal')">✕</button>
+  <div class="modal dm">
+    <button class="close-x" onclick="closeModal('detailModal')" aria-label="Close">✕</button>
     <div class="gallery" id="gallery"></div>
-    <h2 id="dTitle"></h2>
-    <div class="sub" id="dSub"></div>
-    <div class="chips" id="dChips"></div>
-    <div class="contact-row">
-      <div class="avatar" id="dAvatar"></div>
-      <div>
-        <div class="name" id="dOwner"></div>
-        <a id="dOwnerProfile" href="#" style="font-size:.75rem;color:var(--brand);font-weight:700;text-decoration:none">View owner profile →</a>
+    <div class="dm-body">
+      <div class="dm-main">
+        <div class="dm-kicker"><span class="dm-cat" id="dCat"></span><span id="dPlace"></span></div>
+        <h2 id="dTitle"></h2>
+        <div class="dm-price" id="dPrice"></div>
+        <div class="dm-facts" id="dFacts"></div>
+        <div class="sub" id="dSub" hidden></div>
+        <div class="dm-sec">
+          <h4>What's included</h4>
+          <div class="chips" id="dChips"></div>
+        </div>
+        <div class="dm-sec" id="dDescWrap">
+          <h4>About this home</h4>
+          <p class="dm-desc" id="dDesc"></p>
+        </div>
+      </div>
+      <aside class="dm-side">
+        <div class="dm-owner">
+          <div class="avatar" id="dAvatar"></div>
+          <div class="dm-owner-txt">
+            <div class="dm-listed">Listed by</div>
+            <div class="name" id="dOwner"></div>
+            <div class="verify" id="dVerify"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span>ID &amp; ownership verified</span></div>
+          </div>
+        </div>
         <div class="phone" id="dPhone"></div>
-        <div class="verify"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>ID &amp; ownership verified</div>
+        <a id="dOwnerProfile" class="dm-link" href="#">View owner profile →</a>
+        <div class="dm-perks"><span>✓ No agent fees</span><span>✓ No viewing fees</span></div>
+      </aside>
+      <div class="dm-actions">
+        <button class="btn btn-primary" id="dContactBtn">Contact Owner</button>
+        <button class="btn btn-ghost" id="dMapBtn" aria-label="View on map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.1-7-11a7 7 0 0 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span>Map</span></button>
+        <button class="btn btn-ghost dm-follow" id="dFollowBtn">Follow owner</button>
       </div>
     </div>
-    <div class="modal-actions">
-      <button class="btn btn-primary" id="dContactBtn">Contact Owner</button>
-      <button class="btn btn-ghost" id="dMapBtn">View on Map</button>
-    </div>
-    <button class="btn btn-ghost" id="dFollowBtn" style="width:100%;margin-top:10px">Follow owner for new listings</button>
   </div>
 </div>
 
@@ -1249,8 +1267,22 @@ function openDetail(id){
   renderGallery();
   document.getElementById("dTitle").textContent=x.title;
   const d=userLoc?dist(userLoc[0],userLoc[1],x.lat,x.lng):null;
-  document.getElementById("dSub").textContent=fmt(x.price)+c.unit+" · "+x.area+(d!==null?" · "+(d<1?Math.round(d*1000)+" m":d.toFixed(1)+" km")+" from you":"")+" · posted "+x.posted;
-  document.getElementById("dChips").innerHTML=AMENITIES[x.cat].map(a=>`<span class="chip">✓ ${a}</span>`).join("")+(x.desc?`<div style="width:100%;font-size:.85rem;margin-top:6px">${esc(x.desc)}</div>`:"");
+  const dTxt=d!==null?(d<1?Math.round(d*1000)+" m":d.toFixed(1)+" km")+" from you":"";
+  document.getElementById("dSub").textContent=fmt(x.price)+c.unit+" · "+x.area+(dTxt?" · "+dTxt:"")+" · posted "+x.posted;
+  document.getElementById("dCat").textContent=c.label;
+  document.getElementById("dCat").className="dm-cat "+c.badge;
+  document.getElementById("dPlace").textContent=x.area;
+  document.getElementById("dPrice").innerHTML=`${fmt(x.price)}${c.unit?` <small>${c.unit}</small>`:""}`;
+  const facts=[];
+  if(x.beds!==null&&x.beds!==undefined)facts.push([BED_SVG,x.beds===0?"Bedsitter":x.beds+" bedroom"+(x.beds===1?"":"s")]);
+  if(dTxt)facts.push([PIN_SVG,dTxt]);
+  facts.push([CLOCK_SVG,"Posted "+x.posted]);
+  if(x.photos&&x.photos.length)facts.push(['<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h3l2-2h6l2 2h3v13H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',x.photos.length+" photo"+(x.photos.length===1?"":"s")]);
+  document.getElementById("dFacts").innerHTML=facts.map(([ic,t])=>`<span>${ic}${esc(t)}</span>`).join("");
+  document.getElementById("dChips").innerHTML=AMENITIES[x.cat].map(a=>`<span class="chip">✓ ${a}</span>`).join("");
+  document.getElementById("dDesc").textContent=x.desc||"";
+  document.getElementById("dDescWrap").style.display=x.desc?"":"none";
+  document.getElementById("dVerify").style.display=x.verified===false?"none":"";
   document.getElementById("dOwner").textContent=x.owner;
   document.getElementById("dOwnerProfile").href="/owner.html?id="+encodeURIComponent(x.ownerId);
   document.getElementById("dPhone").textContent="Tap Contact Owner to reveal";
