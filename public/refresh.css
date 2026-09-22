@@ -193,7 +193,7 @@ body.dark footer{background:var(--footer-bg)!important;border-top-color:var(--si
 }
 
 /* Booking-style browse cards: collage preview, detail body, action rail. */
-.page-browse .card-img{height:100%;min-height:205px;background:#edf2ef}
+.page-browse .card-img{height:100%;min-height:190px;background:#edf2ef}
 .page-browse .card-photo-grid{display:grid;grid-template-columns:2fr 1fr;grid-template-rows:1fr 1fr;gap:3px;width:100%;height:100%;background:#edf2ef}
 .page-browse .card-photo-grid .ph{position:relative;inset:auto;width:100%;height:100%;min-width:0;min-height:0;object-fit:cover;transition:transform .35s}
 .page-browse .card-photo-grid .ph-1{grid-row:1 / span 2}
@@ -202,22 +202,22 @@ body.dark footer{background:var(--footer-bg)!important;border-top-color:var(--si
 .page-browse .card-body .listing-trust{margin-top:7px}
 .page-browse .card-body .card-actions{margin-top:12px}
 .page-browse #detailModal .modal{max-width:840px}
-.page-browse #detailModal .gallery{height:clamp(230px,42vw,440px);background:#edf2ef}
+.page-browse #detailModal .gallery{height:min(62vh,560px);min-height:230px;aspect-ratio:3/2;background:#edf2ef}
 .page-browse #detailModal .gallery .slide{background:#edf2ef!important}
 .page-browse #detailModal .gallery .slide img{object-fit:contain!important}
 @media(max-width:900px){
-  .page-browse .card-img{height:205px;min-height:205px}
+  .page-browse .card-img{height:auto;min-height:0;aspect-ratio:4/3}
   .page-browse .card-body .availability-note{margin-top:9px}
 }
 @media(max-width:640px){
   .page-browse #detailModal .modal{padding:15px}
-  .page-browse #detailModal .gallery{height:clamp(235px,62vw,360px)}
+  .page-browse #detailModal .gallery{height:min(62dvh,360px);min-height:235px;aspect-ratio:3/2}
 }
 
 /* Booking-style browse results: image, details, then an action/price rail. */
 .page-browse .cards{display:flex;flex-direction:column;gap:12px}
-.page-browse .card{display:grid;grid-template-columns:250px minmax(0,1fr);min-height:205px;border-radius:10px 20px 10px 20px}
-.page-browse .card-img{height:100%;min-height:205px}
+.page-browse .card{display:grid;grid-template-columns:280px minmax(0,1fr);min-height:190px;border-radius:10px 20px 10px 20px}
+.page-browse .card-img{height:100%;min-height:190px}
 .page-browse .card-body{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto 1fr;column-gap:18px;align-items:start;padding:20px 22px}
 .page-browse .card-body .title{grid-column:1;grid-row:1;font-size:1.05rem;margin:0 0 5px}
 .page-browse .card-body .meta{grid-column:1;grid-row:2;margin-top:0}
@@ -227,7 +227,7 @@ body.dark footer{background:var(--footer-bg)!important;border-top-color:var(--si
 .page-browse .card-body .card-actions .btn{width:100%;padding:8px 12px}
 @media(max-width:900px){
   .page-browse .card{display:block;min-height:0}
-  .page-browse .card-img{height:178px;min-height:178px}
+  .page-browse .card-img{height:auto;min-height:0;aspect-ratio:4/3}
   .page-browse .card-body{display:block;padding:16px 17px 17px}
   .page-browse .card-body .price{text-align:left;margin-bottom:2px}
   .page-browse .card-body .listing-trust{margin-top:10px}
