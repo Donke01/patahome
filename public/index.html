@@ -556,7 +556,7 @@
     .foot-tag{margin-left:auto;margin-right:auto;text-align:center}
   }
 </style>
-  <link rel="stylesheet" href="/refresh.css?v=20260923-8">
+  <link rel="stylesheet" href="/refresh.css?v=20260923-9">
 </head>
 <body class="page-home">
 
@@ -854,7 +854,7 @@ const AMENITIES = {
 };
 
 /* ================= STATE ================= */
-let LISTINGS=[], AREAS={}, userLoc=null, userLocName=null, activeCat="all";
+let LISTINGS=[], AREAS={}, userLoc=null, userLocName=null, activeCat="all", STATS=null, suggSeq=0;
 let map, markers=[], userMarker=null, favs=new Set(JSON.parse(localStorage.getItem("ph_favs")||"[]")), favView=false;
 let contactId=null;
 
@@ -892,7 +892,10 @@ function timeAgo(iso){
 
 /* ================= DATA LOADING ================= */
 async function loadData(){
-  const [areas,res]=await Promise.all([api("/api/areas"),api("/api/listings?perPage=100")]);
+  // Only the newest few are needed here (latest-listings strip); totals and
+  // per-area counts come from /api/stats/listings so they stay right past 100.
+  const [areas,res,stats]=await Promise.all([api("/api/areas"),api("/api/listings?perPage=20&sort=newest"),api("/api/stats/listings").catch(()=>null)]);
+  STATS=stats;
   for(const a of areas)AREAS[a.name+", "+a.county]=[a.lat,a.lng];
   LISTINGS=res.listings.filter(x=>CAT[x.category]).map(x=>({
     id:x.id,cat:x.category,title:x.title,desc:x.description,area:x.area+", "+x.county,
@@ -921,9 +924,9 @@ function countUp(el,target,ms){
   })(t0);
 }
 function animateStats(){
-  countUp(document.getElementById("statListings"),LISTINGS.length);
+  countUp(document.getElementById("statListings"),STATS?STATS.total:LISTINGS.length);
   countUp(document.getElementById("statAreas"),Object.keys(AREAS).length);
-  countUp(document.getElementById("statOwners"),new Set(LISTINGS.map(x=>x.owner)).size);
+  countUp(document.getElementById("statOwners"),STATS?STATS.owners:new Set(LISTINGS.map(x=>x.owner)).size);
 }
 const reduceMotion=typeof matchMedia==="function"&&matchMedia("(prefers-reduced-motion: reduce)").matches;
 const HEADS=[
@@ -1027,31 +1030,31 @@ function typewriter(){
 let sugT=null;
 function onSearchInput(){
   clearTimeout(sugT);
-  sugT=setTimeout(renderSugg,120);
+  sugT=setTimeout(renderSugg,220);
 }
-function renderSugg(){
+async function renderSugg(){
   const box=document.getElementById("sugg");
   const q=document.getElementById("searchInput").value.trim();
-  if(q.length<2||!LISTINGS.length){closeSugg();return}
-  const {tokens,priceCap}=parseQuery(q);
-  const matches=LISTINGS
-    .map(x=>({x,s:tokens.length?searchScore(x,tokens):1}))
-    .filter(m=>m.s>0&&(priceCap===null||m.x.price<=priceCap)&&(activeCat==="all"||m.x.cat===activeCat))
-    .sort((a,b)=>b.s-a.s).slice(0,5);
+  if(q.length<2){closeSugg();return}
+  const seq=++suggSeq;
+  let r;
+  try{r=await api("/api/search?"+new URLSearchParams({q,cat:activeCat,perPage:5}))}catch(e){return}
+  if(seq!==suggSeq||document.getElementById("searchInput").value.trim()!==q)return;
+  const matches=r.listings.filter(x=>CAT[x.category]).map(x=>({id:x.id,cat:x.category,title:x.title,area:x.area+", "+x.county,price:x.price,photos:x.photoUrls||[]}));
   if(!matches.length){
     box.innerHTML=`<div class="sg-none">No matches yet — try other keywords, e.g. “bedsitter Kasarani” or “2br under 20k”</div>`;
     box.classList.add("show");return;
   }
-  box.innerHTML=matches.map(({x})=>{
+  box.innerHTML=matches.map(x=>{
     const c=CAT[x.cat];
     const th=x.photos.length?`<img src="${x.photos[0].thumb}" alt="">`:ICONS[c.gal[0]];
     return `<div class="sg" onmousedown="event.preventDefault()" onclick="pickSugg(${x.id})">
       <span class="sg-th" style="background:${c.grad}">${th}</span>
       <span class="sg-main"><span class="sg-t">${esc(x.title)}</span><span class="sg-s">${esc(x.area)} · ${c.label}</span></span>
-      <span class="sg-p">${fmt(x.price)}${c.unit?"<small>/mo</small>":""}</span>
+      <span class="sg-p">${fmt(x.price)}${c.unit?`<small>${c.unit}</small>`:""}</span>
     </div>`;
   }).join("")+
-  `<div class="sg all" onmousedown="event.preventDefault()" onclick="closeSugg();doSearch()">See all results →</div>`;
+  `<div class="sg all" onmousedown="event.preventDefault()" onclick="closeSugg();doSearch()">See all ${r.total} result${r.total===1?"":"s"} →</div>`;
   box.classList.add("show");
 }
 function pickSugg(id){closeSugg();location.href="/browse.html?open="+id}
@@ -1175,7 +1178,7 @@ function renderAreaDiscovery(){
   if(!rail)return;
   const rows=Object.keys(AREAS).map(area=>({
     area,
-    count:LISTINGS.filter(x=>x.area===area).length
+    count:STATS?((STATS.byArea.find(b=>b.area+", "+b.county===area)||{}).n||0):LISTINGS.filter(x=>x.area===area).length
   })).sort((a,b)=>b.count-a.count||a.area.localeCompare(b.area));
   if(!rows.length){rail.parentElement.style.display="none";return}
   rail.innerHTML=rows.slice(0,8).map(({area,count},i)=>{

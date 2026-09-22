@@ -507,6 +507,115 @@ router.add("GET", "/api/listings", (req, res) => {
   send(res, 200, { total: out.length, page, perPage, listings: out.slice((page - 1) * perPage, page * perPage) });
 });
 
+/* ================= search (browse page) =================
+   The browse page used to download up to 100 listings and filter them in the
+   browser, so listing #101+ never appeared. Filtering, keyword ranking, sorting
+   and paging now happen here; the page asks for 20 at a time.
+   Returns: { total, page, perPage, hasMore, counts, listings, pins }
+   - counts: active listings per category (for the tabs), ignores other filters
+   - pins:   lightweight {id,lat,lng,price,category,title,area} for EVERY match
+             (page 1 only) so the map can show all results, not just the page. */
+const SEARCH_CAT_LABEL = { rent: "for rent", sale: "for sale", shortlet: "airbnb short stay" };
+const SEARCH_STOP = new Set(["in","near","at","the","a","an","for","and","with","to","of","under","below","max","na","ya","kwa","karibu","house","houses","home","homes","nyumba","property","kenya"]);
+const SEARCH_EXPAND = {
+  keja:["for rent"],kejas:["for rent"],rent:["for rent"],rental:["for rent"],rentals:["for rent"],kukodi:["for rent"],
+  sale:["for sale"],buy:["for sale"],buying:["for sale"],sell:["for sale"],selling:["for sale"],kununua:["for sale"],
+  bedsitter:["bedsitter","studio"],bedsitters:["bedsitter","studio"],studio:["bedsitter","studio"],
+  "1br":["1 bedroom"],one:["1 bedroom"],"2br":["2 bedroom"],two:["2 bedroom"],"3br":["3 bedroom"],three:["3 bedroom"],
+  flat:["apartment"],apt:["apartment"],airbnb:["airbnb"],bnb:["airbnb"]
+};
+function parseSearch(q) {
+  const tokens = [], caps = [];
+  for (const raw of String(q || "").toLowerCase().split(/[\s,]+/).filter(Boolean).slice(0, 12)) {
+    const k = raw.match(/^(\d+(?:\.\d+)?)k$/);           // "10k"
+    if (k) { caps.push(+k[1] * 1000); continue; }
+    if (/^\d{4,}$/.test(raw)) { caps.push(+raw); continue; } // "15000"
+    if (SEARCH_STOP.has(raw)) continue;
+    tokens.push(raw.slice(0, 40));
+  }
+  return { tokens, priceCap: caps.length ? Math.min(...caps) : null };
+}
+// every keyword must match somewhere; title > area > bedrooms > description > category
+function searchScore(r, tokens) {
+  const title = (r.title || "").toLowerCase(), area = `${r.area_name}, ${r.county}`.toLowerCase();
+  const desc = (r.description || "").toLowerCase(), cat = SEARCH_CAT_LABEL[r.category] || "";
+  const b = r.bedrooms;
+  const beds = b === 0 ? "bedsitter studio 0 bedroom" : b != null ? `${b} bedroom ${b} br ${b}br` : "";
+  let score = 0;
+  for (const t of tokens) {
+    let s = 0;
+    for (const f of (SEARCH_EXPAND[t] || [t])) {
+      if (title.includes(f)) s = Math.max(s, 3);
+      if (area.includes(f)) s = Math.max(s, 2.5);
+      if (beds.includes(f)) s = Math.max(s, 2.2);
+      if (desc.includes(f)) s = Math.max(s, 1.5);
+      if (cat.includes(f)) s = Math.max(s, 1);
+    }
+    if (!s) return 0;
+    score += s;
+  }
+  return score;
+}
+router.add("GET", "/api/search", (req, res) => {
+  const q = req.query;
+  const where = ["l.status = 'active'"], params = [];
+  if (q.cat && q.cat !== "all") { where.push("l.category = ?"); params.push(String(q.cat)); }
+  if (q.price) {
+    const [lo, hi] = String(q.price).split("-").map(Number);
+    if (Number.isFinite(lo)) { where.push("l.price >= ?"); params.push(lo); }
+    if (Number.isFinite(hi)) { where.push("l.price <= ?"); params.push(hi); }
+  }
+  if (q.beds !== undefined && q.beds !== "") {
+    if (String(q.beds) === "3") where.push("l.bedrooms >= 3");
+    else { where.push("l.bedrooms = ?"); params.push(+q.beds); }
+  }
+  if (q.ids !== undefined) { // favourites view
+    const ids = String(q.ids).split(",").map(Number).filter(n => Number.isInteger(n) && n > 0).slice(0, 200);
+    where.push(ids.length ? `l.id IN (${ids.map(() => "?").join(",")})` : "0");
+    params.push(...ids);
+  }
+  const { tokens, priceCap } = parseSearch(q.q);
+  if (priceCap !== null) { where.push("l.price <= ?"); params.push(priceCap); }
+
+  let rows = db.prepare(`${LISTING_SQL} WHERE ${where.join(" AND ")}`).all(...params);
+  const scores = new Map();
+  if (tokens.length) rows = rows.filter(r => { const s = searchScore(r, tokens); if (s) scores.set(r.id, s); return s > 0; });
+
+  const lat = q.lat ? +q.lat : null, lng = q.lng ? +q.lng : null;
+  const hasLoc = Number.isFinite(lat) && Number.isFinite(lng) && lat !== null && lng !== null;
+  const d = new Map(hasLoc ? rows.map(r => [r.id, km(lat, lng, r.lat, r.lng)]) : []);
+  const sort = q.sort || "newest";
+  const base = {
+    distance: (a, b) => hasLoc ? d.get(a.id) - d.get(b.id) : b.id - a.id,
+    "price-asc": (a, b) => a.price - b.price,
+    "price-desc": (a, b) => b.price - a.price,
+    newest: (a, b) => b.id - a.id
+  }[sort] || ((a, b) => b.id - a.id);
+  const now = new Date().toISOString();
+  const feat = r => (r.featured_until && r.featured_until > now) ? 1 : 0;
+  rows.sort((a, b) => (tokens.length ? (scores.get(b.id) - scores.get(a.id)) : 0) || (feat(b) - feat(a)) || base(a, b));
+
+  const perPage = Math.min(Math.max(+q.perPage || 20, 1), 50), page = Math.max(+q.page || 1, 1);
+  const slice = rows.slice((page - 1) * perPage, page * perPage);
+  const out = { total: rows.length, page, perPage, hasMore: page * perPage < rows.length,
+    listings: slice.map(r => listingView(r, hasLoc ? lat : null, hasLoc ? lng : null)) };
+  if (page === 1) {
+    out.pins = rows.map(r => ({ id: r.id, lat: r.lat, lng: r.lng, price: r.price, category: r.category, title: r.title, area: `${r.area_name}, ${r.county}` }));
+    const c = { all: 0 };
+    for (const x of db.prepare("SELECT category, COUNT(*) n FROM listings WHERE status='active' GROUP BY category").all()) { c[x.category] = x.n; c.all += x.n; }
+    out.counts = c;
+  }
+  send(res, 200, out);
+});
+
+/* Site-wide numbers for the homepage (totals + per-area counts), independent of paging. */
+router.add("GET", "/api/stats/listings", (req, res) => {
+  const t = db.prepare("SELECT COUNT(*) n, COUNT(DISTINCT owner_id) owners FROM listings WHERE status='active'").get();
+  const byArea = db.prepare(`SELECT a.name area, a.county, COUNT(*) n FROM listings l JOIN areas a ON a.id=l.area_id
+    WHERE l.status='active' GROUP BY a.id ORDER BY n DESC`).all();
+  send(res, 200, { total: t.n, owners: t.owners, byArea });
+});
+
 router.add("GET", "/api/listings/:id", (req, res, p) => {
   const row = db.prepare(`${LISTING_SQL} WHERE l.id=?`).get(p.id);
   if (!row) return send(res, 404, { error: "Listing not found" });

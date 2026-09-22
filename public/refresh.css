@@ -745,3 +745,11 @@ header .brand-tagline{font-size:.56rem!important}
   .page-home .pr-points li{font-size:.75rem!important}
   header .brand-tagline{font-size:.5rem!important}
 }
+
+/* Browse: paged results */
+.page-browse .cards.loading{opacity:.55;transition:opacity .15s;pointer-events:none}
+.page-browse .more-wrap{display:flex;justify-content:center;padding:10px 0 4px;grid-column:1/-1}
+.page-browse .more-btn{min-width:240px;padding:12px 22px;font-weight:700}
+.page-browse .more-btn small{font-weight:500;opacity:.7;margin-left:4px}
+.page-browse .more-spin{display:inline-block;width:14px;height:14px;margin-right:8px;vertical-align:-2px;border:2px solid rgba(0,107,77,.25);border-top-color:var(--brand);border-radius:50%;animation:moreSpin .7s linear infinite}
+@keyframes moreSpin{to{transform:rotate(360deg)}}
