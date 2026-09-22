@@ -624,8 +624,9 @@ router.add("POST", "/api/listings/:id/contact", (req, res, p) => {
   if (!row) return send(res, 404, { error: "Listing not found" });
   const u = getUser(req);
   db.prepare("INSERT INTO leads (listing_id,user_id) VALUES (?,?)").run(row.id, u ? u.id : null);
+  const requester = u ? `${u.name || "A signed-in user"}${realPhone(u.phone) ? ` (${realPhone(u.phone)})` : ""}` : "A visitor";
   db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
-    .run(row.owner_id, "lead", "New lead", `Someone requested your contact for "${row.title}".`);
+    .run(row.owner_id, "lead", "New contact request", `${requester} requested your contact for "${row.title}".`);
   const owner = db.prepare("SELECT name, phone, verified FROM users WHERE id=?").get(row.owner_id);
   send(res, 200, { ownerName: owner.name, ownerPhone: owner.phone, ownerVerified: !!owner.verified });
 });
