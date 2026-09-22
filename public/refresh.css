@@ -592,3 +592,5 @@ body.dark .page-home .slider .hero-track .sl-txt h1{color:var(--ink)}
 }
 @keyframes pataHeroLoop{from{transform:translateX(0)}to{transform:translateX(var(--loop-shift,-33.3333%))}}
 @media(prefers-reduced-motion:no-preference){.page-home .slider .hero-track{animation-name:pataHeroLoop}}
+/* Loop clones lose #heroSub, so hide the first slide's subtitle by position too. */
+.page-home .slider .hero-track .sl-1 .sl-txt > p{display:none}
