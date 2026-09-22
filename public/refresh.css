@@ -246,6 +246,17 @@ body.dark footer{background:var(--footer-bg)!important;border-top-color:var(--si
   .page-browse .card-body .card-actions .btn{flex:1 1 130px;min-width:0}
 }
 
+/* Keep listing detail/contact dialogs inside the phone viewport. */
+.page-browse .modal{box-sizing:border-box}
+.page-browse .overlay{overscroll-behavior:contain}
+@media(max-width:640px){
+  .page-browse .overlay{padding:10px;align-items:center;overflow-y:auto}
+  .page-browse .overlay .modal{width:100%;max-width:480px;max-height:calc(100dvh - 20px);padding:15px;border-radius:14px}
+  .page-browse #detailModal .gallery{height:min(38dvh,260px);min-height:180px}
+  .page-browse .modal-actions{flex-direction:column;gap:8px;margin-top:16px}
+  .page-browse .modal-actions .btn{min-height:44px}
+}
+
 /* Half-height hero banner. */
 .page-home .slider{min-height:58px;border-radius:8px 14px 8px 14px}
 .page-home .sl-in{min-height:58px;padding:5px 14px 15px}
