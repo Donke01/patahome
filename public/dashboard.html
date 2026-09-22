@@ -160,6 +160,21 @@
   .photo-th .rm{position:absolute;top:4px;right:4px;background:rgba(10,20,15,.65);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:.7rem;line-height:1;display:flex;align-items:center;justify-content:center}
   .photo-th.uploading::after{content:"";position:absolute;inset:0;background:rgba(255,255,255,.55)}
   .photo-th .spin{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:700;color:var(--green-dark);z-index:2}
+  /* Upload progress: live preview + ring with % per photo, and an overall bar. */
+  .photo-th.uploading img{filter:blur(1px) saturate(.6)}
+  .photo-th .ring{--p:0;position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;z-index:2;
+    background:conic-gradient(var(--green,#0B5D3B) calc(var(--p)*1%),rgba(11,93,59,.15) 0);display:grid;place-items:center;transition:--p .2s}
+  .photo-th .ring::before{content:"";position:absolute;inset:5px;border-radius:50%;background:#fff}
+  .photo-th .ring b{position:relative;font-size:.7rem;font-weight:800;color:var(--green-dark,#073d2e);font-variant-numeric:tabular-nums}
+  .photo-th.done .ring{background:var(--green,#0B5D3B)}.photo-th.done .ring::before{display:none}.photo-th.done .ring b{color:#fff;font-size:1rem}
+  .photo-th .up-cancel{position:absolute;top:4px;right:4px;z-index:3;background:rgba(10,20,15,.65);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:.7rem;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .up-prog{display:none;align-items:center;gap:10px;margin:10px 0 2px;font-size:.78rem;font-weight:700;color:var(--green-dark,#073d2e)}
+  .up-prog.on{display:flex}
+  .up-bar{flex:1;height:8px;border-radius:99px;background:rgba(11,93,59,.12);overflow:hidden}
+  .up-bar i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#0B5D3B,#19a06a);transition:width .25s ease}
+  .up-prog span{min-width:34px;text-align:right;font-variant-numeric:tabular-nums}
+  #emSave .btn-spin{display:inline-block;width:14px;height:14px;margin-right:7px;vertical-align:-2px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:emSpin .7s linear infinite}
+  @keyframes emSpin{to{transform:rotate(360deg)}}
   .photo-add{aspect-ratio:4/3;border:1.5px dashed var(--line);border-radius:10px;background:transparent;color:var(--muted);font-size:.72rem;font-weight:700;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;transition:.15s}
   .photo-add:hover{border-color:var(--green);color:var(--green)}
   .photo-add span{font-size:1.15rem;line-height:1}
@@ -509,6 +524,7 @@
     <div id="photoWrap" style="display:none">
       <label>Photos (up to 5)</label>
       <div class="photo-grid" id="photoGrid"></div>
+      <div class="up-prog" id="upProg" aria-live="polite"><div class="up-bar"><i id="upBar"></i></div><span id="upPct">0%</span></div>
       <div class="photo-note">JPG, PNG or WebP, max 8&nbsp;MB each. Photos are compressed automatically — listings with photos get far more leads.</div>
       <input type="file" id="photoFile" accept="image/jpeg,image/png,image/webp" multiple style="display:none" onchange="uploadPhotos(this.files);this.value=''">
     </div>
@@ -1010,17 +1026,71 @@ async function initPhotoUI(){
 function thumbUrl(id){
   return signCfg&&signCfg.cloudName?`https://res.cloudinary.com/${signCfg.cloudName}/image/upload/c_fill,w_200,h_150,q_auto:eco/${id}`:"";
 }
+let uploads=[]; // in-flight photos: {key,preview,loaded,total,done,xhr}
 function renderPhotos(){
   const max=(signCfg&&signCfg.maxPhotos)||5;
+  uploadingCount=uploads.length;
   $("photoGrid").innerHTML=
     photoIds.map((id,i)=>`<div class="photo-th"><img src="${thumbUrl(id)}" alt="photo ${i+1}" loading="lazy"><button type="button" class="rm" onclick="removePhoto(${i})">✕</button></div>`).join("")+
-    (uploadingCount?Array.from({length:uploadingCount},()=>`<div class="photo-th uploading"><div class="spin">Uploading…</div></div>`).join(""):"")+
-    (photoIds.length+uploadingCount<max?`<button type="button" class="photo-add" onclick="$('photoFile').click()"><span>+</span>Add photo</button>`:"");
+    uploads.map(u=>`<div class="photo-th uploading${u.done?" done":""}" id="up-${u.key}"><img src="${u.preview}" alt=""><div class="ring" style="--p:${pctOf(u)}"><b>${u.done?"✓":pctOf(u)+"%"}</b></div>${u.done?"":`<button type="button" class="up-cancel" title="Cancel upload" onclick="cancelUpload('${u.key}')">✕</button>`}</div>`).join("")+
+    (photoIds.length+uploads.length<max?`<button type="button" class="photo-add" onclick="$('photoFile').click()"><span>+</span>Add photo</button>`:"");
+  updateOverall();
+}
+const pctOf=u=>u.total?Math.min(100,Math.round(u.loaded/u.total*100)):0;
+function updateOverall(){
+  const box=$("upProg");if(!box)return;
+  if(!uploads.length){box.classList.remove("on");setSaveBusy();return}
+  const loaded=uploads.reduce((a,u)=>a+u.loaded,0),total=uploads.reduce((a,u)=>a+u.total,0)||1;
+  const pct=Math.min(100,Math.round(loaded/total*100));
+  box.classList.add("on");
+  $("upBar").style.width=pct+"%";
+  $("upPct").textContent=pct+"%";
+  setSaveBusy(`Uploading photos… ${pct}%`);
+}
+// Update just the ring for one photo (no full re-render on every progress tick)
+function paintUpload(u){
+  const el=document.getElementById("up-"+u.key);
+  if(el){const r=el.querySelector(".ring");r.style.setProperty("--p",pctOf(u));r.querySelector("b").textContent=pctOf(u)+"%"}
+  updateOverall();
+}
+let saveLabel=null;
+function setSaveBusy(text){
+  const b=$("emSave");if(!b)return;
+  if(saveLabel===null)saveLabel=b.textContent;
+  if(text){b.disabled=true;b.innerHTML=`<span class="btn-spin"></span>${text}`}
+  else{b.disabled=false;b.textContent=saveLabel;saveLabel=null}
+}
+function cancelUpload(key){
+  const u=uploads.find(x=>x.key===key);if(!u)return;
+  u.cancelled=true;try{u.xhr&&u.xhr.abort()}catch{}
 }
 function removePhoto(i){photoIds.splice(i,1);renderPhotos()}
+// XHR instead of fetch: fetch can't report upload progress.
+function sendToCloudinary(cfg,f,u){
+  return new Promise((resolve,reject)=>{
+    const fd=new FormData();
+    fd.append("file",f);
+    fd.append("api_key",cfg.apiKey);
+    fd.append("timestamp",cfg.timestamp);
+    fd.append("signature",cfg.signature);
+    fd.append("folder",cfg.folder);
+    fd.append("transformation",cfg.transformation);
+    const x=new XMLHttpRequest();u.xhr=x;
+    x.open("POST",`https://api.cloudinary.com/v1_1/${cfg.cloudName}/image/upload`);
+    x.upload.onprogress=e=>{if(e.lengthComputable){u.loaded=e.loaded;u.total=e.total;paintUpload(u)}};
+    x.onload=()=>{
+      let d={};try{d=JSON.parse(x.responseText)}catch{}
+      if(x.status>=200&&x.status<300&&d.public_id)resolve(d);
+      else reject(new Error((d.error&&d.error.message)||"Upload failed"));
+    };
+    x.onerror=()=>reject(new Error("Network error — check your connection"));
+    x.onabort=()=>reject(new Error("cancelled"));
+    x.send(fd);
+  });
+}
 async function uploadPhotos(files){
   const max=(signCfg&&signCfg.maxPhotos)||5, maxBytes=(signCfg&&signCfg.maxBytes)||8*1024*1024;
-  const room=max-photoIds.length-uploadingCount;
+  const room=max-photoIds.length-uploads.length;
   const picked=[...files].slice(0,room);
   if(files.length>room)toast(`Maximum ${max} photos per listing`);
   const ok=picked.filter(f=>{
@@ -1031,22 +1101,20 @@ async function uploadPhotos(files){
   if(!ok.length)return;
   let cfg;
   try{cfg=await getSignCfg()}catch(e){toast(e.message);return}
-  uploadingCount+=ok.length;renderPhotos();
-  await Promise.all(ok.map(async f=>{
+  const batch=ok.map(f=>({f,u:{key:Math.random().toString(36).slice(2,9),preview:URL.createObjectURL(f),loaded:0,total:f.size,done:false}}));
+  uploads.push(...batch.map(b=>b.u));renderPhotos();
+  await Promise.all(batch.map(async({f,u})=>{
     try{
-      const fd=new FormData();
-      fd.append("file",f);
-      fd.append("api_key",cfg.apiKey);
-      fd.append("timestamp",cfg.timestamp);
-      fd.append("signature",cfg.signature);
-      fd.append("folder",cfg.folder);
-      fd.append("transformation",cfg.transformation);
-      const r=await fetch(`https://api.cloudinary.com/v1_1/${cfg.cloudName}/image/upload`,{method:"POST",body:fd});
-      const d=await r.json();
-      if(!r.ok)throw new Error((d.error&&d.error.message)||"Upload failed");
+      const d=await sendToCloudinary(cfg,f,u);
+      u.loaded=u.total;u.done=true;renderPhotos();
+      await new Promise(r=>setTimeout(r,450)); // let the ✓ show briefly
       photoIds.push(d.public_id);
-    }catch(e){toast("Upload failed: "+e.message)}
-    finally{uploadingCount--;renderPhotos()}
+    }catch(e){if(!u.cancelled)toast("Upload failed: "+e.message)}
+    finally{
+      uploads=uploads.filter(x=>x!==u);
+      URL.revokeObjectURL(u.preview);
+      renderPhotos();
+    }
   }));
 }
 
@@ -1057,7 +1125,7 @@ async function preparePhotoSection(){
   if(on)renderPhotos();
 }
 function openAdd(){
-  editId=null;photoIds=[];uploadingCount=0;
+  editId=null;photoIds=[];uploads.forEach(u=>{u.cancelled=true;try{u.xhr&&u.xhr.abort()}catch{}});uploads=[];uploadingCount=0;saveLabel=null;$("emSave").disabled=false;
   $("emTitle").textContent="New Listing";$("emSave").textContent="Publish";
   $("emCatWrap").style.display="block";$("emStatusWrap").style.display="none";
   $("eTitle").value="";$("eDesc").value="";$("ePrice").value="";$("eBeds").value="";$("emErr").textContent="";
@@ -1066,7 +1134,7 @@ function openAdd(){
 }
 function openEdit(id){
   const x=myListings.find(y=>y.id===id);
-  editId=id;photoIds=[...(x.photos||[])];uploadingCount=0;
+  editId=id;photoIds=[...(x.photos||[])];uploads.forEach(u=>{u.cancelled=true;try{u.xhr&&u.xhr.abort()}catch{}});uploads=[];uploadingCount=0;saveLabel=null;$("emSave").disabled=false;
   $("emTitle").textContent="Edit Listing";$("emSave").textContent="Save Changes";
   $("emCatWrap").style.display="none";$("emStatusWrap").style.display="block";
   $("eTitle").value=x.title;$("eDesc").value=x.description||"";$("ePrice").value=x.price;
@@ -1081,8 +1149,9 @@ function openEdit(id){
 }
 async function saveListing(){
   $("emErr").textContent="";
-  if(uploadingCount){$("emErr").textContent="Wait for photos to finish uploading…";return}
+  if(uploads.length){$("emErr").textContent="Wait for photos to finish uploading…";return}
   const photos=signCfg?{photos:photoIds}:{};
+  setSaveBusy(editId==null?"Publishing…":"Saving…");
   try{
     if(editId==null){
       await api("/api/listings",{method:"POST",body:JSON.stringify({
@@ -1098,8 +1167,9 @@ async function saveListing(){
       })});
       toast("Listing updated");
     }
+    setSaveBusy();
     hide("editModal");await refresh();
-  }catch(e){$("emErr").textContent=e.message}
+  }catch(e){setSaveBusy();$("emErr").textContent=e.message}
 }
 async function removeListing(id){
   if(!confirm("Remove this listing? It will disappear from the site."))return;
