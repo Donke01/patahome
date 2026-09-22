@@ -556,7 +556,7 @@
     .foot-tag{margin-left:auto;margin-right:auto;text-align:center}
   }
 </style>
-  <link rel="stylesheet" href="/refresh.css?v=20260922-15">
+  <link rel="stylesheet" href="/refresh.css?v=20260923-1">
 </head>
 <body class="page-home">
 
@@ -961,7 +961,10 @@ function lockHeadHeight(){
   const h=document.getElementById("heroHead");
   const probe=h.cloneNode();
   probe.classList.remove("fade");probe.removeAttribute("id");
-  probe.style.cssText="position:absolute;visibility:hidden;width:"+h.offsetWidth+"px;animation:none";
+  // The probe loses #heroHead styling, so copy the real font or it measures
+  // with the default (much larger) h1 size and over-reserves height.
+  const cs=getComputedStyle(h);
+  probe.style.cssText="position:absolute;visibility:hidden;width:"+h.offsetWidth+"px;animation:none;margin:0;font:"+cs.font+";letter-spacing:"+cs.letterSpacing;
   h.parentElement.appendChild(probe);
   let max=0;
   for(const x of HEADS){probe.innerHTML=x.pre+x.w+x.post;max=Math.max(max,probe.offsetHeight)}
@@ -1075,7 +1078,8 @@ function sizeSlider(){
     max=Math.max(max,c.offsetHeight);
     c.remove();
   });
-  if(max)sl.style.minHeight=(max+36)+"px";
+  // Height now comes from CSS (tallest slide in the track); nothing to pin.
+  sl.style.minHeight="";
 }
 (function initSlider(){
   const el=document.getElementById("heroSlider");
@@ -1086,6 +1090,7 @@ function sizeSlider(){
       const c=s.cloneNode(true);
       c.classList.remove("on","out");
       c.querySelectorAll("[id]").forEach(n=>n.removeAttribute("id"));
+      c.querySelectorAll("[style]").forEach(n=>n.removeAttribute("style"));
       track.appendChild(c);
     });
     track.dataset.looped="1";

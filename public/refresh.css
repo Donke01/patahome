@@ -557,3 +557,25 @@ body.dark .page-dashboard .overview-card{background:var(--card)}
   .page-dashboard .overview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .page-dashboard .overview-card{padding:11px 10px}
 }
+
+/* Hero overlap fix (kept last so it wins the cascade).
+   Earlier passes pinned the slider to a fixed height (104–160px) while the
+   slides' text could be taller, so headlines spilled under the search bar,
+   and the search bar was pulled up over the slider with a negative margin.
+   Let the slider size to its tallest slide and give the search bar its own row. */
+.page-home .slider{height:auto!important;min-height:0!important}
+.page-home .slider .hero-track{height:auto;align-items:stretch}
+.page-home .slider .hero-track .slide-h{height:auto;align-items:stretch}
+.page-home .slider .hero-track .sl-in{height:auto;min-height:150px;padding:22px 28px;display:flex;align-items:center;justify-content:center;overflow:visible}
+.page-home .slider .hero-track .sl-txt{overflow:visible}
+/* Looping clones lose the #heroHead id, so style the h1 by position too. */
+.page-home .slider .hero-track .sl-txt h1{font-family:var(--display);font-weight:650;letter-spacing:-.065em;font-size:clamp(1.15rem,2.3vw,1.45rem);margin:0 auto;color:var(--ink)}
+.page-home .slider .hero-track .sl-txt h1:not(#heroHead){min-height:0!important}
+.page-home .slider .hero-track .sl-txt h1,.page-home .slider .hero-track .sl-h2{line-height:1.12!important}
+.page-home .search-wrap{margin-top:14px}
+body.dark .page-home .slider .hero-track .sl-txt h1{color:var(--ink)}
+@media(max-width:760px){
+  .page-home .slider .hero-track .sl-in{min-height:124px;padding:16px 12px}
+  .page-home .slider .hero-track .sl-txt h1{font-size:clamp(1.22rem,6.4vw,1.48rem)}
+  .page-home .search-wrap{margin-top:10px}
+}
