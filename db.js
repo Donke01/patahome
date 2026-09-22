@@ -154,6 +154,9 @@ CREATE TABLE IF NOT EXISTS followers (
   owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   follower_name TEXT NOT NULL,
   follower_phone TEXT NOT NULL,
+  follower_email TEXT,
+  follower_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  verified INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(owner_id, follower_phone)
 );
@@ -186,7 +189,22 @@ CREATE TABLE IF NOT EXISTS verify_codes (
 );
 CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, read);
 CREATE INDEX IF NOT EXISTS idx_followers_owner ON followers(owner_id);
+CREATE INDEX IF NOT EXISTS idx_followers_phone ON followers(follower_phone);
+CREATE TABLE IF NOT EXISTS follower_codes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  challenge TEXT NOT NULL UNIQUE,
+  owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  follower_name TEXT NOT NULL,
+  follower_phone TEXT NOT NULL,
+  code TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 CREATE INDEX IF NOT EXISTS idx_codes_user ON verify_codes(user_id, kind);
 `);
+try { db.exec("ALTER TABLE followers ADD COLUMN follower_email TEXT"); } catch (e) { /* exists */ }
+try { db.exec("ALTER TABLE followers ADD COLUMN follower_user_id INTEGER"); } catch (e) { /* exists */ }
+try { db.exec("ALTER TABLE followers ADD COLUMN verified INTEGER NOT NULL DEFAULT 0"); } catch (e) { /* exists */ }
 
 module.exports = db;

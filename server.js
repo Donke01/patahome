@@ -540,6 +540,7 @@ router.add("POST", "/api/listings", (req, res) => {
          bedrooms == null || bedrooms === "" ? null : +bedrooms, lat, lng,
          JSON.stringify(photos || []));
   const row = db.prepare(`${LISTING_SQL} WHERE l.id=?`).get(info.lastInsertRowid);
+  notifyFollowers(u.id, "New listing from an owner you follow", `${row.title} is now live in ${row.area_name}.`).catch(e=>console.error("follower notification failed:",e.message));
   send(res, 201, listingView(row));
 });
 
@@ -586,7 +587,9 @@ router.add("PATCH", "/api/listings/:id", (req, res, p) => {
     db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
       .run(row.owner_id, "system", `Listing ${verb}`, `“${row.title}” was ${verb}. ${next}`);
   }
-  send(res, 200, listingView(db.prepare(`${LISTING_SQL} WHERE l.id=?`).get(row.id)));
+  const updated = db.prepare(`${LISTING_SQL} WHERE l.id=?`).get(row.id);
+  notifyFollowers(updated.owner_id, "A followed listing was updated", `${updated.title} has new details on PataHome.`).catch(e=>console.error("follower notification failed:",e.message));
+  send(res, 200, listingView(updated));
 });
 
 router.add("DELETE", "/api/listings/:id", (req, res, p) => {
@@ -645,13 +648,66 @@ router.add("POST", "/api/listings/:id/inquire", (req, res, p) => {
 });
 
 /* -------- followers: renters/buyers follow an owner for updates -------- */
+async function notifyFollowers(ownerId, title, body) {
+  const owner = db.prepare("SELECT name FROM users WHERE id=?").get(ownerId);
+  if (!owner) return;
+  const followers = db.prepare("SELECT follower_phone, follower_email FROM followers WHERE owner_id=? AND verified=1").all(ownerId);
+  for (const follower of followers) {
+    if (smsConfigured() && realPhone(follower.follower_phone)) {
+      sendSms({to:follower.follower_phone,text:`PataHome: ${title}. ${body}`}).catch(e=>console.error("follower SMS failed:",e.message));
+    }
+    if (mailConfigured() && follower.follower_email) {
+      sendMail({to:follower.follower_email,subject:`PataHome — ${title}`,text:body}).catch(e=>console.error("follower email failed:",e.message));
+    }
+  }
+}
+
+router.add("GET", "/api/owners/:id/profile", (req, res, p) => {
+  const owner = db.prepare("SELECT id,name,business_name,bio,avatar_url,verified,created_at FROM users WHERE id=? AND role='user'").get(p.id);
+  if (!owner) return send(res, 404, {error:"Owner not found"});
+  const listings = db.prepare(`${LISTING_SQL} WHERE l.owner_id=? AND l.status='active' ORDER BY l.id DESC`).all(owner.id).map(listingView);
+  const followers = db.prepare("SELECT COUNT(*) n FROM followers WHERE owner_id=? AND verified=1").get(owner.id).n;
+  send(res, 200, {id:owner.id,name:owner.name,businessName:owner.business_name||"",bio:owner.bio||"",avatarUrl:owner.avatar_url||"",verified:!!owner.verified,followers,listings});
+});
+
+router.add("POST", "/api/owners/:id/follow/start", async (req, res, p) => {
+  const owner = db.prepare("SELECT id,name FROM users WHERE id=? AND role='user'").get(p.id);
+  if (!owner) return send(res, 404, {error:"Owner not found"});
+  const {name, phone, email} = req.body || {};
+  if (!name || !realPhone(String(phone||""))) return send(res, 400, {error:"Enter your name and a valid Kenyan phone number"});
+  if (!smsConfigured()) return send(res, 503, {error:"Phone verification is temporarily unavailable. Please try again later."});
+  const challenge=crypto.randomUUID(), code=String(Math.floor(100000+Math.random()*900000));
+  db.prepare("DELETE FROM follower_codes WHERE follower_phone=? AND owner_id=?").run(phone,owner.id);
+  const viewer=getUser(req);
+  db.prepare("INSERT INTO follower_codes (challenge,owner_id,follower_name,follower_phone,follower_email,code,expires_at) VALUES (?,?,?,?,?,?,datetime('now','+15 minutes'))")
+    .run(challenge,owner.id,String(name).trim(),String(phone).trim(),email?String(email).trim():null,code);
+  try { await sendSms({to:String(phone).trim(),text:`${code} is your PataHome follow verification code. It expires in 15 minutes.`}); }
+  catch (e) { db.prepare("DELETE FROM follower_codes WHERE challenge=?").run(challenge); return send(res, 400, {error:"Couldn't send the verification code"}); }
+  send(res,200,{ok:true,challenge,owner:owner.name});
+});
+
+router.add("POST", "/api/owners/:id/follow/confirm", (req, res, p) => {
+  const {challenge,code}=req.body||{};
+  const row=db.prepare("SELECT * FROM follower_codes WHERE challenge=? AND owner_id=?").get(challenge,p.id);
+  if(!row)return send(res,400,{error:"Follow request expired — start again"});
+  if(new Date(row.expires_at+"Z")<new Date()) { db.prepare("DELETE FROM follower_codes WHERE id=?").run(row.id); return send(res,400,{error:"Code expired — start again"}); }
+  if(row.attempts>=5)return send(res,400,{error:"Too many attempts — request a new code"});
+  if(String(code||"")!==row.code){db.prepare("UPDATE follower_codes SET attempts=attempts+1 WHERE id=?").run(row.id);return send(res,400,{error:"Incorrect code"});}
+  const viewer=getUser(req);
+  db.prepare("INSERT INTO followers (owner_id,follower_name,follower_phone,follower_email,follower_user_id,verified) VALUES (?,?,?,?,?,1) ON CONFLICT(owner_id,follower_phone) DO UPDATE SET follower_name=excluded.follower_name,follower_email=excluded.follower_email,follower_user_id=excluded.follower_user_id,verified=1")
+    .run(row.owner_id,row.follower_name,row.follower_phone,row.follower_email,viewer?viewer.id:null);
+  db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)").run(row.owner_id,"follower","New follower",`${row.follower_name} is now following your listings.`);
+  db.prepare("DELETE FROM follower_codes WHERE id=?").run(row.id);
+  send(res,200,{ok:true,following:row.owner_id});
+});
+
 router.add("POST", "/api/owners/:id/follow", (req, res, p) => {
   const owner = db.prepare("SELECT id, name FROM users WHERE id=? AND role='user'").get(p.id);
   if (!owner) return send(res, 404, { error: "Owner not found" });
   const { name, phone } = req.body || {};
   if (!name || !phone) return send(res, 400, { error: "name and phone are required" });
   try {
-    db.prepare("INSERT INTO followers (owner_id,follower_name,follower_phone) VALUES (?,?,?)")
+    db.prepare("INSERT INTO followers (owner_id,follower_name,follower_phone,verified) VALUES (?,?,?,0)")
       .run(owner.id, String(name).trim(), String(phone).trim());
     db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
       .run(owner.id, "follower", "New follower", `${String(name).trim()} is now following your listings.`);
@@ -661,8 +717,14 @@ router.add("POST", "/api/owners/:id/follow", (req, res, p) => {
 
 router.add("GET", "/api/my/followers", (req, res) => {
   const u = requireAuth(req, res); if (!u) return;
-  const rows = db.prepare("SELECT id, follower_name, follower_phone, created_at FROM followers WHERE owner_id=? ORDER BY id DESC").all(u.id);
+  const rows = db.prepare("SELECT id, follower_name, follower_phone, follower_email, verified, created_at FROM followers WHERE owner_id=? ORDER BY id DESC").all(u.id);
   send(res, 200, rows.map(r => ({ id: r.id, name: r.follower_name, phone: r.follower_phone, since: r.created_at })));
+});
+
+router.add("GET", "/api/my/following", (req, res) => {
+  const u=requireAuth(req,res); if(!u)return;
+  const rows=db.prepare("SELECT f.owner_id, u.name, u.business_name, u.verified, COUNT(l.id) AS listings FROM followers f JOIN users u ON u.id=f.owner_id LEFT JOIN listings l ON l.owner_id=u.id AND l.status='active' WHERE f.follower_user_id=? AND f.verified=1 GROUP BY f.owner_id ORDER BY f.id DESC").all(u.id);
+  send(res,200,rows);
 });
 
 /* -------- notifications -------- */
@@ -801,6 +863,9 @@ router.add("GET", "/api/my/stats", (req, res) => {
   const week = arr => arr.reduce((s, x) => s + x.leads + x.inquiries, 0);
   const thisWeek = week(series.slice(-7));
   const prevWeek = week(series.slice(-14, -7));
+  const followerTotals = db.prepare("SELECT COUNT(*) n FROM followers WHERE owner_id=? AND verified=1").get(u.id).n;
+  const followerThisWeek = db.prepare("SELECT COUNT(*) n FROM followers WHERE owner_id=? AND verified=1 AND created_at>=datetime('now','-7 days')").get(u.id).n;
+  const followerPrevWeek = db.prepare("SELECT COUNT(*) n FROM followers WHERE owner_id=? AND verified=1 AND created_at>=datetime('now','-14 days') AND created_at<datetime('now','-7 days')").get(u.id).n;
   const top = db.prepare(`
     SELECT l.id, l.title, COUNT(le.id) n
     FROM listings l LEFT JOIN leads le ON le.listing_id = l.id
@@ -809,6 +874,8 @@ router.add("GET", "/api/my/stats", (req, res) => {
   send(res, 200, {
     days, series, thisWeek, prevWeek,
     trendPct: prevWeek ? Math.round(((thisWeek - prevWeek) / prevWeek) * 100) : (thisWeek ? 100 : 0),
+    followers: followerTotals, followersThisWeek: followerThisWeek,
+    followerTrendPct: followerPrevWeek ? Math.round(((followerThisWeek-followerPrevWeek)/followerPrevWeek)*100) : (followerThisWeek?100:0),
     topListing: top && top.n > 0 ? { id: top.id, title: top.title, leads: top.n } : null
   });
 });

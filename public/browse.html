@@ -452,7 +452,7 @@
     .foot-tag{margin-left:auto;margin-right:auto;text-align:center}
   }
 </style>
-  <link rel="stylesheet" href="/refresh.css?v=20260922-12">
+  <link rel="stylesheet" href="/refresh.css?v=20260922-13">
 </head>
 <body class="page-browse">
 
@@ -626,6 +626,7 @@
       <div class="avatar" id="dAvatar"></div>
       <div>
         <div class="name" id="dOwner"></div>
+        <a id="dOwnerProfile" href="#" style="font-size:.75rem;color:var(--brand);font-weight:700;text-decoration:none">View owner profile →</a>
         <div class="phone" id="dPhone"></div>
         <div class="verify"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>ID &amp; ownership verified</div>
       </div>
@@ -633,6 +634,28 @@
     <div class="modal-actions">
       <button class="btn btn-primary" id="dContactBtn">Contact Owner</button>
       <button class="btn btn-ghost" id="dMapBtn">View on Map</button>
+    </div>
+    <button class="btn btn-ghost" id="dFollowBtn" style="width:100%;margin-top:10px">Follow owner for new listings</button>
+  </div>
+</div>
+
+<!-- Follow owner modal -->
+<div class="overlay" id="followModal" onclick="if(event.target===this)closeModal('followModal')">
+  <div class="modal">
+    <button class="close-x" onclick="closeModal('followModal')">✕</button>
+    <h2 id="followTitle">Follow this owner</h2>
+    <div class="sub" id="followSub">Get notified when this owner posts or updates a listing.</div>
+    <div id="followForm">
+      <label>Your name</label><input id="fName" autocomplete="name" placeholder="Your name">
+      <label>Phone number</label><input id="fPhone" inputmode="tel" autocomplete="tel" placeholder="07XXXXXXXX">
+      <label>Email <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label><input id="fEmail" type="email" autocomplete="email" placeholder="you@example.com">
+      <button class="btn btn-primary" style="width:100%;margin-top:16px;padding:12px" onclick="startFollow()">Send verification code</button>
+    </div>
+    <div id="followCode" style="display:none">
+      <p style="font-size:.85rem;color:var(--muted);margin:12px 0">Enter the 6-digit code sent to your phone.</p>
+      <input id="fCode" inputmode="numeric" maxlength="6" placeholder="••••••" style="width:100%;text-align:center;letter-spacing:.35em;font-size:1.35rem;padding:12px;border:1.5px solid var(--line);border-radius:10px">
+      <div class="err" id="followErr"></div>
+      <button class="btn btn-primary" style="width:100%;margin-top:12px;padding:12px" onclick="confirmFollow()">Confirm follow</button>
     </div>
   </div>
 </div>
@@ -659,10 +682,6 @@
     <input id="qName" placeholder="Your name" style="margin-bottom:8px">
     <input id="qPhone" placeholder="Your phone e.g. 0712 345 678" style="margin-bottom:8px">
     <textarea id="qMsg" rows="2" placeholder="e.g. Is it still available? Can I view Saturday?"></textarea>
-    <label style="display:flex;align-items:center;gap:9px;margin-top:12px;font-size:.84rem;font-weight:500;color:var(--muted);text-transform:none;letter-spacing:0;cursor:pointer">
-      <input type="checkbox" id="qFollow" checked style="width:auto;accent-color:var(--brand)">
-      Follow this owner to hear about their new listings
-    </label>
     <button class="btn btn-primary" style="width:100%;margin-top:12px;padding:12px" onclick="sendInquiry()">Send Message</button>
   </div>
 </div>
@@ -1180,7 +1199,7 @@ function focusOnMap(id){
 }
 
 /* ================= DETAIL / CONTACT ================= */
-let galIdx=0,galItem=null;
+let galIdx=0,galItem=null,followOwnerId=null,followChallenge=null;
 function openDetail(id){
   const x=LISTINGS.find(y=>y.id===id),c=CAT[x.cat];
   galItem=x;galIdx=0;
@@ -1190,11 +1209,35 @@ function openDetail(id){
   document.getElementById("dSub").textContent=fmt(x.price)+c.unit+" · "+x.area+(d!==null?" · "+(d<1?Math.round(d*1000)+" m":d.toFixed(1)+" km")+" from you":"")+" · posted "+x.posted;
   document.getElementById("dChips").innerHTML=AMENITIES[x.cat].map(a=>`<span class="chip">✓ ${a}</span>`).join("")+(x.desc?`<div style="width:100%;font-size:.85rem;margin-top:6px">${esc(x.desc)}</div>`:"");
   document.getElementById("dOwner").textContent=x.owner;
+  document.getElementById("dOwnerProfile").href="/owner.html?id="+encodeURIComponent(x.ownerId);
   document.getElementById("dPhone").textContent="Tap Contact Owner to reveal";
   document.getElementById("dAvatar").textContent=x.owner[0]||"?";
   document.getElementById("dContactBtn").onclick=()=>{closeModal("detailModal");openContact(id)};
   document.getElementById("dMapBtn").onclick=()=>focusOnMap(id);
+  document.getElementById("dFollowBtn").onclick=()=>openFollow(id);
   openModal("detailModal");
+}
+function openFollow(id){
+  const x=LISTINGS.find(y=>y.id===id); if(!x||!x.ownerId)return;
+  followOwnerId=x.ownerId;followChallenge=null;
+  document.getElementById("followTitle").textContent="Follow "+x.owner;
+  document.getElementById("followSub").textContent="Get notified when this owner posts or updates a listing.";
+  document.getElementById("followForm").style.display="block";document.getElementById("followCode").style.display="none";
+  document.getElementById("followErr").textContent="";closeModal("detailModal");openModal("followModal");
+}
+async function startFollow(){
+  const name=document.getElementById("fName").value.trim(),phone=document.getElementById("fPhone").value.trim(),email=document.getElementById("fEmail").value.trim();
+  if(!name||!phone){toast("Enter your name and phone number");return}
+  try{
+    const r=await api(`/api/owners/${followOwnerId}/follow/start`,{method:"POST",body:JSON.stringify({name,phone,email})});
+    followChallenge=r.challenge;document.getElementById("followForm").style.display="none";document.getElementById("followCode").style.display="block";document.getElementById("fCode").focus();
+  }catch(e){toast(e.message)}
+}
+async function confirmFollow(){
+  const code=document.getElementById("fCode").value.trim(),err=document.getElementById("followErr");
+  if(!code){err.textContent="Enter the code we sent";return}
+  try{await api(`/api/owners/${followOwnerId}/follow/confirm`,{method:"POST",body:JSON.stringify({challenge:followChallenge,code})});closeModal("followModal");toast("You’re now following this owner");}
+  catch(e){err.textContent=e.message}
 }
 function renderGallery(){
   const c=CAT[galItem.cat];
@@ -1241,8 +1284,6 @@ async function sendInquiry(){
   try{
     await api(`/api/listings/${contactId}/inquire`,{method:"POST",body:JSON.stringify({name,phone,message})});
     const x=LISTINGS.find(y=>y.id===contactId);
-    if(document.getElementById("qFollow").checked&&x&&x.ownerId)
-      api(`/api/owners/${x.ownerId}/follow`,{method:"POST",body:JSON.stringify({name,phone})}).catch(()=>{});
     closeModal("contactModal");
     document.getElementById("qMsg").value="";
     toast("Message sent — the owner will get back to you.");

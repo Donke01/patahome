@@ -283,7 +283,7 @@
   .reply-box input{flex:1}
   .badge-new{background:var(--amber);color:#fff;font-size:.68rem;font-weight:800;border-radius:999px;padding:2px 9px}
 </style>
-  <link rel="stylesheet" href="/refresh.css?v=20260922-12">
+  <link rel="stylesheet" href="/refresh.css?v=20260922-13">
 </head>
 <body class="page-dashboard">
 
@@ -397,6 +397,7 @@
     <button class="pt" data-t="feedback" onclick="showTab('feedback')">Feedback<span class="pn-badge" id="bFeedback" style="display:none">0</span></button>
     <button class="pt" data-t="perf" onclick="showTab('perf')">Performance</button>
     <button class="pt" data-t="followers" onclick="showTab('followers')">Followers<span class="pn-badge gold" id="bFollowers" style="display:none">0</span></button>
+    <button class="pt" data-t="following" onclick="showTab('following')">Following</button>
     <button class="pt" data-t="notifs" onclick="showTab('notifs')">Notifications<span class="pn-badge" id="bNotifs" style="display:none">0</span></button>
     <button class="pt" data-t="help" onclick="showTab('help')">Request Help</button>
     <button class="pt" data-t="faq" onclick="showTab('faq')">FAQ</button>
@@ -429,6 +430,7 @@
       <div class="stat is-clickable" data-card-tab="feedback" tabindex="0" role="link"><div class="num"><span id="sLeads">–</span><span id="sTrend"></span></div><div class="lbl">Total leads (contact requests)</div></div>
       <div class="stat is-clickable" data-card-tab="perf" tabindex="0" role="link"><div class="num" id="sWeek">–</div><div class="lbl">Leads this week</div></div>
       <div class="stat is-clickable" data-card-tab="feedback" tabindex="0" role="link"><div class="num" id="sInq">–</div><div class="lbl">Messages awaiting your reply</div></div>
+      <div class="stat is-clickable" data-card-tab="followers" tabindex="0" role="link"><div class="num"><span id="sFollowers">–</span><span id="sFollowerTrend"></span></div><div class="lbl">Verified followers</div></div>
     </div>
     <div class="panel-grid">
       <div class="chart-card is-clickable" data-card-tab="perf" tabindex="0" role="link">
@@ -451,6 +453,12 @@
     <div class="section-head"><h2>Your Followers</h2></div>
     <p class="pane-sub">People who follow you get notified about your new listings. They follow you from your listing pages.</p>
     <div class="table" id="followersList"></div>
+  </section>
+
+  <section class="tabpane" id="tab-following" style="display:none">
+    <div class="section-head"><h2>Owners you follow</h2></div>
+    <p class="pane-sub">Followed owners will appear here so you can quickly return to their active listings.</p>
+    <div class="table" id="followingList"></div>
   </section>
 
   <!-- Notifications -->
@@ -725,6 +733,8 @@ async function refresh(){
 function badge(id,n){const b=$(id);b.textContent=n;b.style.display=n>0?"inline-flex":"none"}
 function renderStats(o){
   $("sWeek").textContent=o.thisWeek;
+  if($("sFollowers"))$("sFollowers").textContent=o.followers||0;
+  if($("sFollowerTrend")){const ft=o.followerTrendPct||0;$("sFollowerTrend").innerHTML=ft>0?`<span class="trend up">▲ ${ft}%</span>`:ft<0?`<span class="trend down">▼ ${Math.abs(ft)}%</span>`:`<span class="trend flat">— 0%</span>`}
   const t=o.trendPct;
   $("sTrend").innerHTML=t>0?`<span class="trend up">▲ ${t}%</span>`:t<0?`<span class="trend down">▼ ${Math.abs(t)}%</span>`:`<span class="trend flat">— 0%</span>`;
   if(o.topListing){
@@ -750,6 +760,7 @@ async function showTab(t){
     else if(chart)setTimeout(()=>chart.resize(),50);
   }
   if(t==="followers")loadFollowers();
+  if(t==="following")loadFollowing();
   if(t==="notifs")loadNotifs();
   if(t==="help")loadTickets();
   if(t==="faq")renderFaq();
@@ -772,6 +783,10 @@ async function loadFollowers(){
     `<div class="row head"><div>Name</div><div>Phone</div><div>Following since</div></div>`+
     list.map(f=>`<div class="row" style="grid-template-columns:1.5fr 1fr 1fr"><div class="title">${esc(f.name)}</div><div>${esc(f.phone)}</div><div class="area">${esc(f.since)}</div></div>`).join("")
     :`<div class="empty">No followers yet — renters and buyers can follow you from your listing pages to hear about new posts.</div>`;
+}
+async function loadFollowing(){
+  const list=await api("/api/my/following").catch(()=>[]);
+  $("followingList").innerHTML=list.length?list.map(x=>`<a href="/owner.html?id=${x.owner_id}" class="row" style="grid-template-columns:2fr 1fr 1fr;text-decoration:none;color:inherit"><div class="title">${esc(x.name)}${x.verified?" ✓":""}</div><div>${x.listings} active listing${x.listings===1?"":"s"}</div><div class="area">View profile →</div></a>`).join(""):"<div class=\"empty\">You aren’t following any owners yet. Follow an owner from a listing detail page.</div>";
 }
 const N_ICONS={
   lead:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-3 2a11 11 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>',
