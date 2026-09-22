@@ -895,3 +895,11 @@ body.dark .dm-side{background:var(--card)}body.dark .dm-facts span{background:rg
   .dm-price{font-size:1.3rem}
   .dm-facts span{font-size:.75rem;padding:5px 9px}
 }
+/* Footer "Call us": a real call button (phone icon, pill, pulse ring) */
+footer.pf .pf-call{display:inline-flex;align-items:center;gap:7px;padding:5px 13px 5px 5px;border-radius:99px;background:#5fd3a0;color:#0b231a!important;line-height:1.2;transition:background .2s,transform .2s}
+footer.pf .pf-call b{color:#0b231a!important}
+footer.pf .pf-call svg{position:relative;width:24px;height:24px;padding:5px;border-radius:50%;background:#0b231a;fill:#5fd3a0;box-sizing:border-box;animation:pfRing 2.4s ease-out infinite}
+footer.pf .pf-call:hover{background:#7fe0b5;transform:translateY(-1px)}
+@keyframes pfRing{0%{box-shadow:0 0 0 0 rgba(11,35,26,.45)}70%{box-shadow:0 0 0 7px rgba(11,35,26,0)}100%{box-shadow:0 0 0 0 rgba(11,35,26,0)}}
+@media(prefers-reduced-motion:reduce){footer.pf .pf-call svg{animation:none}}
+.pf-col p{align-items:center}
