@@ -283,7 +283,7 @@
   .reply-box input{flex:1}
   .badge-new{background:var(--amber);color:#fff;font-size:.68rem;font-weight:800;border-radius:999px;padding:2px 9px}
 </style>
-  <link rel="stylesheet" href="/refresh.css?v=20260922-11">
+  <link rel="stylesheet" href="/refresh.css?v=20260922-12">
 </head>
 <body class="page-dashboard">
 
@@ -385,10 +385,10 @@
       <button class="btn btn-primary" onclick="openAdd()">+ New Listing</button>
     </div>
     <div class="overview-grid">
-      <div class="overview-card"><span class="overview-icon">⌂</span><div><strong id="oActive">–</strong><span>Active listings</span></div></div>
-      <div class="overview-card"><span class="overview-icon">↗</span><div><strong id="oLeads">–</strong><span>Total leads</span></div></div>
-      <div class="overview-card attention"><span class="overview-icon">✉</span><div><strong id="oUnread">–</strong><span>Replies needed</span></div></div>
-      <div class="overview-card"><span class="overview-icon">◷</span><div><strong id="oWeek">–</strong><span>Leads this week</span></div></div>
+      <div class="overview-card is-clickable" data-card-tab="listings" tabindex="0" role="link"><span class="overview-icon">⌂</span><div><strong id="oActive">–</strong><span>Active listings</span></div></div>
+      <div class="overview-card is-clickable" data-card-tab="feedback" tabindex="0" role="link"><span class="overview-icon">↗</span><div><strong id="oLeads">–</strong><span>Total leads</span></div></div>
+      <div class="overview-card attention is-clickable" data-card-tab="feedback" tabindex="0" role="link"><span class="overview-icon">✉</span><div><strong id="oUnread">–</strong><span>Replies needed</span></div></div>
+      <div class="overview-card is-clickable" data-card-tab="perf" tabindex="0" role="link"><span class="overview-icon">◷</span><div><strong id="oWeek">–</strong><span>Leads this week</span></div></div>
     </div>
   </section>
 
@@ -425,17 +425,17 @@
       <span class="updated" id="updatedAgo"></span>
     </div>
     <div class="stats">
-      <div class="stat"><div class="num" id="sActive">–</div><div class="lbl">Active listings</div></div>
-      <div class="stat"><div class="num"><span id="sLeads">–</span><span id="sTrend"></span></div><div class="lbl">Total leads (contact requests)</div></div>
-      <div class="stat"><div class="num" id="sWeek">–</div><div class="lbl">Leads this week</div></div>
-      <div class="stat"><div class="num" id="sInq">–</div><div class="lbl">Messages awaiting your reply</div></div>
+      <div class="stat is-clickable" data-card-tab="listings" tabindex="0" role="link"><div class="num" id="sActive">–</div><div class="lbl">Active listings</div></div>
+      <div class="stat is-clickable" data-card-tab="feedback" tabindex="0" role="link"><div class="num"><span id="sLeads">–</span><span id="sTrend"></span></div><div class="lbl">Total leads (contact requests)</div></div>
+      <div class="stat is-clickable" data-card-tab="perf" tabindex="0" role="link"><div class="num" id="sWeek">–</div><div class="lbl">Leads this week</div></div>
+      <div class="stat is-clickable" data-card-tab="feedback" tabindex="0" role="link"><div class="num" id="sInq">–</div><div class="lbl">Messages awaiting your reply</div></div>
     </div>
     <div class="panel-grid">
-      <div class="chart-card">
+      <div class="chart-card is-clickable" data-card-tab="perf" tabindex="0" role="link">
         <h3>Activity<small>leads &amp; messages, last 30 days</small></h3>
         <div class="chart-wrap"><canvas id="actChart"></canvas></div>
       </div>
-      <div class="top-card" id="topCard">
+      <div class="top-card is-clickable" id="topCard" data-card-tab="listings" tabindex="0" role="link">
         <div class="tc-kick">Top Performer</div>
         <div class="tc-title" id="tcTitle">—</div>
         <div class="tc-sub">total leads on this listing</div>
@@ -462,7 +462,7 @@
   <!-- Request Help -->
   <section class="tabpane" id="tab-help" style="display:none">
     <div class="section-head"><h2>Request Help</h2></div>
-    <div class="help-card">
+    <div class="help-card is-clickable" data-card-tab="help" tabindex="0" role="link">
       <label>Subject</label>
       <input id="hSubject" placeholder="e.g. My listing isn't showing on the map">
       <label>Describe the issue</label>
@@ -754,6 +754,17 @@ async function showTab(t){
   if(t==="help")loadTickets();
   if(t==="faq")renderFaq();
 }
+document.addEventListener("click",e=>{
+  const card=e.target.closest("[data-card-tab]");
+  if(!card||e.target.closest("button,a,input,textarea,select,summary"))return;
+  showTab(card.dataset.cardTab);
+});
+document.addEventListener("keydown",e=>{
+  if((e.key!=="Enter"&&e.key!==" ")||e.target.closest("button,a,input,textarea,select,summary"))return;
+  const card=e.target.closest("[data-card-tab]");
+  if(!card)return;
+  e.preventDefault();showTab(card.dataset.cardTab);
+});
 async function loadFollowers(){
   const list=await api("/api/my/followers").catch(()=>[]);
   badge("bFollowers",list.length);
@@ -773,7 +784,7 @@ async function loadNotifs(){
   const data=window._notifs||await api("/api/my/notifications").catch(()=>({unread:0,notifications:[]}));
   $("notifList").innerHTML=data.notifications.length?
     data.notifications.map(n=>`
-      <div class="notif ${n.read?"":"unread"}">
+      <div class="notif ${n.read?"":"unread"} is-clickable" data-card-tab="notifs" tabindex="0" role="link">
         <span class="n-ic">${N_ICONS[n.kind]||N_ICONS.system}</span>
         <div><div class="n-t">${esc(n.title)}</div><div class="n-b">${esc(n.body)}</div></div>
         <span class="n-at">${esc(n.at)}</span>
@@ -875,7 +886,7 @@ document.addEventListener("visibilitychange",()=>{if(!document.hidden&&token&&$(
 function renderInbox(){
   if(!myInquiries.length){$("inbox").innerHTML=`<div class="inq" style="text-align:center;color:var(--muted)">No messages yet — they'll appear here when tenants and buyers reach out.</div>`;return}
   $("inbox").innerHTML=myInquiries.map(q=>`
-    <div class="inq ${q.reply?"":"unreplied"}">
+    <div class="inq ${q.reply?"":"unreplied"} is-clickable" data-card-tab="feedback" tabindex="0" role="link">
       <div class="inq-top">
         <span class="inq-from">${esc(q.fromName)}</span>
         <span class="inq-phone">${esc(q.fromPhone)}</span>
