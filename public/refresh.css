@@ -800,3 +800,34 @@ body.dark footer.pf{background:#070d0b!important}
 }
 /* the floating WhatsApp / chat buttons shouldn't sit on top of the footer text on phones */
 @media(max-width:760px){body:has(footer.pf) footer.pf{padding-bottom:calc(76px + env(safe-area-inset-bottom))!important}}
+
+/* Explore Kenya — label + one scrollable rail of every area, nearest first */
+.page-home .area-discovery{padding-top:34px!important;text-align:left}
+.page-home .area-head{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.page-home .area-head .eyebrow{margin:0}
+.page-home .area-basis{font-size:var(--fs-meta,.8125rem);color:var(--muted);font-weight:500}
+.page-home .area-basis:not(:empty)::before{content:"·";margin-right:10px;opacity:.6}
+.page-home .area-nav{margin-left:auto;display:flex;gap:6px}
+.page-home .area-nav button{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:#fff;color:var(--brand-dark);font-size:1.2rem;line-height:1;cursor:pointer;display:grid;place-items:center}
+.page-home .area-nav button:hover{border-color:var(--brand);background:var(--brand-light,#eef8f3)}
+.page-home .area-rail{display:flex!important;gap:10px;overflow-x:auto;scroll-snap-type:x proximity;scroll-behavior:smooth;padding:2px 2px 12px!important;margin:0!important;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+.page-home .area-rail::-webkit-scrollbar{height:6px}.page-home .area-rail::-webkit-scrollbar-thumb{background:#d3e3dc;border-radius:9px}
+.page-home .area-card{flex:0 0 190px;min-width:0!important;min-height:0!important;padding:48px 14px 14px!important;scroll-snap-align:start;text-align:left;justify-content:flex-start!important}
+.page-home .area-card .area-orbit{top:14px!important;left:14px!important}
+.page-home .area-card .area-name{line-height:1.2;padding-right:18px}
+.page-home .area-card .area-detail{font:500 .75rem/1.35 var(--body,inherit)!important;letter-spacing:0!important;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.page-home .area-card .area-go{top:14px;bottom:auto!important;right:14px!important}
+.page-home .area-county{position:relative;z-index:1;font-size:.72rem;color:var(--muted);margin-top:1px}
+.page-home .area-detail b{color:var(--brand-dark);font-weight:700}
+.page-home .area-card.is-empty{background:linear-gradient(145deg,#fff,#f6f8f7)}
+.page-home .area-card.is-empty .area-orbit{opacity:.45}
+body.dark .page-home .area-nav button{background:var(--card);color:var(--ink)}
+@media(max-width:760px){
+  .page-home .area-discovery{padding:24px 0 4px!important}
+  .page-home .area-head{padding:0 16px}
+  .page-home .area-nav{display:none}
+  .page-home .area-rail{padding:2px 16px 10px!important;scroll-padding-left:16px}
+  .page-home .area-card{flex-basis:150px;padding:44px 12px 12px!important}
+}
+.page-home .area-card .area-km{position:absolute;z-index:1;top:12px;right:12px;padding:3px 8px;border-radius:99px;background:rgba(255,255,255,.9);border:1px solid #d3e8de;font-size:.7rem;font-weight:700;color:var(--brand-dark);white-space:nowrap}
+body.dark .page-home .area-card .area-km{background:var(--card);color:var(--ink)}

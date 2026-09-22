@@ -556,7 +556,7 @@
     .foot-tag{margin-left:auto;margin-right:auto;text-align:center}
   }
 </style>
-  <link rel="stylesheet" href="/refresh.css?v=20260923-10">
+  <link rel="stylesheet" href="/refresh.css?v=20260923-13">
 </head>
 <body class="page-home">
 
@@ -719,11 +719,14 @@
 </section>
 
 <!-- Kenyan area discovery, powered by live listings rather than a fixed promotion list. -->
-<section class="area-discovery" aria-labelledby="areaHeading">
-  <div class="area-copy reveal">
+<section class="area-discovery" aria-label="Explore Kenya">
+  <div class="area-head">
     <div class="eyebrow">Explore Kenya</div>
-    <h2 id="areaHeading">Find a home in the places that matter to you.</h2>
-    <p>Start with an area, then compare direct-owner listings with confidence.</p>
+    <span class="area-basis" id="areaBasis"></span>
+    <div class="area-nav" aria-hidden="true">
+      <button type="button" onclick="scrollAreas(-1)" tabindex="-1">‹</button>
+      <button type="button" onclick="scrollAreas(1)" tabindex="-1">›</button>
+    </div>
   </div>
   <div class="area-rail" id="areaRail" aria-live="polite"></div>
 </section>
@@ -1158,26 +1161,58 @@ function renderLatest(){
   }).join("");
 }
 
-function renderAreaDiscovery(){
+// Every area in Kenya, nearest first. Where "you" are comes from, in order:
+// 1) a location picked on the browse page (remembered on this device),
+// 2) Cloudflare's city-level IP location (/api/geo) — no permission prompt,
+// 3) otherwise areas are ordered by how many live listings they have.
+function kmBetween(a,b,c,d){const r=Math.PI/180,R=6371,h=Math.sin((c-a)*r/2)**2+Math.cos(a*r)*Math.cos(c*r)*Math.sin((d-b)*r/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
+async function areaOrigin(){
+  try{
+    const v=JSON.parse(localStorage.getItem("ph_loc")||"null");
+    if(v&&Number.isFinite(v.lat)&&Date.now()-v.t<30*864e5)return {lat:v.lat,lng:v.lng,label:v.name?v.name.replace(/^near /,""):"your location"};
+  }catch(e){}
+  try{
+    const g=await api("/api/geo");
+    if(g&&Number.isFinite(g.lat)&&(!g.country||g.country==="KE"))return {lat:g.lat,lng:g.lng,label:g.city||"you"};
+  }catch(e){}
+  return null;
+}
+async function renderAreaDiscovery(){
   const rail=document.getElementById("areaRail");
   if(!rail)return;
-  const rows=Object.keys(AREAS).map(area=>({
-    area,
-    count:STATS?((STATS.byArea.find(b=>b.area+", "+b.county===area)||{}).n||0):LISTINGS.filter(x=>x.area===area).length
-  })).sort((a,b)=>b.count-a.count||a.area.localeCompare(b.area));
+  const countOf=area=>STATS?((STATS.byArea.find(b=>b.area+", "+b.county===area)||{}).n||0):LISTINGS.filter(x=>x.area===area).length;
+  let rows=Object.entries(AREAS).map(([area,[lat,lng]])=>({area,lat,lng,count:countOf(area),km:null}));
   if(!rows.length){rail.parentElement.style.display="none";return}
-  rail.innerHTML=rows.slice(0,8).map(({area,count},i)=>{
-    const [name,county]=area.split(", ");
-    const detail=count
-      ?`${count} live listing${count===1?"":"s"}`
-      :`Explore ${county||"this area"}`;
-    return `<a class="area-card" style="--area-index:${i}" href="/browse.html?q=${encodeURIComponent(name)}">
-      <span class="area-orbit" aria-hidden="true"><i></i></span>
-      <span class="area-name">${esc(name)}</span>
-      <span class="area-detail">${esc(detail)}</span>
-      <span class="area-go" aria-hidden="true">↗</span>
-    </a>`;
-  }).join("");
+  const draw=()=>{
+    rail.innerHTML=rows.map(({area,count,km},i)=>{
+      const [name,county]=area.split(", ");
+      const place=county&&county!==name?county:"";
+      const bits=[count?`<b>${count}</b> listing${count===1?"":"s"}`:"No listings yet"];
+      const dist=km===null?"":km<1?"Here":km<10?km.toFixed(1)+" km":Math.round(km)+" km";
+      return `<a class="area-card${count?"":" is-empty"}" style="--area-index:${Math.min(i,12)}" href="/browse.html?q=${encodeURIComponent(name)}">
+        <span class="area-orbit" aria-hidden="true"><i></i></span>
+        <span class="area-name">${esc(name)}</span>
+        ${place?`<span class="area-county">${esc(place)}</span>`:""}
+        <span class="area-detail">${bits.join(" · ")}</span>
+        ${dist?`<span class="area-km">${dist}</span>`:`<span class="area-go" aria-hidden="true">↗</span>`}
+      </a>`;
+    }).join("");
+  };
+  // first paint straight away (busiest areas first), then re-sort once we know where the visitor is
+  rows.sort((a,b)=>b.count-a.count||a.area.localeCompare(b.area));
+  draw();
+  const o=await areaOrigin();
+  if(!o)return;
+  rows.forEach(r=>r.km=kmBetween(o.lat,o.lng,r.lat,r.lng));
+  rows.sort((a,b)=>a.km-b.km);
+  draw();
+  rail.scrollLeft=0;
+  const basis=document.getElementById("areaBasis");
+  if(basis)basis.textContent="Nearest to "+o.label;
+}
+function scrollAreas(dir){
+  const r=document.getElementById("areaRail");
+  r.scrollBy({left:dir*Math.max(240,r.clientWidth*.8),behavior:"smooth"});
 }
 
 /* Search hands off to the browse page */

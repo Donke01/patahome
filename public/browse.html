@@ -452,7 +452,7 @@
     .foot-tag{margin-left:auto;margin-right:auto;text-align:center}
   }
 </style>
-  <link rel="stylesheet" href="/refresh.css?v=20260923-10">
+  <link rel="stylesheet" href="/refresh.css?v=20260923-13">
 </head>
 <body class="page-browse">
 
@@ -1019,6 +1019,7 @@ function useCity(name){
   afterLocation();
 }
 function afterLocation(){
+  try{localStorage.setItem("ph_loc",JSON.stringify({lat:userLoc[0],lng:userLoc[1],name:userLocName||"",t:Date.now()}))}catch(e){}
   document.getElementById("sortSelect").value="distance";
   if(map){
     map.setView(userLoc,12);

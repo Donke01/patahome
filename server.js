@@ -608,6 +608,17 @@ router.add("GET", "/api/search", (req, res) => {
   send(res, 200, out);
 });
 
+/* Approximate visitor location (city-level) from Cloudflare's visitor-location
+   headers — lets the homepage sort areas nearest-first without a GPS prompt.
+   Requires Cloudflare → Rules → Transform Rules → Managed Transforms →
+   "Add visitor location headers" to be ON. Returns {} when unavailable.
+   Nothing is stored. */
+router.add("GET", "/api/geo", (req, res) => {
+  const h = req.headers, lat = parseFloat(h["cf-iplatitude"]), lng = parseFloat(h["cf-iplongitude"]);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return send(res, 200, {});
+  send(res, 200, { lat, lng, city: String(h["cf-ipcity"] || "").slice(0, 60), country: String(h["cf-ipcountry"] || "").slice(0, 2) });
+});
+
 /* Site-wide numbers for the homepage (totals + per-area counts), independent of paging. */
 router.add("GET", "/api/stats/listings", (req, res) => {
   const t = db.prepare("SELECT COUNT(*) n, COUNT(DISTINCT owner_id) owners FROM listings WHERE status='active'").get();
