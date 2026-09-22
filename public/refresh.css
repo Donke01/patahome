@@ -579,3 +579,16 @@ body.dark .page-home .slider .hero-track .sl-txt h1{color:var(--ink)}
   .page-home .slider .hero-track .sl-txt h1{font-size:clamp(1.22rem,6.4vw,1.48rem)}
   .page-home .search-wrap{margin-top:10px}
 }
+
+/* Seamless marquee: slides follow each other at natural width with no
+   divider, so the strip reads as one continuous banner. */
+.page-home .slider .hero-track{width:max-content!important}
+.page-home .slider .hero-track .slide-h{flex:0 0 auto!important;width:auto!important;min-width:0!important;border-right:0!important}
+.page-home .slider .hero-track .sl-in{padding:22px 36px}
+.page-home .slider .hero-track .sl-txt{max-width:none;width:auto;white-space:nowrap}
+.page-home .slider .hero-track .sl-txt h1:not(#heroHead),.page-home .slider .hero-track .sl-txt h1{max-width:none}
+@media(max-width:760px){
+  .page-home .slider .hero-track .sl-in{padding:16px 24px}
+}
+@keyframes pataHeroLoop{from{transform:translateX(0)}to{transform:translateX(var(--loop-shift,-33.3333%))}}
+@media(prefers-reduced-motion:no-preference){.page-home .slider .hero-track{animation-name:pataHeroLoop}}

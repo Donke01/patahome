@@ -556,7 +556,7 @@
     .foot-tag{margin-left:auto;margin-right:auto;text-align:center}
   }
 </style>
-  <link rel="stylesheet" href="/refresh.css?v=20260923-1">
+  <link rel="stylesheet" href="/refresh.css?v=20260923-2">
 </head>
 <body class="page-home">
 
@@ -1065,28 +1065,46 @@ function restartSlider(){
   // The hero uses a CSS-driven seamless rolling track.
 }
 function sizeSlider(){
+  // Continuous marquee: slides sit shoulder to shoulder at their natural
+  // width. Slide 1's headline rotates words, so pin it (and its loop clone)
+  // to the widest variant — otherwise the two halves of the track differ in
+  // width and the loop visibly jumps.
   const sl=document.getElementById("heroSlider");
-  if(!sl)return;
-  let max=0;
-  sl.querySelectorAll(".slide-h").forEach(s=>{
-    const c=s.cloneNode(true);
-    c.classList.remove("on","out");
-    c.removeAttribute("id");
-    c.querySelectorAll("[id]").forEach(n=>n.removeAttribute("id"));
-    c.style.cssText="position:absolute;visibility:hidden;opacity:1;transform:none;transition:none;inset:auto;left:0;right:0;top:0";
-    sl.appendChild(c);
-    max=Math.max(max,c.offsetHeight);
-    c.remove();
-  });
-  // Height now comes from CSS (tallest slide in the track); nothing to pin.
+  const track=document.getElementById("heroTrack");
+  if(!sl||!track)return;
   sl.style.minHeight="";
+  const h=document.getElementById("heroHead");
+  const firsts=track.querySelectorAll(".slide-h.sl-1 .sl-txt");
+  if(h&&firsts.length&&typeof HEADS!=="undefined"){
+    firsts.forEach(t=>t.style.width="");
+    const cs=getComputedStyle(h);
+    const probe=document.createElement("span");
+    probe.style.cssText="position:absolute;visibility:hidden;white-space:nowrap;font:"+cs.font+";letter-spacing:"+cs.letterSpacing;
+    document.body.appendChild(probe);
+    let w=firsts[0].offsetWidth;
+    for(const x of HEADS){
+      for(const line of (x.pre+x.w+x.post).split(/<br\s*\/?>/i)){probe.innerHTML=line;w=Math.max(w,probe.offsetWidth)}
+    }
+    probe.remove();
+    firsts.forEach(t=>t.style.width=Math.ceil(w+2)+"px");
+  }
+  // Keep a steady reading speed (~55px/s) whatever the total strip length.
+  const all=[...track.querySelectorAll(".slide-h")];
+  const set=all.slice(0,Math.round(all.length/3)).reduce((a,e)=>a+e.getBoundingClientRect().width,0);
+  if(set){
+    track.style.setProperty("--loop-shift",(-set)+"px");
+    track.style.animationDuration=Math.max(20,Math.round(set/55))+"s";
+  }
 }
 (function initSlider(){
   const el=document.getElementById("heroSlider");
   if(!el)return;
   const track=document.getElementById("heroTrack");
   if(track&&!track.dataset.looped){
-    [...track.querySelectorAll(".slide-h")].forEach(s=>{
+    // Three copies of the set so the strip is always longer than the banner,
+    // even on wide screens; the animation shifts by exactly one set.
+    const originals=[...track.querySelectorAll(".slide-h")];
+    [...originals,...originals].forEach(s=>{
       const c=s.cloneNode(true);
       c.classList.remove("on","out");
       c.querySelectorAll("[id]").forEach(n=>n.removeAttribute("id"));
