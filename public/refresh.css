@@ -688,3 +688,60 @@ body.dark .page-home .pr-link{color:var(--ink)}
   .page-home .pr-btn{width:100%;text-align:center}
   .page-home .pr-art{width:150px;right:-30px;bottom:-10px}
 }
+
+/* ===== Homepage type scale (kept last so it wins the cascade) =====
+   One ramp, largest at the top, stepping down section by section:
+   display 40 → h2 32 → h3 26 → card title 16 / body 16 → meta 13 → label 11.5
+   (desktop px; everything scales down fluidly on phones). */
+.page-home{
+  --fs-display:clamp(1.6rem,1.1rem + 2.2vw,2.5rem);
+  --fs-h2:clamp(1.45rem,1.05rem + 1.6vw,2rem);
+  --fs-h3:clamp(1.25rem,1rem + 1vw,1.625rem);
+  --fs-lead:clamp(.9375rem,.9rem + .2vw,1.0625rem);
+  --fs-body:1rem;
+  --fs-price:1.125rem;
+  --fs-meta:.8125rem;
+  --fs-label:.72rem;
+  --fs-btn:.9375rem;
+}
+/* 1 · hero (largest) */
+.page-home .slider .hero-track .sl-txt h1,
+.page-home .slider .hero-track #heroHead,
+.page-home .slider .hero-track .sl-h2{font-size:var(--fs-display)!important;line-height:1.1!important;letter-spacing:-.045em}
+.page-home .hero .kicker,.page-home .slider .hero-track .kicker{font-size:var(--fs-label)!important;letter-spacing:.14em}
+.page-home .sl-cta{font-size:var(--fs-btn)!important}
+.page-home .searchbar input{font-size:var(--fs-body)!important}
+.page-home .searchbar button{font-size:var(--fs-btn)!important}
+/* 2 · categories (navigation, not headlines) */
+.page-home .cat-tile .ct-l{font-size:var(--fs-body)!important;font-weight:600}
+/* 3 · section headers — same pattern for every section */
+.page-home .eyebrow,.page-home .pr-kicker{font-size:var(--fs-label)!important;letter-spacing:.14em;font-weight:600}
+.page-home .area-discovery h2,.page-home .latest-head h2,.page-home .section-title{font-size:var(--fs-h2)!important;line-height:1.12!important;letter-spacing:-.045em}
+.page-home .area-discovery h2+p,.page-home .area-discovery p:not([class]),.page-home .latest-head p{font-size:var(--fs-lead)!important;line-height:1.55}
+/* 4 · cards */
+.page-home .area-name{font-size:var(--fs-body)!important}
+.page-home .area-detail{font-size:var(--fs-meta)!important}
+.page-home .lc-price{font-size:var(--fs-price)!important}
+.page-home .lc-price small{font-size:var(--fs-meta)!important}
+.page-home .lc-t{font-size:var(--fs-body)!important;line-height:1.35}
+.page-home .lc-a{font-size:var(--fs-meta)!important}
+.page-home .lc-signal span{font-size:var(--fs-label)!important}
+/* 5 · promise band (h3 — a step below section titles) */
+.page-home .pr-h{font-size:var(--fs-h3)!important;line-height:1.15!important}
+.page-home .pr-points li{font-size:var(--fs-meta)!important}
+.page-home .pr-btn{font-size:var(--fs-btn)!important}
+.page-home .pr-link{font-size:var(--fs-meta)!important}
+/* 6 · footer (smallest, but still readable) */
+.page-home footer .foot-tag{font-size:var(--fs-meta)!important}
+.page-home footer h4{font-size:var(--fs-label)!important;letter-spacing:.14em}
+.page-home footer .foot-links a{font-size:.875rem!important}
+.page-home footer .foot-base,.page-home footer .foot-base *{font-size:.75rem!important}
+header .brand-tagline{font-size:.56rem!important}
+@media(max-width:640px){
+  .page-home .cat-tile .ct-l{font-size:.78rem!important}
+  .page-home .lc-t{font-size:.9375rem!important}
+  .page-home .lc-price{font-size:1rem!important}
+  .page-home .lc-signal span{font-size:.68rem!important}
+  .page-home .pr-points li{font-size:.75rem!important}
+  header .brand-tagline{font-size:.5rem!important}
+}
