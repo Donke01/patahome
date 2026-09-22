@@ -622,3 +622,37 @@ body.dark .page-home .slider .hero-track .sl-txt h1{color:var(--ink)}
 /* "Full screen" chip on the listing gallery (opens the zoomable viewer). */
 #detailModal .gallery .gal-zoom{position:absolute;z-index:4;left:12px;bottom:12px;border:0;border-radius:99px;padding:6px 12px;background:rgba(6,12,10,.62);color:#fff;font:600 .74rem system-ui,sans-serif;cursor:pointer;backdrop-filter:blur(6px)}
 #detailModal .gallery .gal-zoom:hover{background:rgba(6,12,10,.8)}
+
+/* Listing popup photo grid (Booking.com style): one big photo + up to 4 small. */
+#detailModal .modal:has(.gallery.pgrid){max-width:780px}
+#detailModal .gallery.pgrid{display:grid;gap:6px;height:400px!important;min-height:0!important;aspect-ratio:auto!important;background:transparent!important;border-radius:14px;overflow:hidden;
+  grid-template-columns:repeat(4,1fr);grid-template-rows:1fr 1fr}
+#detailModal .pgrid .pg-tile{position:relative;display:block;width:100%;height:100%;min-height:0;padding:0;border:0;margin:0;overflow:hidden;cursor:zoom-in;background:#0d1512;border-radius:0;isolation:isolate}
+#detailModal .pgrid .pg-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .35s ease,filter .2s;z-index:1}
+#detailModal .pgrid .pg-img.pg-fit{object-fit:contain}
+#detailModal .pgrid .pg-tile:hover .pg-img{transform:scale(1.04);filter:brightness(1.06)}
+#detailModal .pgrid .pg-main:hover .pg-img{transform:none}
+#detailModal .pgrid .gal-zoom{pointer-events:none}
+#detailModal .pgrid .pg-more{position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;background:rgba(6,12,10,.55);color:#fff;font:700 .95rem system-ui,sans-serif}
+#detailModal .pgrid .pg-more-m{display:none}
+/* layouts by photo count */
+#detailModal .gallery.pgrid.pg-n1{grid-template-columns:1fr;grid-template-rows:1fr}
+#detailModal .gallery.pgrid.pg-n2{grid-template-columns:2fr 1fr;grid-template-rows:1fr}
+#detailModal .gallery.pgrid.pg-n2 .pg-main{grid-row:1}
+#detailModal .gallery.pgrid.pg-n3,#detailModal .gallery.pgrid.pg-n4,#detailModal .gallery.pgrid.pg-n5{grid-template-columns:2fr 1fr 1fr}
+#detailModal .gallery.pgrid.pg-n3 .pg-main,#detailModal .gallery.pgrid.pg-n4 .pg-main,#detailModal .gallery.pgrid.pg-n5 .pg-main{grid-row:1/3}
+#detailModal .gallery.pgrid.pg-n3 .pg-s1,#detailModal .gallery.pgrid.pg-n3 .pg-s2{grid-column:2/4}
+#detailModal .gallery.pgrid.pg-n4 .pg-s1{grid-column:2/4}
+/* phones: big photo on top, a strip of up to 3 small ones underneath */
+@media(max-width:640px){
+  #detailModal .gallery.pgrid{height:auto!important;grid-template-columns:repeat(3,1fr)!important;grid-template-rows:230px 74px!important;gap:5px}
+  #detailModal .gallery.pgrid.pg-n1{grid-template-rows:260px!important}
+  #detailModal .pgrid .pg-main{grid-column:1/-1!important;grid-row:1!important}
+  #detailModal .pgrid .pg-tile:not(.pg-main){grid-column:auto!important;grid-row:2!important}
+  #detailModal .gallery.pgrid.pg-n2{grid-template-columns:1fr!important;grid-template-rows:230px 150px!important}
+  #detailModal .gallery.pgrid.pg-n3{grid-template-columns:1fr 1fr!important}
+  #detailModal .pgrid .pg-s4{display:none}
+  #detailModal .pgrid .pg-more:not(.pg-more-m){display:none}
+  #detailModal .pgrid .pg-more-m{display:flex;font-size:.8rem}
+  #detailModal .pgrid .gal-zoom{font-size:.68rem;padding:5px 10px}
+}
