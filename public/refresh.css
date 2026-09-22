@@ -831,3 +831,18 @@ body.dark .page-home .area-nav button{background:var(--card);color:var(--ink)}
 }
 .page-home .area-card .area-km{position:absolute;z-index:1;top:12px;right:12px;padding:3px 8px;border-radius:99px;background:rgba(255,255,255,.9);border:1px solid #d3e8de;font-size:.7rem;font-weight:700;color:var(--brand-dark);white-space:nowrap}
 body.dark .page-home .area-card .area-km{background:var(--card);color:var(--ink)}
+
+/* Category tiles: clearer icons, label + one-line caption */
+.page-home .cat-tile{gap:4px!important;padding:16px 10px 14px!important;min-height:0!important}
+.page-home .cat-tile .ct-ic{width:48px!important;height:48px!important;margin-bottom:6px;border-radius:14px}
+.page-home .cat-tile .ct-ic svg{width:26px!important;height:26px!important}
+.page-home .cat-tile .ct-l{font-size:1rem!important;font-weight:650!important;line-height:1.2;letter-spacing:-.02em}
+.page-home .cat-tile .ct-s{font-size:.75rem;color:var(--muted);line-height:1.2;white-space:nowrap}
+@media(max-width:760px){
+  .page-home .cat-tile{padding:10px 2px 9px!important;gap:3px!important}
+  .page-home .cat-tile .ct-ic{width:38px!important;height:38px!important;margin-bottom:3px;border-radius:11px}
+  .page-home .cat-tile .ct-ic svg{width:21px!important;height:21px!important}
+  .page-home .cat-tile .ct-l{font-size:.76rem!important;white-space:normal;text-align:center;line-height:1.15;letter-spacing:-.03em}
+  .page-home .cat-tile .ct-s{display:none}
+}
+@media(max-width:380px){.page-home .cat-tile .ct-l{font-size:.7rem!important}}
