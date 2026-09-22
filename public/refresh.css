@@ -903,3 +903,8 @@ footer.pf .pf-call:hover{background:#7fe0b5;transform:translateY(-1px)}
 @keyframes pfRing{0%{box-shadow:0 0 0 0 rgba(11,35,26,.45)}70%{box-shadow:0 0 0 7px rgba(11,35,26,0)}100%{box-shadow:0 0 0 0 rgba(11,35,26,0)}}
 @media(prefers-reduced-motion:reduce){footer.pf .pf-call svg{animation:none}}
 .pf-col p{align-items:center}
+/* Footer "Email us": same button style as Call us, outlined so the two read as a pair */
+footer.pf .pf-mail{background:transparent;border:1.5px solid #5fd3a0;color:#fff!important;padding:4px 12px 4px 4px}
+footer.pf .pf-mail b{color:#fff!important}
+footer.pf .pf-mail svg{background:#5fd3a0;fill:#0b231a;animation:none}
+footer.pf .pf-mail:hover{background:rgba(95,211,160,.14)}
