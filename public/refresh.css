@@ -619,3 +619,6 @@ body.dark .page-home .slider .hero-track .sl-txt h1{color:var(--ink)}
 @media(max-width:640px){
   #detailModal .gallery{height:min(48dvh,360px)!important;min-height:220px!important}
 }
+/* "Full screen" chip on the listing gallery (opens the zoomable viewer). */
+#detailModal .gallery .gal-zoom{position:absolute;z-index:4;left:12px;bottom:12px;border:0;border-radius:99px;padding:6px 12px;background:rgba(6,12,10,.62);color:#fff;font:600 .74rem system-ui,sans-serif;cursor:pointer;backdrop-filter:blur(6px)}
+#detailModal .gallery .gal-zoom:hover{background:rgba(6,12,10,.8)}

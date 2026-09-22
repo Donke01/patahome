@@ -556,7 +556,7 @@
     .foot-tag{margin-left:auto;margin-right:auto;text-align:center}
   }
 </style>
-  <link rel="stylesheet" href="/refresh.css?v=20260923-4">
+  <link rel="stylesheet" href="/refresh.css?v=20260923-5">
 </head>
 <body class="page-home">
 
@@ -819,6 +819,7 @@
 
 <div class="toast" id="toast"></div>
 
+<script src="/lightbox.js?v=20260923-1" defer></script>
 <script>
 /* ================= CONFIG ================= */
 const ICONS = {
@@ -1448,13 +1449,18 @@ function renderGallery(){
   const c=CAT[galItem.cat];
   const hasPhotos=galItem.photos&&galItem.photos.length;
   const slides=hasPhotos
-    ?galItem.photos.map((p,i)=>`<div class="slide ${i===galIdx?"on":""}" style="background:#0d1512"><img class="ph-bg" src="${p.thumb}" alt="" aria-hidden="true" loading="lazy"><img class="ph-full" src="${p.full}" alt="photo ${i+1}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain" loading="lazy"></div>`).join("")
+    ?galItem.photos.map((p,i)=>`<div class="slide ${i===galIdx?"on":""}" style="background:#0d1512;cursor:zoom-in" onclick="openZoom(${i})" title="Tap to view full screen"><img class="ph-bg" src="${p.thumb}" alt="" aria-hidden="true" loading="lazy"><img class="ph-full" src="${p.full}" alt="photo ${i+1}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain" loading="lazy"></div>`).join("")
     :c.gal.map((e,i)=>`<div class="slide ${i===galIdx?"on":""}" style="background:${c.grad}">${ICONS[e]}</div>`).join("");
   const n=hasPhotos?galItem.photos.length:c.gal.length;
   document.getElementById("gallery").innerHTML=slides+
+    (hasPhotos?`<button class="gal-zoom" onclick="openZoom(galIdx)" aria-label="View full screen">⤢ Full screen</button>`:"")+
     (n>1?`<button class="gal-nav gal-prev" onclick="galStep(-1)">‹</button>
      <button class="gal-nav gal-next" onclick="galStep(1)">›</button>
      <div class="dots">${Array.from({length:n},(_,i)=>`<span class="dot ${i===galIdx?"on":""}"></span>`).join("")}</div>`:"");
+}
+function openZoom(i){
+  if(!galItem||!galItem.photos||!galItem.photos.length||!window.PataLightbox)return;
+  PataLightbox.open(galItem.photos.map(p=>p.full),i);
 }
 function galStep(n){
   const len=(galItem.photos&&galItem.photos.length)||CAT[galItem.cat].gal.length;
