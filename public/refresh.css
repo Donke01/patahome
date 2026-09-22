@@ -201,9 +201,17 @@ body.dark footer{background:var(--footer-bg)!important;border-top-color:var(--si
 .page-browse .availability-note{margin-top:9px;color:var(--brand);font-size:.7rem;font-weight:700}
 .page-browse .card-body .listing-trust{margin-top:7px}
 .page-browse .card-body .card-actions{margin-top:12px}
+.page-browse #detailModal .modal{max-width:840px}
+.page-browse #detailModal .gallery{height:clamp(230px,42vw,440px);background:#edf2ef}
+.page-browse #detailModal .gallery .slide{background:#edf2ef!important}
+.page-browse #detailModal .gallery .slide img{object-fit:contain!important}
 @media(max-width:900px){
   .page-browse .card-img{height:205px;min-height:205px}
   .page-browse .card-body .availability-note{margin-top:9px}
+}
+@media(max-width:640px){
+  .page-browse #detailModal .modal{padding:15px}
+  .page-browse #detailModal .gallery{height:clamp(235px,62vw,360px)}
 }
 
 /* Booking-style browse results: image, details, then an action/price rail. */
