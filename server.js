@@ -1995,7 +1995,7 @@ function listingPage(req, res, p) {
   const catSlug = CAT_SLUG[row.category];
   const unit = row.category === "rent" ? "/month" : row.category === "shortlet" ? "/night" : "";
   const canonical = `${BASE_URL}/listing/${row.id}/${slugify(row.title)}`;
-  const desc = `${row.title} in ${row.area_name}, ${row.county} County — ${fmtKes(row.price)}${unit}. Contact the verified owner directly on PataHome. No middlemen, no viewing fees.`;
+  const desc = `${row.title} in ${row.area_name}, ${row.county} County — ${fmtKes(row.price)}${unit}. ${(row.lister_role || "owner") === "owner" ? "Contact the owner directly on PataHome — no agent, no viewing fees." : row.lister_role === "agent" ? `Listed by an agent${row.agent_fee ? ` (fee: ${row.agent_fee})` : ""} — every fee shown upfront on PataHome.` : "Listed by the caretaker — every fee shown upfront on PataHome."}`;
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
