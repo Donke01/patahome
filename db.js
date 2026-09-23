@@ -311,6 +311,29 @@ try { db.exec("ALTER TABLE inquiries ADD COLUMN owner_unread INTEGER NOT NULL DE
 try { db.exec("ALTER TABLE inquiries ADD COLUMN tenant_unread INTEGER NOT NULL DEFAULT 0"); } catch (e) { /* exists */ }
 try { db.exec("ALTER TABLE inquiries ADD COLUMN updated_at TEXT"); } catch (e) { /* exists */ }
 
+/* ---- Referrals, backups log, cookieless traffic stats ---- */
+try { db.exec("ALTER TABLE users ADD COLUMN referral_code TEXT"); } catch (e) { /* exists */ }
+try { db.exec("ALTER TABLE users ADD COLUMN referred_by INTEGER"); } catch (e) { /* exists */ }
+try { db.exec("ALTER TABLE users ADD COLUMN referral_rewarded INTEGER NOT NULL DEFAULT 0"); } catch (e) { /* exists */ }
+try { db.exec("ALTER TABLE users ADD COLUMN featured_credits INTEGER NOT NULL DEFAULT 0"); } catch (e) { /* exists */ }
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_refcode ON users(referral_code);
+CREATE TABLE IF NOT EXISTS backups (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  at TEXT NOT NULL DEFAULT (datetime('now')),
+  file TEXT NOT NULL DEFAULT '',
+  bytes INTEGER NOT NULL DEFAULT 0,
+  remote TEXT NOT NULL DEFAULT '',
+  ok INTEGER NOT NULL DEFAULT 0,
+  error TEXT NOT NULL DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS pv_daily (day TEXT NOT NULL, path TEXT NOT NULL, views INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, path));
+CREATE TABLE IF NOT EXISTS pv_ref (day TEXT NOT NULL, host TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, host));
+CREATE TABLE IF NOT EXISTS pv_city (day TEXT NOT NULL, city TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, city));
+CREATE TABLE IF NOT EXISTS pv_uniques (day TEXT NOT NULL, h TEXT NOT NULL, PRIMARY KEY (day, h));
+CREATE TABLE IF NOT EXISTS search_log (day TEXT NOT NULL, q TEXT NOT NULL, results INTEGER NOT NULL DEFAULT 0, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, q));
+`);
+
 /* Login sessions — one row per signed-in device. Tokens carry the session id,
    so a session can be expired for inactivity, capped in length, or revoked
    (logout, "sign out everywhere", password/phone/email change). */

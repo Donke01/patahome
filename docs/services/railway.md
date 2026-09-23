@@ -44,6 +44,10 @@ Set these under **Variables** in the Railway service:
 | `SESSION_IDLE_HOURS`    | Sign users out after this much inactivity (default `4`) |
 | `SESSION_MAX_DAYS`      | Hard limit on any login, even if active (default `14`) |
 | `LISTING_TTL_DAYS`      | Listings pause if not confirmed for this many days (default `60`) |
+| `ALERT_EMAIL`           | Where crash/backup-failure alerts go (default `info@patahome.co.ke`) |
+| `BACKUPS`               | Set to `off` to stop the daily database backup (on by default) |
+| `BACKUP_DIR`            | Where local backups go (default: a `backups` folder next to the DB, i.e. `/data/backups`) |
+| `CLOUDINARY_MODERATION` | Optional, e.g. `aws_rek` — requires that paid Cloudinary add-on |
 
 ## Persistent volume (critical)
 
@@ -68,3 +72,19 @@ the login still works, the volume is wired correctly.
   vars.
 - **Cold starts** are ~1-2 s. Fine for a marketplace, but don't be surprised
   by the first request after idle.
+
+## Backups
+
+Once a day the server takes a consistent snapshot of the database, gzips it,
+keeps the newest 7 in `/data/backups`, and uploads a private copy to
+Cloudinary (`patahome/backups`, newest 30 kept). Admin → **Backups** shows the
+history, runs one on demand, and downloads the latest.
+
+To restore: stop the service, `gunzip patahome-….db.gz`, replace
+`/data/patahome.db` with it (remove any `-wal`/`-shm` files next to it), start.
+
+## Tests
+
+`npm test` runs the end-to-end suite in `tests/` against a throwaway database
+with email/Cloudinary/maps faked. GitHub runs it on every push
+(`.github/workflows/test.yml`) — a red ✗ next to a commit means something broke.

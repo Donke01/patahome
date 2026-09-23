@@ -37,6 +37,8 @@
   .empty{color:var(--muted);text-align:center;padding:30px 10px}
   .err{color:#b3261e;font-size:.85rem;margin-top:6px}
 </style>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0B5D3B">
 </head>
 <body>
 <header><a class="logo" href="/">Pata<b>Home</b></a><a class="back" href="/browse.html">← Browse homes</a></header>
@@ -86,5 +88,7 @@ async function send(){
 token?thread():list();
 if(token)setInterval(()=>{if(!document.hidden&&!($("msg")&&$("msg").value))thread()},30000);
 </script>
+<script src="/i18n.js?v=1" defer></script>
+<script src="/app.js?v=1" defer></script>
 </body>
 </html>

@@ -322,6 +322,7 @@ router.add("POST", "/api/auth/register", async (req, res) => {
       .run(name.trim(), phone, email, hashPassword(password), "Kenya",
            isEmail ? 0 : 1, isEmail ? 1 : 0);
     user = db.prepare("SELECT * FROM users WHERE id=?").get(info.lastInsertRowid);
+    applyReferral(user.id, req.body.ref);
     db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
       .run(user.id, "system", "Karibu to PataHome", "Your account is ready. Post your first listing to start receiving leads.");
   } catch (e) {
@@ -434,6 +435,7 @@ router.add("POST", "/api/auth/google", async (req, res) => {
       const info = db.prepare("INSERT INTO users (name,phone,email,password_hash,google_id,avatar_url,email_verified) VALUES (?,?,?,?,?,?,1)")
         .run(p.name || "PataHome User", "g." + p.sub, (p.email || "").toLowerCase(), "", p.sub, p.picture || null);
       user = db.prepare("SELECT * FROM users WHERE id=?").get(info.lastInsertRowid);
+      applyReferral(user.id, (req.body || {}).ref);
       db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
         .run(user.id, "system", "Karibu to PataHome", "Add your phone number in Settings to start posting listings.");
     }
@@ -613,8 +615,12 @@ router.add("DELETE", "/api/account", async (req, res) => {
     return send(res, 401, { error: "Enter your current password to delete your account" });
   if (!(await requireStepUp(req, res, u, "delete"))) return;
   // reclaim listing photos, then remove the account (cascades to listings/followers/notifications)
-  for (const l of db.prepare("SELECT photos FROM listings WHERE owner_id=?").all(u.id))
+  for (const l of db.prepare("SELECT photos, video FROM listings WHERE owner_id=?").all(u.id)) {
     for (const id of parsePhotos(l.photos)) cldDestroy(id);
+    if (l.video) cldDestroyVideo(l.video);
+  }
+  // ID documents go too (privacy policy: deleted with the account)
+  for (const id of parsePhotos(row.verify_docs)) cldDestroy(id);
   db.prepare("DELETE FROM users WHERE id=?").run(u.id);
   send(res, 200, { ok: true });
 });
@@ -758,6 +764,7 @@ router.add("GET", "/api/search", (req, res) => {
   const slice = rows.slice((page - 1) * perPage, page * perPage);
   const out = { total: rows.length, page, perPage, hasMore: page * perPage < rows.length,
     listings: slice.map(r => listingView(r, hasLoc ? lat : null, hasLoc ? lng : null)) };
+  if (page === 1 && q.q && !q.ids) logSearch(q.q, rows.length);
   if (page === 1) {
     out.pins = rows.map(r => ({ id: r.id, lat: r.lat, lng: r.lng, price: r.price, category: r.category, title: r.title, area: `${r.area_name}, ${r.county}` }));
     const c = { all: 0 };
@@ -825,6 +832,7 @@ router.add("POST", "/api/listings", (req, res) => {
   const row = db.prepare(`${LISTING_SQL} WHERE l.id=?`).get(info.lastInsertRowid);
   notifyFollowers(u.id, "New listing from an owner you follow", `${row.title} is now live in ${row.area_name}.`).catch(e=>console.error("follower notification failed:",e.message));
   runScamChecks(row.id);
+  try { onListingPublished(u.id, row.id); } catch (e) { console.error("referral reward failed:", e.message); }
   fetchNearby(row.id).catch(e => console.error("nearby failed:", e.message));
   setTimeout(() => matchAlerts(row.id), 0);
   send(res, 201, listingView(row));
@@ -966,8 +974,15 @@ async function scamChecks(listingId) {
   // 1) the same photo already used by a different account
   for (const pid of parsePhotos(l.photos)) {
     let h = db.prepare("SELECT etag FROM photo_hashes WHERE public_id=?").get(pid);
-    if (!h) {
-      const etag = await photoEtag(pid).catch(() => null);
+    if (!h || CLD_MODERATION()) {
+      const resrc = await cldResource(pid).catch(() => null);
+      const mod = resrc && Array.isArray(resrc.moderation) ? resrc.moderation.find(m => m.status === "rejected") : null;
+      if (mod) {
+        addFlag(l.id, "photo_moderation", `Cloudinary ${mod.kind || "moderation"} rejected a photo`);
+        if (l.status === "active") db.prepare("UPDATE listings SET status='under_review', status_changed_at=datetime('now') WHERE id=?").run(l.id);
+      }
+      if (h) continue;
+      const etag = resrc && resrc.etag;
       if (!etag) continue;
       db.prepare("INSERT OR REPLACE INTO photo_hashes (public_id,listing_id,owner_id,etag) VALUES (?,?,?,?)").run(pid, l.id, l.owner_id, etag);
       h = { etag };
@@ -1099,8 +1114,10 @@ router.add("GET", "/api/uploads/sign", (req, res) => {
   const folder = req.query.kind === "verify" ? "patahome/verify" : CLD.folder;
   const timestamp = Math.floor(Date.now() / 1000);
   const params = { folder, timestamp, transformation: CLD_TRANSFORM };
+  const moderation = folder === CLD.folder && CLD_MODERATION() ? CLD_MODERATION() : "";
+  if (moderation) params.moderation = moderation;
   send(res, 200, {
-    cloudName: CLD.cloud, apiKey: CLD.key,
+    cloudName: CLD.cloud, apiKey: CLD.key, moderation,
     timestamp, folder, transformation: CLD_TRANSFORM,
     signature: cldSign(params),
     maxPhotos: CLD.maxPhotos, maxBytes: 8 * 1024 * 1024
@@ -1699,6 +1716,281 @@ setTimeout(() => { viewingReminders().catch(() => {}); backfillNearby().catch(()
 setInterval(() => { viewingReminders().catch(e => console.error("viewing reminders:", e.message)); backfillNearby().catch(() => {}); }, 3600e3);
 
 
+/* =====================================================================
+   Operations: error alerts, database backups, traffic stats, referrals,
+   photo moderation.
+   ===================================================================== */
+
+/* ---------- 12 · error alerts ----------
+   Emails ALERT_EMAIL (default info@patahome.co.ke) when something breaks.
+   The same problem alerts at most once per 30 min, and at most 20 a day. */
+const ALERT_TO = () => process.env.ALERT_EMAIL || "info@patahome.co.ke";
+const alertSeen = new Map(); let alertDay = "", alertCount = 0;
+function alertAdmin(subject, detail) {
+  try {
+    console.error(`[alert] ${subject}\n${detail || ""}`);
+    if (!mailConfigured() || process.env.NODE_ENV === "test") return;
+    const key = subject.slice(0, 120), now = Date.now(), day = new Date().toISOString().slice(0, 10);
+    if (day !== alertDay) { alertDay = day; alertCount = 0; }
+    if (alertCount >= 20 || (alertSeen.get(key) || 0) > now - 30 * 60e3) return;
+    alertSeen.set(key, now); alertCount++;
+    sendMail({ to: ALERT_TO(), subject: `⚠️ PataHome: ${subject}`.slice(0, 180),
+      text: `${subject}\n\n${String(detail || "").slice(0, 4000)}\n\nTime: ${new Date().toISOString()}\nServer: ${SITE()}\n\n(Same alert is muted for 30 minutes.)` })
+      .catch(e => console.error("alert mail failed:", e.message));
+  } catch (e) { console.error("alertAdmin failed:", e); }
+}
+process.on("unhandledRejection", (e) => alertAdmin("Unhandled error (server kept running)", (e && e.stack) || String(e)));
+process.on("uncaughtException", (e) => {
+  alertAdmin("Server crashed and is restarting", (e && e.stack) || String(e));
+  setTimeout(() => process.exit(1), 2500); // Railway restarts the process
+});
+
+/* ---------- 2 · database backups ----------
+   Once a day: a consistent snapshot (VACUUM INTO), gzipped, kept on the
+   volume (last 7) and uploaded to Cloudinary as a private file (last 30).
+   Admin can trigger one and download the latest from the admin panel. */
+const zlib = require("node:zlib");
+const DB_FILE = process.env.DB_PATH || path.join(__dirname, "patahome.db");
+const BACKUP_DIR = process.env.BACKUP_DIR || path.join(path.dirname(DB_FILE), "backups");
+let backupRunning = false;
+async function runBackup(reason = "scheduled") {
+  if (backupRunning) return { ok: false, error: "A backup is already running" };
+  backupRunning = true;
+  const stamp = new Date().toISOString().replace(/[:T]/g, "-").slice(0, 16);
+  const raw = path.join(BACKUP_DIR, `patahome-${stamp}.db`), gz = raw + ".gz";
+  try {
+    fs.mkdirSync(BACKUP_DIR, { recursive: true });
+    if (fs.existsSync(raw)) fs.unlinkSync(raw);
+    db.exec(`VACUUM INTO '${raw.replace(/'/g, "''")}'`);
+    fs.writeFileSync(gz, zlib.gzipSync(fs.readFileSync(raw), { level: 9 }));
+    fs.unlinkSync(raw);
+    const bytes = fs.statSync(gz).size;
+    // keep the newest 7 local copies
+    const local = fs.readdirSync(BACKUP_DIR).filter(f => /^patahome-.*\.db\.gz$/.test(f)).sort();
+    for (const f of local.slice(0, Math.max(0, local.length - 7))) fs.unlinkSync(path.join(BACKUP_DIR, f));
+    let remote = "";
+    if (cldEnabled()) {
+      const publicId = `patahome-${stamp}.db.gz`, folder = "patahome/backups", timestamp = Math.floor(Date.now() / 1000);
+      const params = { folder, public_id: publicId, timestamp, type: "authenticated" };
+      const fd = new FormData();
+      fd.append("file", new Blob([fs.readFileSync(gz)]), publicId);
+      for (const [k, v] of Object.entries(params)) fd.append(k, String(v));
+      fd.append("api_key", CLD.key); fd.append("signature", cldSign(params));
+      const r = await fetch(`https://api.cloudinary.com/v1_1/${CLD.cloud}/raw/upload`, { method: "POST", body: fd, signal: AbortSignal.timeout(120000) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error("Cloudinary upload failed: " + ((d.error && d.error.message) || r.status));
+      remote = d.public_id || publicId;
+      pruneRemoteBackups().catch(e => console.error("backup prune:", e.message));
+    }
+    db.prepare("INSERT INTO backups (file,bytes,remote,ok) VALUES (?,?,?,1)").run(path.basename(gz), bytes, remote);
+    console.log(`[backup] ${reason}: ${path.basename(gz)} (${Math.round(bytes / 1024)} KB)${remote ? " → Cloudinary" : ""}`);
+    return { ok: true, file: path.basename(gz), bytes, remote };
+  } catch (e) {
+    db.prepare("INSERT INTO backups (file,ok,error) VALUES (?,0,?)").run(path.basename(gz), String(e.message).slice(0, 300));
+    alertAdmin("Database backup failed", e.stack || e.message);
+    return { ok: false, error: e.message };
+  } finally { backupRunning = false; }
+}
+async function pruneRemoteBackups() {
+  const auth = { Authorization: "Basic " + Buffer.from(`${CLD.key}:${CLD.secret}`).toString("base64") };
+  const r = await fetch(`https://api.cloudinary.com/v1_1/${CLD.cloud}/resources/raw/authenticated?prefix=patahome/backups/&max_results=100`, { headers: auth });
+  if (!r.ok) return;
+  const list = ((await r.json()).resources || []).map(x => x.public_id).sort();
+  const old = list.slice(0, Math.max(0, list.length - 30));
+  if (!old.length) return;
+  const q = old.map(id => "public_ids[]=" + encodeURIComponent(id)).join("&");
+  await fetch(`https://api.cloudinary.com/v1_1/${CLD.cloud}/resources/raw/authenticated?${q}`, { method: "DELETE", headers: auth });
+}
+function backupDue() {
+  const last = db.prepare("SELECT at FROM backups WHERE ok=1 ORDER BY id DESC LIMIT 1").get();
+  return !last || Date.now() - new Date(last.at.replace(" ", "T") + "Z").getTime() > 20 * 3600e3;
+}
+if (process.env.NODE_ENV !== "test" && process.env.BACKUPS !== "off") {
+  setTimeout(() => { if (backupDue()) runBackup("startup"); }, 60e3);
+  setInterval(() => { if (backupDue()) runBackup(); }, 3600e3);
+}
+router.add("GET", "/api/admin/backups", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  send(res, 200, { cloud: cldEnabled(), dir: BACKUP_DIR, backups: db.prepare("SELECT * FROM backups ORDER BY id DESC LIMIT 20").all() });
+});
+router.add("POST", "/api/admin/backups", async (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const r = await runBackup("manual");
+  send(res, r.ok ? 200 : 400, r.ok ? r : { error: r.error });
+});
+router.add("GET", "/api/admin/backups/latest", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const files = fs.existsSync(BACKUP_DIR) ? fs.readdirSync(BACKUP_DIR).filter(f => /^patahome-.*\.db\.gz$/.test(f)).sort() : [];
+  if (!files.length) return send(res, 404, { error: "No backup yet — run one first" });
+  const f = files[files.length - 1];
+  res.writeHead(200, { "Content-Type": "application/gzip", "Content-Disposition": `attachment; filename="${f}"`, "Cache-Control": "no-store" });
+  res.end(fs.readFileSync(path.join(BACKUP_DIR, f)));
+});
+
+/* ---------- data retention (matches the privacy policy) ---------- */
+function retentionSweep() {
+  const del = (sql) => { try { return db.prepare(sql).run().changes; } catch (e) { console.error("retention:", e.message); return 0; } };
+  const n = del("DELETE FROM inquiries WHERE COALESCE(updated_at, created_at) < datetime('now','-24 months')")
+    + del("DELETE FROM viewings WHERE created_at < datetime('now','-24 months')")
+    + del("DELETE FROM reports WHERE created_at < datetime('now','-24 months')")
+    + del("DELETE FROM verify_codes WHERE expires_at < datetime('now','-1 day')")
+    + del("DELETE FROM pv_uniques WHERE day < date('now','-90 days')")
+    + del("DELETE FROM sessions WHERE expires_at < " + Date.now())
+    + del("DELETE FROM notifications WHERE created_at < datetime('now','-12 months')");
+  if (n) console.log(`[retention] removed ${n} old rows`);
+}
+if (process.env.NODE_ENV !== "test") { setTimeout(retentionSweep, 90e3); setInterval(retentionSweep, 6 * 3600e3); }
+
+/* ---------- 9 · traffic stats (cookieless) ----------
+   No cookies, no third parties, no raw IPs stored: a visitor is counted as
+   a daily hash of IP + browser with a salt that changes every day. */
+const BOT_RX = /bot|crawl|spider|slurp|preview|facebookexternalhit|whatsapp|curl|wget|python|headless|lighthouse/i;
+const daySalt = () => crypto.createHmac("sha256", process.env.JWT_SECRET || "dev").update("pv:" + new Date().toISOString().slice(0, 10)).digest("hex");
+function refHost(ref) {
+  try { const h = new URL(ref).hostname.replace(/^www\./, ""); return /patahome\.co\.ke$/.test(h) ? "" : h.slice(0, 80); } catch { return ""; }
+}
+router.add("POST", "/api/pv", (req, res) => {
+  const ua = String(req.headers["user-agent"] || "");
+  if (!ua || BOT_RX.test(ua)) return send(res, 204, {});
+  const b = req.body || {};
+  const p0 = String(b.path || "/").split("?")[0].slice(0, 120);
+  const pathKey = p0.startsWith("/listing/") ? "/listing/*" : p0.replace(/\/\d+(?=\/|$)/g, "/*");
+  const day = new Date().toISOString().slice(0, 10);
+  db.prepare("INSERT INTO pv_daily (day,path,views) VALUES (?,?,1) ON CONFLICT(day,path) DO UPDATE SET views=views+1").run(day, pathKey);
+  const host = refHost(b.ref);
+  if (host) db.prepare("INSERT INTO pv_ref (day,host,n) VALUES (?,?,1) ON CONFLICT(day,host) DO UPDATE SET n=n+1").run(day, host);
+  const city = String(req.headers["cf-ipcity"] || "").slice(0, 60);
+  if (city) db.prepare("INSERT INTO pv_city (day,city,n) VALUES (?,?,1) ON CONFLICT(day,city) DO UPDATE SET n=n+1").run(day, city);
+  const h = crypto.createHash("sha256").update(daySalt() + clientIp(req) + ua).digest("hex").slice(0, 20);
+  db.prepare("INSERT OR IGNORE INTO pv_uniques (day,h) VALUES (?,?)").run(day, h);
+  send(res, 204, {});
+});
+function logSearch(q, results) {
+  const norm = String(q || "").toLowerCase().replace(/\s+/g, " ").trim().slice(0, 80);
+  if (norm.length < 2) return;
+  db.prepare("INSERT INTO search_log (day,q,results,n) VALUES (?,?,?,1) ON CONFLICT(day,q) DO UPDATE SET n=n+1, results=?")
+    .run(new Date().toISOString().slice(0, 10), norm, results, results);
+}
+router.add("GET", "/api/admin/analytics", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const days = Math.min(90, Math.max(7, +req.query.days || 30)), since = `-${days} days`;
+  const series = [];
+  const v = Object.fromEntries(db.prepare("SELECT day, SUM(views) n FROM pv_daily WHERE day >= date('now', ?) GROUP BY day").all(since).map(r => [r.day, r.n]));
+  const u = Object.fromEntries(db.prepare("SELECT day, COUNT(*) n FROM pv_uniques WHERE day >= date('now', ?) GROUP BY day").all(since).map(r => [r.day, r.n]));
+  for (let i = days - 1; i >= 0; i--) { const d = new Date(Date.now() - i * 864e5).toISOString().slice(0, 10); series.push({ day: d, views: v[d] || 0, visitors: u[d] || 0 }); }
+  const top = (sql) => db.prepare(sql).all(since);
+  send(res, 200, {
+    days, series,
+    totals: { views: series.reduce((a, x) => a + x.views, 0), visitors: series.reduce((a, x) => a + x.visitors, 0) },
+    pages: top("SELECT path k, SUM(views) n FROM pv_daily WHERE day >= date('now', ?) GROUP BY path ORDER BY n DESC LIMIT 12"),
+    referrers: top("SELECT host k, SUM(n) n FROM pv_ref WHERE day >= date('now', ?) GROUP BY host ORDER BY n DESC LIMIT 12"),
+    towns: top("SELECT city k, SUM(n) n FROM pv_city WHERE day >= date('now', ?) GROUP BY city ORDER BY n DESC LIMIT 12"),
+    searches: top("SELECT q k, SUM(n) n, MAX(results) results FROM search_log WHERE day >= date('now', ?) GROUP BY q ORDER BY n DESC LIMIT 15"),
+    noResults: top("SELECT q k, SUM(n) n FROM search_log WHERE day >= date('now', ?) AND results=0 GROUP BY q ORDER BY n DESC LIMIT 15")
+  });
+});
+
+/* ---------- 10 · owner referrals ----------
+   Every account gets an invite link. When someone who signed up through it
+   publishes their first listing, both get a free featured week: the new
+   listing is featured straight away, and the inviter's newest live listing
+   is featured (or they get a credit used on their next listing). */
+const REF_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+function referralCode(userId) {
+  const u = db.prepare("SELECT referral_code FROM users WHERE id=?").get(userId);
+  if (u && u.referral_code) return u.referral_code;
+  for (let i = 0; i < 20; i++) {
+    const code = Array.from(crypto.randomBytes(6), b => REF_ALPHABET[b % REF_ALPHABET.length]).join("");
+    try { db.prepare("UPDATE users SET referral_code=? WHERE id=?").run(code, userId); return code; } catch { /* collision */ }
+  }
+  throw new Error("could not create referral code");
+}
+function applyReferral(newUserId, code) {
+  if (!code) return;
+  const ref = db.prepare("SELECT id FROM users WHERE referral_code=?").get(String(code).toUpperCase().slice(0, 12));
+  if (ref && ref.id !== newUserId) db.prepare("UPDATE users SET referred_by=? WHERE id=? AND referred_by IS NULL").run(ref.id, newUserId);
+}
+const FEATURE_WEEK = 7 * 86400e3;
+function featureFor(listingId, ms) {
+  const l = db.prepare("SELECT featured_until FROM listings WHERE id=?").get(listingId);
+  const base = l && l.featured_until && l.featured_until > new Date().toISOString() ? new Date(l.featured_until).getTime() : Date.now();
+  db.prepare("UPDATE listings SET featured_until=? WHERE id=?").run(new Date(base + ms).toISOString(), listingId);
+}
+function onListingPublished(userId, listingId) {
+  const u = db.prepare("SELECT id, name, referred_by, referral_rewarded, featured_credits FROM users WHERE id=?").get(userId);
+  if (!u) return;
+  // spend a credit earned by inviting someone
+  if (u.featured_credits > 0) {
+    featureFor(listingId, FEATURE_WEEK);
+    db.prepare("UPDATE users SET featured_credits=featured_credits-1 WHERE id=?").run(u.id);
+    db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)").run(u.id, "system", "Featured for a week ★", "Your invite reward was used — this listing is featured at the top of search for 7 days.");
+  }
+  if (!u.referred_by || u.referral_rewarded) return;
+  const n = db.prepare("SELECT COUNT(*) n FROM listings WHERE owner_id=?").get(u.id).n;
+  if (n !== 1) return; // only the first listing earns the reward
+  db.prepare("UPDATE users SET referral_rewarded=1 WHERE id=?").run(u.id);
+  featureFor(listingId, FEATURE_WEEK);
+  db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)").run(u.id, "system", "Welcome gift: featured for a week ★", "You joined through an invite, so your first listing is featured at the top of search for 7 days.");
+  const inviterListing = db.prepare("SELECT id FROM listings WHERE owner_id=? AND status='active' ORDER BY id DESC LIMIT 1").get(u.referred_by);
+  if (inviterListing) {
+    featureFor(inviterListing.id, FEATURE_WEEK);
+    db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)").run(u.referred_by, "system", "Thanks for the invite ★", `${u.name} posted their first listing — your newest listing is featured for 7 days.`);
+  } else {
+    db.prepare("UPDATE users SET featured_credits=featured_credits+1 WHERE id=?").run(u.referred_by);
+    db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)").run(u.referred_by, "system", "You earned a featured week ★", `${u.name} posted their first listing. Your next listing will be featured for 7 days.`);
+  }
+}
+router.add("GET", "/api/my/referral", (req, res) => {
+  const u = requireAuth(req, res); if (!u) return;
+  const code = referralCode(u.id);
+  const me = db.prepare("SELECT featured_credits FROM users WHERE id=?").get(u.id);
+  send(res, 200, { code, link: `${SITE()}/r/${code}`,
+    invited: db.prepare("SELECT COUNT(*) n FROM users WHERE referred_by=?").get(u.id).n,
+    rewarded: db.prepare("SELECT COUNT(*) n FROM users WHERE referred_by=? AND referral_rewarded=1").get(u.id).n,
+    credits: me ? me.featured_credits : 0 });
+});
+router.add("GET", "/r/:code", (req, res, p) => {
+  const code = String(p.code || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12);
+  res.writeHead(302, { Location: `/dashboard.html?ref=${code}&signup=1`, "Cache-Control": "no-store" });
+  res.end();
+});
+
+/* ---------- 11 · photo moderation ----------
+   Admin gets a "Photos" review wall of the newest uploads with one-tap
+   removal. Optionally, set CLOUDINARY_MODERATION (e.g. "aws_rek") to have
+   Cloudinary's paid moderation add-on screen uploads; rejected photos flag
+   the listing and pause it for review. */
+const CLD_MODERATION = () => String(process.env.CLOUDINARY_MODERATION || "").trim();
+async function cldResource(publicId) {
+  if (!cldEnabled()) return null;
+  const r = await fetch(`https://api.cloudinary.com/v1_1/${CLD.cloud}/resources/image/upload/${publicId.split("/").map(encodeURIComponent).join("/")}`,
+    { headers: { Authorization: "Basic " + Buffer.from(`${CLD.key}:${CLD.secret}`).toString("base64") }, signal: AbortSignal.timeout(10000) });
+  return r.ok ? r.json() : null;
+}
+router.add("GET", "/api/admin/photos", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const rows = db.prepare(`${LISTING_SQL} WHERE l.status IN ('active','under_review','expired') AND l.photos != '[]' ORDER BY l.id DESC LIMIT 60`).all();
+  const out = [];
+  for (const r of rows) for (const id of parsePhotos(r.photos)) out.push({ listingId: r.id, title: r.title, owner: r.owner_name, status: r.status, publicId: id,
+    thumb: cldEnabled() ? photoUrl(id, "c_fill,w_300,h_225,q_auto:eco") : id, full: cldEnabled() ? photoUrl(id, "c_limit,w_1280,q_auto") : id });
+  send(res, 200, out.slice(0, 180));
+});
+router.add("POST", "/api/admin/photos/remove", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const { listingId, publicId, reason } = req.body || {};
+  const l = db.prepare("SELECT * FROM listings WHERE id=?").get(listingId);
+  if (!l) return send(res, 404, { error: "Listing not found" });
+  const photos = parsePhotos(l.photos);
+  if (!photos.includes(publicId)) return send(res, 404, { error: "Photo not on this listing" });
+  db.prepare("UPDATE listings SET photos=? WHERE id=?").run(JSON.stringify(photos.filter(x => x !== publicId)), l.id);
+  cldDestroy(publicId);
+  db.prepare("DELETE FROM photo_hashes WHERE public_id=?").run(publicId);
+  db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)").run(l.owner_id, "listing", "A photo was removed",
+    `One photo on "${l.title}" was removed by our team${reason ? ` (${String(reason).slice(0, 120)})` : ""}. Photos must show the actual property and follow our listing rules.`);
+  send(res, 200, { ok: true });
+});
+
+
 /* ================= admin (role: admin only) ================= */
 function requireAdmin(req, res) {
   const u = requireAuth(req, res);
@@ -1937,6 +2229,8 @@ ${imageAlt ? `<meta property="og:image:alt" content="${escapeHtml(imageAlt)}">` 
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<script>try{navigator.sendBeacon("/api/pv",new Blob([JSON.stringify({path:location.pathname,ref:document.referrer})],{type:"application/json"}))}catch(e){}</script>
 ${jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>` : ""}
 <style>
   body{font-family:'Segoe UI',system-ui,sans-serif;margin:0;background:#f7faf8;color:#1c2320;line-height:1.6}
@@ -2124,7 +2418,7 @@ Sitemap: ${BASE_URL}/sitemap.xml
 });
 
 /* ================= server ================= */
-const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".svg": "image/svg+xml", ".ico": "image/x-icon" };
+const MIME = { ".webmanifest": "application/manifest+json", ".json": "application/json", ".txt": "text/plain", ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".svg": "image/svg+xml", ".ico": "image/x-icon" };
 
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
@@ -2154,8 +2448,13 @@ const server = http.createServer((req, res) => {
   req.on("end", () => {
     try { req.body = body ? JSON.parse(body) : {}; } catch { req.body = {}; }
     const m = router.match(req.method, url.pathname);
+    const fail = (e) => {
+      console.error(e);
+      alertAdmin(`Error on ${req.method} ${url.pathname}`, (e && e.stack) || String(e));
+      if (!res.headersSent) send(res, 500, { error: "Something went wrong" });
+    };
     try {
-      if (m) return m.handler(req, res, m.params);
+      if (m) { const r = m.handler(req, res, m.params); if (r && typeof r.catch === "function") r.catch(fail); return; }
       // static files from ./public (put patahome.html there as index.html)
       if (req.method === "GET") {
         let file = path.join(__dirname, "public", url.pathname === "/" ? "index.html" : url.pathname);
@@ -2164,16 +2463,15 @@ const server = http.createServer((req, res) => {
           res.writeHead(200, {
             "Content-Type": MIME[ext] || "application/octet-stream",
             // HTML must always revalidate so deploys show up immediately (browsers + Cloudflare edge)
-            "Cache-Control": ext === ".html" || ext === "" ? "no-cache, must-revalidate" : "public, max-age=86400"
+            // HTML, the service worker and the app manifest must revalidate so updates reach installed apps
+            "Cache-Control": ext === ".html" || ext === "" || ext === ".webmanifest" || path.basename(file) === "sw.js" ? "no-cache, must-revalidate" : "public, max-age=86400",
+            ...(path.basename(file) === "sw.js" ? { "Service-Worker-Allowed": "/" } : {})
           });
           return res.end(fs.readFileSync(file));
         }
       }
       send(res, 404, { error: "Not found" });
-    } catch (e) {
-      console.error(e);
-      send(res, 500, { error: "Something went wrong" });
-    }
+    } catch (e) { fail(e); }
   });
 });
 

@@ -108,6 +108,22 @@
   .table-scroll{overflow-x:auto}
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--ink);color:#fff;padding:12px 22px;border-radius:12px;font-size:.9rem;z-index:3000;opacity:0;transition:.3s}
   .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+  .tr-top{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+  .tr-top div{border:1px solid var(--line,#e3e8e5);border-radius:12px;padding:12px 14px}
+  .tr-top b{display:block;font-size:1.5rem}.tr-top span{font-size:.78rem;color:var(--muted,#5f6b66)}
+  .tr-bars{display:flex;align-items:flex-end;gap:3px;height:120px;padding:8px;border:1px solid var(--line,#e3e8e5);border-radius:12px}
+  .tr-bars i{flex:1;background:#cfe9dc;border-radius:3px 3px 0 0;position:relative;min-height:2px}
+  .tr-bars em{position:absolute;left:0;right:0;bottom:0;background:#0e7c5a;border-radius:3px 3px 0 0}
+  .tr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+  .tr-card{border:1px solid var(--line,#e3e8e5);border-radius:12px;padding:12px 14px}
+  .tr-card h4{margin:0 0 8px;font-size:.85rem}
+  .tr-row{display:flex;justify-content:space-between;gap:10px;font-size:.84rem;padding:4px 0;border-bottom:1px dashed #eef1ef}
+  .ph-wall{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+  .ph-item{border:1px solid var(--line,#e3e8e5);border-radius:10px;overflow:hidden;display:flex;flex-direction:column}
+  .ph-item img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}
+  .ph-cap{padding:6px 8px;font-size:.75rem;flex:1}.ph-cap a{font-weight:700;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ph-cap span{color:var(--muted,#5f6b66)}
+  .ph-item .btn{margin:0 8px 8px}
+  .bk-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px;flex-wrap:wrap}
 </style>
 <link rel="stylesheet" href="/refresh.css?v=20260924-4">
 </head>
@@ -159,6 +175,9 @@
     <button class="tab" id="tabU" onclick="setTab('users')">Users</button>
     <button class="tab" id="tabV" onclick="setTab('verifs')">Verifications <span id="vCount" style="background:var(--red);color:#fff;border-radius:999px;padding:1px 8px;font-size:.7rem;display:none"></span></button>
     <button class="tab" id="tabR" onclick="setTab('reports')">Reports &amp; flags <span id="rCount" style="background:var(--red);color:#fff;border-radius:999px;padding:1px 8px;font-size:.7rem;display:none"></span></button>
+    <button class="tab" id="tabT" onclick="setTab('traffic')">Traffic</button>
+    <button class="tab" id="tabP" onclick="setTab('photos')">Photos</button>
+    <button class="tab" id="tabB" onclick="setTab('backups')">Backups</button>
     <button class="tab" id="tabS" onclick="setTab('support')">Support <span id="sCount" style="background:var(--red);color:#fff;border-radius:999px;padding:1px 8px;font-size:.7rem;display:none"></span></button>
   </div>
   <div class="panel table-scroll" id="panel"></div>
@@ -275,6 +294,8 @@ function setTab(t){
   $("tabV").classList.toggle("on",t==="verifs");
   $("tabS").classList.toggle("on",t==="support");
   $("tabR").classList.toggle("on",t==="reports");
+  ["T:traffic","P:photos","B:backups"].forEach(x=>{const [k,n]=x.split(":");$("tab"+k).classList.toggle("on",t===n)});
+  if(["traffic","photos","backups"].includes(t)){$("panel").innerHTML='<div style="padding:34px;text-align:center;color:var(--muted)">Loading…</div>';loadExtra(t);return}
   renderTab();
 }
 function renderTab(){
@@ -364,6 +385,55 @@ function renderTab(){
       </tr>`;
       }).join("")+`</table>`;
   }
+}
+/* ---------- Traffic / Photos / Backups ---------- */
+async function loadExtra(t){
+  try{
+    if(t==="traffic"){
+      const a=await api("/api/admin/analytics?days=30");
+      const max=Math.max(1,...a.series.map(x=>x.views));
+      const list=(title,rows,fmtK)=>`<div class="tr-card"><h4>${title}</h4>${rows.length?rows.map(r=>`<div class="tr-row"><span>${fmtK?fmtK(r):esc(r.k||"—")}</span><b>${r.n}</b></div>`).join(""):'<div class="muted">No data yet</div>'}</div>`;
+      $("panel").innerHTML=`
+        <div class="tr-top"><div><b>${a.totals.visitors}</b><span>visitors · 30 days</span></div><div><b>${a.totals.views}</b><span>page views</span></div><div><b>${a.noResults.reduce((s,x)=>s+x.n,0)}</b><span>searches with no results</span></div></div>
+        <div class="tr-bars">${a.series.map(x=>`<i title="${x.day}: ${x.visitors} visitors, ${x.views} views" style="height:${Math.round(x.views/max*100)}%"><em style="height:${x.views?Math.round(x.visitors/x.views*100):0}%"></em></i>`).join("")}</div>
+        <div class="muted" style="font-size:.75rem;margin:4px 0 16px">Bars = daily page views (dark part = visitors). No cookies; counts are anonymous.</div>
+        <div class="tr-grid">
+          ${list("Searches with no results — recruit owners here",a.noResults)}
+          ${list("Top searches",a.searches,r=>`${esc(r.k)} <span class="muted">(${r.results} results)</span>`)}
+          ${list("Visitors' towns",a.towns)}
+          ${list("Where visitors come from",a.referrers)}
+          ${list("Most viewed pages",a.pages)}
+        </div>`;
+    }else if(t==="photos"){
+      const ph=await api("/api/admin/photos");
+      $("panel").innerHTML=ph.length?`<div class="muted" style="margin:0 0 10px">Newest listing photos. Remove anything that isn't the actual property, is offensive, or shows people/contact details. The owner is notified.</div>
+        <div class="ph-wall">${ph.map(p=>`<div class="ph-item"><a href="${esc(p.full)}" target="_blank" rel="noopener"><img src="${esc(p.thumb)}" loading="lazy" alt=""></a>
+          <div class="ph-cap"><a href="/browse.html?open=${p.listingId}" target="_blank" rel="noopener">${esc(p.title)}</a><span>${esc(p.owner)}${p.status!=="active"?" · "+esc(p.status):""}</span></div>
+          <button class="btn btn-danger btn-sm" onclick="removePhoto(${p.listingId},'${esc(p.publicId)}')">Remove</button></div>`).join("")}</div>`
+        :'<div style="padding:34px;text-align:center;color:var(--muted)">No listing photos yet.</div>';
+    }else if(t==="backups"){
+      const b=await api("/api/admin/backups");
+      $("panel").innerHTML=`<div class="bk-head"><div><b>Daily database backups</b><div class="muted">Kept on the server volume (last 7)${b.cloud?" and in Cloudinary as private files (last 30)":" — add Cloudinary keys to also keep off-server copies"}.</div></div>
+          <div style="display:flex;gap:8px"><button class="btn btn-ghost btn-sm" onclick="downloadBackup()">Download latest</button><button class="btn btn-primary btn-sm" id="bkNow" onclick="backupNow()">Back up now</button></div></div>
+        <table><tr><th>When (UTC)</th><th>File</th><th>Size</th><th>Off-server copy</th><th>Status</th></tr>${b.backups.map(x=>`<tr><td>${esc(x.at)}</td><td class="muted">${esc(x.file)}</td><td>${x.bytes?Math.round(x.bytes/1024)+" KB":"—"}</td><td>${x.remote?"✓ Cloudinary":"—"}</td><td>${x.ok?'<span class="pill ok">ok</span>':`<span class="pill warn">failed</span> <span class="muted">${esc(x.error)}</span>`}</td></tr>`).join("")||'<tr><td colspan="5" class="muted">No backups yet — the first runs a minute after the server starts.</td></tr>'}</table>`;
+    }
+  }catch(e){$("panel").innerHTML=`<div style="padding:34px;text-align:center;color:var(--red)">${esc(e.message)}</div>`}
+}
+async function removePhoto(listingId,publicId){
+  const reason=prompt("Reason (shown to the owner), e.g. Not the actual property");if(reason===null)return;
+  try{await api("/api/admin/photos/remove",{method:"POST",body:JSON.stringify({listingId,publicId,reason})});toast("Photo removed");loadExtra("photos")}catch(e){toast(e.message)}
+}
+async function backupNow(){
+  const b=$("bkNow");b.disabled=true;b.textContent="Backing up…";
+  try{const r=await api("/api/admin/backups",{method:"POST"});toast(`Backup done (${Math.round(r.bytes/1024)} KB)`)}catch(e){toast(e.message)}
+  loadExtra("backups");
+}
+async function downloadBackup(){
+  const r=await fetch("/api/admin/backups/latest",{headers:{Authorization:"Bearer "+token}});
+  if(!r.ok){const d=await r.json().catch(()=>({}));toast(d.error||"No backup");return}
+  const blob=await r.blob(),a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);a.download=(r.headers.get("content-disposition")||"").match(/filename="([^"]+)"/)?.[1]||"patahome-backup.db.gz";a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),5000);
 }
 async function moderate(id,action){
   if(action==="remove"&&!confirm("Remove this listing from PataHome? The owner will be notified."))return;

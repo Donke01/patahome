@@ -453,6 +453,8 @@
   }
 </style>
   <link rel="stylesheet" href="/refresh.css?v=20260924-4">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0B5D3B">
 </head>
 <body class="page-browse">
 
@@ -581,7 +583,7 @@
   <div class="pf-top">
     <div class="pf-id">
       <a class="pf-brand" href="/" aria-label="PataHome home">Pata<b>Home</b></a>
-      <p class="pf-tag"><strong>Houses for rent &amp; sale across Kenya.</strong> <span>Direct from owners — no agent fees.</span></p>
+      <p class="pf-tag"><strong>Houses for rent &amp; sale across Kenya.</strong> <span>Owners first — every fee shown upfront.</span></p>
     </div>
     <div class="pf-actions">
       <a class="pf-btn" href="/dashboard.html">List your property free</a>
@@ -599,7 +601,7 @@
           <a href="https://www.tiktok.com/" target="_blank" rel="noopener" aria-label="TikTok"><svg viewBox="0 0 24 24"><path d="M19.6 6.2a5.4 5.4 0 01-3.2-1V16a5.7 5.7 0 11-5.7-5.7c.3 0 .6 0 .9.1v2.8a2.9 2.9 0 102 2.8V0h2.8a5.4 5.4 0 003.2 4.7v1.5z"/></svg></a>
         </div></div>
   </nav>
-  <div class="pf-base"><span>© <span id="footYear"></span> <b>PataHome</b> · Kenya</span><span>Built for renters, buyers &amp; owners</span></div>
+  <div class="pf-base"><span>© <span id="footYear"></span> <b>PataHome</b> · Kenya</span><span class="pf-legal"><a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a> · <a href="#" onclick="window.PH_INSTALL&&PH_INSTALL();return false">Install app</a></span></div>
 </footer>
 
 <!-- Detail modal -->
@@ -876,7 +878,7 @@ const toItem=x=>({
   price:x.price,beds:x.bedrooms,lat:x.lat,lng:x.lng,
   posted:timeAgo(x.createdAt),owner:x.ownerName,ownerId:x.ownerId,verified:x.ownerVerified,
   role:x.listerRole||"owner",fee:x.agentFee||"",
-  features:x.features||{},video:x.video||null,nearby:x.nearby||null,
+  features:x.features||{},video:x.video||null,nearby:x.nearby||null,featured:!!x.featured,
   photos:x.photoUrls||[]
 });
 // How a listing's poster is labelled everywhere (cards, popup).
@@ -1015,7 +1017,7 @@ const HINTS=["bedsitter in Kasarani…","1 bedroom near campus…","2 bedroom in
 let hi=0;
 function typewriter(){
   const inp=document.getElementById("searchInput");
-  const word="Try "+HINTS[hi];
+  const word=(window.PH_I18N&&PH_I18N.lang==="sw"?"Jaribu: ":"Try ")+HINTS[hi];
   let i=0;
   const iv=setInterval(()=>{
     if(inp.value){clearInterval(iv);inp.placeholder="Search listings…";return}
@@ -1246,7 +1248,7 @@ function cardHTML(x,i){
         ${x.photos.length?`<img class="ph-bg" src="${x.photos[0].thumb}" alt="" aria-hidden="true" loading="lazy"><img class="ph" src="${x.photos[0].thumb}" alt="${esc(x.title)}" loading="lazy">`:`<span class="wm">${ICONS[c.gal[0]]}</span>`}
         ${x.photos.length?`<span class="photo-count">${CAM} View all ${x.photos.length} photo${x.photos.length===1?"":"s"}</span>`:""}
         <span class="badge ${c.badge}">${c.label}</span>
-        ${isNew?`<span class="new-badge">NEW</span>`:""}
+        ${x.featured?`<span class="feat-badge">★ Featured</span>`:isNew?`<span class="new-badge">NEW</span>`:""}
         <button class="heart ${favs.has(x.id)?"on":""}" onclick="event.stopPropagation();toggleFav(${x.id})">${favs.has(x.id)?"♥":"♡"}</button>
         ${d!==null?`<span class="dist-badge">${d<1?Math.round(d*1000)+" m":d.toFixed(1)+" km"} away</span>`:""}
       </div>
@@ -1735,5 +1737,7 @@ async function sendChat(){
 function toggleNav(e){if(e)e.stopPropagation();document.getElementById("navPop").classList.toggle("show")}
 document.addEventListener("click",e=>{if(!e.target.closest("#navPop,#hamBtn"))document.getElementById("navPop").classList.remove("show")});
 </script>
+<script src="/i18n.js?v=1" defer></script>
+<script src="/app.js?v=1" defer></script>
 </body>
 </html>

@@ -299,6 +299,8 @@
   .badge-new{background:var(--amber);color:#fff;font-size:.68rem;font-weight:800;border-radius:999px;padding:2px 9px}
 </style>
   <link rel="stylesheet" href="/refresh.css?v=20260924-4">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0B5D3B">
 </head>
 <body class="page-dashboard">
 
@@ -335,6 +337,7 @@
         <button class="menu-item" onclick="openSettings('language')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>Change language</button>
         <div class="menu-sep"></div>
         <button class="menu-item danger" onclick="openSettings('delete')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M6 7l1 13h10l1-13"/></svg>Delete my account</button>
+        <button class="menu-item" onclick="openInvite()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12v9H4v-9M2 7h20v5H2zM12 21V7M12 7H7.5a2.5 2.5 0 1 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 1 0 0-5C13 2 12 7 12 7z"/></svg>Invite landlords · free featured week</button>
         <button class="menu-item" onclick="logoutEverywhere()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="13" height="10" rx="1.5"/><path d="M6 18h5M8.5 14v4"/><rect x="17" y="8" width="5" height="12" rx="1.2"/></svg>Sign out of all devices</button>
         <button class="menu-item" onclick="logout()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 12H3M9 6l-6 6 6 6M15 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/></svg>Log out</button>
       </div>
@@ -374,7 +377,7 @@
     <div id="regExtra" style="display:none">
       <label style="display:flex;align-items:center;gap:9px;font-weight:500;text-transform:none;letter-spacing:0;margin-top:14px;cursor:pointer">
         <input type="checkbox" id="aTerms" style="width:auto;accent-color:var(--green)">
-        I agree to PataHome's terms of use and privacy policy
+        <span>I agree to PataHome's <a href="/terms.html" target="_blank" rel="noopener">terms of use</a> and <a href="/privacy.html" target="_blank" rel="noopener">privacy policy</a></span>
       </label>
     </div>
     <div class="err" id="authErr"></div>
@@ -763,7 +766,7 @@ async function submitAuth(){
       if(!$("aName").value.trim()){$("authErr").textContent="Enter your name";return}
       if(!idField){$("authErr").textContent="Enter your phone number or email";return}
       if(!$("aTerms").checked){$("authErr").textContent="Please accept the terms to continue";return}
-      body={name:$("aName").value.trim(),identifier:idField,password:$("aPass").value};
+      body={name:$("aName").value.trim(),identifier:idField,password:$("aPass").value,ref:inviteRef()};
       path="/api/auth/register";
     }
     const r=await api(path,{method:"POST",body:JSON.stringify(body)});
@@ -772,6 +775,25 @@ async function submitAuth(){
     if(r.verifyKind==="email")setTimeout(()=>openEmailVerify(r.verifyTarget),500);
     else if(r.verifyKind==="phone")setTimeout(()=>openPhoneVerify(r.verifyTarget),500);
   }catch(e){$("authErr").textContent=e.message}
+}
+/* ---------- invites ---------- */
+(function(){const P=new URLSearchParams(location.search);const r=P.get("ref");if(r){try{localStorage.setItem("ph_ref",r.toUpperCase().slice(0,12))}catch(e){}}})();
+function inviteRef(){try{return localStorage.getItem("ph_ref")||""}catch(e){return""}}
+async function openInvite(){
+  closeMenu();
+  $("setErr").textContent="";$("setTitle").textContent="Invite landlords, get featured";
+  $("setSub").textContent="When someone joins with your link and posts their first listing, you both get a free featured week at the top of search.";
+  $("setBody").innerHTML='<div class="empty" style="padding:14px">Loading…</div>';$("setActions").innerHTML="";show("setModal");
+  try{
+    const r=await api("/api/my/referral");
+    const msg=`I list my rentals on PataHome — tenants contact you directly, no fees. Join with my link and your first listing is featured free for a week: ${r.link}`;
+    $("setBody").innerHTML=`
+      <label>Your invite link</label>
+      <div style="display:flex;gap:8px"><input id="invLink" readonly value="${esc(r.link)}" onclick="this.select()"><button class="btn btn-ghost btn-sm" onclick="navigator.clipboard.writeText($('invLink').value).then(()=>toast('Link copied'))">Copy</button></div>
+      <div class="inv-stats"><div><b>${r.invited}</b><span>joined</span></div><div><b>${r.rewarded}</b><span>posted a listing</span></div><div><b>${r.credits}</b><span>featured week${r.credits===1?"":"s"} waiting</span></div></div>
+      ${r.credits?'<p class="photo-note">Your next listing will be featured automatically.</p>':""}`;
+    $("setActions").innerHTML=`<button class="btn btn-ghost" onclick="hide('setModal')">Close</button><a class="btn btn-primary" style="text-align:center;text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(msg)}">Share on WhatsApp</a>`;
+  }catch(e){$("setBody").innerHTML="";$("setErr").textContent=e.message}
 }
 function saveSession(r){
   token=r.token;ME=r.user;userName=r.user.name;
@@ -794,7 +816,7 @@ function initGoogle(){
 }
 async function onGoogleCredential(resp){
   try{
-    const r=await api("/api/auth/google",{method:"POST",body:JSON.stringify({credential:resp.credential})});
+    const r=await api("/api/auth/google",{method:"POST",body:JSON.stringify({credential:resp.credential,ref:inviteRef()})});
     saveSession(r);enterDash();
     if(r.user.needsSetup){setTimeout(()=>{toast("Karibu! Complete your profile to start posting");openSettings("complete")},600)}
   }catch(e){$("authErr").textContent=e.message}
@@ -1261,6 +1283,7 @@ function sendToCloudinary(cfg,f,u){
     fd.append("signature",cfg.signature);
     fd.append("folder",cfg.folder);
     fd.append("transformation",cfg.transformation);
+    if(cfg.moderation)fd.append("moderation",cfg.moderation);
     const x=new XMLHttpRequest();u.xhr=x;
     x.open("POST",`https://api.cloudinary.com/v1_1/${cfg.cloudName}/image/upload`);
     x.upload.onprogress=e=>{if(e.lengthComputable){u.loaded=e.loaded;u.total=e.total;paintUpload(u)}};
@@ -1760,9 +1783,11 @@ async function doDelete(){
     }
   }
   showAuth();
+  if(new URLSearchParams(location.search).get("signup")==="1"){try{setMode("register")}catch(e){}}
 })();
 // Messages passed back from one-tap email links (e.g. "Still available")
 (function(){const n=new URLSearchParams(location.search).get("notice");if(n){setTimeout(()=>toast(n),900);history.replaceState(null,"",location.pathname)}})();
 </script>
+<script src="/app.js?v=1" defer></script>
 </body>
 </html>

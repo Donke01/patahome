@@ -1,0 +1,23 @@
+{
+  "name": "PataHome — Houses for rent & sale in Kenya",
+  "short_name": "PataHome",
+  "description": "Find bedsitters, apartments and homes for rent or sale across Kenya — owners first, every fee shown upfront.",
+  "start_url": "/?source=app",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#0B5D3B",
+  "lang": "en-KE",
+  "categories": ["lifestyle", "shopping", "business"],
+  "icons": [
+    { "src": "/favicon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/favicon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/favicon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Browse homes", "url": "/browse.html", "icons": [{ "src": "/favicon-192.png", "sizes": "192x192" }] },
+    { "name": "My messages", "url": "/messages.html", "icons": [{ "src": "/favicon-192.png", "sizes": "192x192" }] },
+    { "name": "Post a listing", "url": "/dashboard.html", "icons": [{ "src": "/favicon-192.png", "sizes": "192x192" }] }
+  ]
+}
