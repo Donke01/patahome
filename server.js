@@ -1416,7 +1416,7 @@ function listingPage(req, res, p) {
 router.add("GET", "/listing/:id", listingPage);
 router.add("GET", "/listing/:id/:slug", listingPage);
 
-/* ---- category+area landing pages: /rentals/kitale-town-cbd etc ---- */
+/* ---- category+area landing pages: /rentals/ruaka etc ---- */
 router.add("GET", "/:catSlug/:areaSlug", (req, res, p) => {
   const cat = CATS[p.catSlug];
   const area = cat ? areaBySlug(p.areaSlug) : null;

@@ -58,7 +58,7 @@ Other:
 Server-rendered, crawlable pages (set `BASE_URL=https://patahome.co.ke` in production):
 
 - `/listing/:id/:slug` — per-listing page with meta tags + schema.org JSON-LD
-- `/rentals/:area`, `/for-sale/:area`, `/land/:area`, `/vehicles/:area` — landing pages matching real search queries ("bedsitter kitale", "plots for sale ruiru")
+- `/rentals/:area`, `/for-sale/:area`, `/land/:area`, `/vehicles/:area` — landing pages matching real search queries ("bedsitter kasarani", "plots for sale ruiru")
 - `/browse` — crawl entry point linking every area page
 - `/sitemap.xml` (dynamic) and `/robots.txt`
 
