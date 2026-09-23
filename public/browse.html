@@ -452,7 +452,7 @@
     .foot-tag{margin-left:auto;margin-right:auto;text-align:center}
   }
 </style>
-  <link rel="stylesheet" href="/refresh.css?v=20260924-3">
+  <link rel="stylesheet" href="/refresh.css?v=20260924-4">
 </head>
 <body class="page-browse">
 
@@ -609,23 +609,27 @@
     <div class="gallery" id="gallery"></div>
     <div class="dm-body">
       <div class="dm-main">
-        <div class="dm-kicker"><span class="dm-cat" id="dCat"></span><span id="dPlace"></span></div>
-        <h2 id="dTitle"></h2>
-        <div class="dm-price" id="dPrice"></div>
+        <div class="dm-kicker">
+          <span class="dm-cat" id="dCat"></span><span id="dPlace"></span>
+          <button class="dm-report-top" id="dReportBtn" type="button" title="Report a problem with this listing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 22V4M4 4h12l-2 4 2 4H4"/></svg>Report</button>
+        </div>
+        <div class="dm-head">
+          <h2 id="dTitle"></h2>
+          <div class="dm-price" id="dPrice"></div>
+        </div>
         <div class="dm-facts" id="dFacts"></div>
         <div class="sub" id="dSub" hidden></div>
-        <div class="dm-sec" id="dDetailsWrap">
-          <h4>Home details</h4>
+        <div class="dm-tabs" id="dTabs" role="tablist"></div>
+        <div class="dm-pane" id="dDetailsWrap" data-tab="Details">
           <div class="dm-kv" id="dKv"></div>
           <div class="chips" id="dChips"></div>
         </div>
-        <div class="dm-sec" id="dDescWrap">
-          <h4>About this home</h4>
+        <div class="dm-pane" id="dDescWrap" data-tab="About">
           <p class="dm-desc" id="dDesc"></p>
         </div>
-        <div class="dm-sec" id="dNearWrap">
-          <h4>Around this home <small>approximate distances</small></h4>
+        <div class="dm-pane" id="dNearWrap" data-tab="Nearby">
           <div class="dm-near" id="dNear"></div>
+          <div class="dm-note">Approximate distances from the listing's area.</div>
         </div>
       </div>
       <aside class="dm-side">
@@ -633,22 +637,20 @@
           <div class="avatar" id="dAvatar"></div>
           <div class="dm-owner-txt">
             <div class="dm-listed" id="dListed">Listed by</div>
-            <div class="name" id="dOwner"></div>
-            <div class="verify" id="dVerify"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span>ID &amp; ownership verified</span></div>
+            <a class="name" id="dOwnerProfile" href="#"><span id="dOwner"></span> <small>→</small></a>
+            <div class="verify" id="dVerify"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span>ID verified</span></div>
           </div>
+          <button class="dm-follow-pill" id="dFollowBtn" type="button">+ Follow</button>
         </div>
-        <div class="phone" id="dPhone"></div>
-        <button class="btn btn-ghost dm-book" id="dBookBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Book a viewing</button>
-        <a id="dOwnerProfile" class="dm-link" href="#">View owner profile →</a>
-        <div class="safe-note" role="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.5 8 8 11 4.5-3 8-6 8-11V5z"/><path d="M12 8v4M12 16h.01"/></svg><span><b>Stay safe:</b> never pay rent, a deposit or a "viewing fee" before you've seen the house and met the owner. PataHome never asks you for money.</span></div>
+        <div class="phone" id="dPhone" hidden></div>
+        <button class="btn btn-ghost dm-book" id="dBookBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Book a free viewing</button>
         <div class="dm-perks" id="dPerks"><span>✓ No agent fees</span><span>✓ No viewing fees</span></div>
-        <button class="dm-report" id="dReportBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 22V4M4 4h12l-2 4 2 4H4"/></svg>Report this listing</button>
+        <div class="dm-safe" role="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.5 8 8 11 4.5-3 8-6 8-11V5z"/><path d="M12 8v4M12 16h.01"/></svg><span><b>Never pay before viewing.</b> PataHome never asks for money. <button type="button" class="dm-safe-rep" onclick="document.getElementById('dReportBtn').click()">Report a scam</button></span></div>
       </aside>
       <div class="dm-actions">
         <button class="btn btn-primary" id="dContactBtn">Contact Owner</button>
-        <button class="btn btn-ghost" id="dShareBtn" aria-label="Share this listing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/></svg><span>Share</span></button>
-        <button class="btn btn-ghost" id="dMapBtn" aria-label="View on map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.1-7-11a7 7 0 0 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span>Map</span></button>
-        <button class="btn btn-ghost dm-follow" id="dFollowBtn">Follow owner</button>
+        <button class="btn btn-ghost dm-ic" id="dShareBtn" aria-label="Share this listing" title="Share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/></svg></button>
+        <button class="btn btn-ghost dm-ic" id="dMapBtn" aria-label="View on map" title="View on map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.1-7-11a7 7 0 0 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></button>
       </div>
     </div>
   </div>
@@ -1394,9 +1396,11 @@ function openDetail(id){
   const near=Object.keys(NL).filter(k=>N[k]);
   document.getElementById("dNear").innerHTML=near.map(k=>`<div><span class="ni">${NL[k][0]}</span><span class="nt">${NL[k][1]}<small>${esc(N[k].name!==NL[k][1]?N[k].name:"")}</small></span><b>~${dist2(N[k].m)}</b></div>`).join("");
   document.getElementById("dNearWrap").style.display=near.length?"":"none";
+  buildDetailTabs();
   document.getElementById("dDesc").textContent=x.desc||"";
   document.getElementById("dDescWrap").style.display=x.desc?"":"none";
   document.getElementById("dVerify").style.display=x.verified===false?"none":"";
+  document.getElementById("dContactBtn").textContent=x.role==="agent"?"Contact Agent":x.role==="caretaker"?"Contact Caretaker":"Contact Owner";
   document.getElementById("dListed").textContent=x.role==="agent"?"Agent":x.role==="caretaker"?"Caretaker / manager":"Listed by owner";
   document.getElementById("dPerks").innerHTML=x.role==="owner"
     ?"<span>✓ No agent fees</span><span>✓ No viewing fees</span>"
@@ -1519,6 +1523,18 @@ async function sendReport(){
     closeModal("reportModal");toast("Thanks — our team will review this listing.");
   }catch(e){err.textContent=e.message}
   finally{btn.disabled=false}
+}
+/* Details / About / Nearby as tabs — keeps the popup short. */
+function buildDetailTabs(){
+  const panes=[...document.querySelectorAll("#detailModal .dm-pane")];
+  const has=panes.filter(p=>p.style.display!=="none"&&p.textContent.trim());
+  panes.forEach(p=>{p.dataset.has=has.includes(p)?"1":"";p.style.display="none"});
+  const tabs=document.getElementById("dTabs");
+  tabs.innerHTML=has.map((p,i)=>`<button type="button" role="tab" data-i="${i}">${p.dataset.tab}</button>`).join("");
+  tabs.style.display=has.length?"":"none";
+  const show=i=>{has.forEach((p,j)=>p.style.display=j===i?"":"none");tabs.querySelectorAll("button").forEach((b,j)=>{b.classList.toggle("on",j===i);b.setAttribute("aria-selected",j===i)})};
+  tabs.querySelectorAll("button").forEach(b=>b.onclick=()=>show(+b.dataset.i));
+  if(has.length)show(0);
 }
 function openFollow(id){
   const x=BYID.get(id); if(!x||!x.ownerId)return;

@@ -983,3 +983,64 @@ footer.pf .pf-mail:hover{background:rgba(95,211,160,.14)}
 .vid-modal{max-width:760px!important;padding:12px!important;background:#000!important}
 .vid-modal video{width:100%;max-height:78vh;border-radius:10px;background:#000;display:block}
 .vid-modal .close-x{color:#fff;z-index:2}
+
+/* ===== Listing popup — compact layout =====
+   header row (title | price), tabs for Details/About/Nearby, slimmer owner
+   card, and a clearly visible Report button next to the category tag. */
+#detailModal .gallery.pgrid{height:360px!important}
+.dm-body{margin-top:16px!important;column-gap:24px!important;grid-template-columns:minmax(0,1fr) 280px!important}
+.dm-kicker{margin-bottom:4px!important}
+.dm-report-top{margin-left:auto;display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:99px;border:1.5px solid #f0c7c2;background:#fff5f4;color:#a1281f;font-family:inherit;font-weight:700;font-size:.75rem;cursor:pointer;transition:background .15s,border-color .15s}
+.dm-report-top svg{width:13px;height:13px}
+.dm-report-top:hover{background:#fde8e6;border-color:#e39a92}
+.dm-head{display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap}
+#detailModal .dm-head h2{margin:0!important;flex:1 1 260px;font-size:clamp(1.25rem,1rem + 1vw,1.6rem)!important}
+.dm-head .dm-price{margin:0!important;white-space:nowrap;font-size:1.4rem}
+.dm-facts{margin-top:10px;padding-bottom:12px!important}
+.dm-facts span,.dm-vid{padding:5px 10px!important;font-size:.78rem!important}
+.dm-tabs{display:flex;gap:4px;margin-top:12px;border-bottom:1px solid var(--line)}
+.dm-tabs button{position:relative;padding:8px 12px;border:0;background:none;font-family:inherit;font-weight:700;font-size:.84rem;color:var(--muted);cursor:pointer}
+.dm-tabs button.on{color:var(--brand-dark)}
+.dm-tabs button.on::after{content:"";position:absolute;left:8px;right:8px;bottom:-1px;height:2.5px;border-radius:2px;background:var(--brand)}
+.dm-pane{padding-top:12px;max-height:210px;overflow:auto}
+.dm-pane .chips{margin-top:2px!important}
+.dm-kv{grid-template-columns:repeat(auto-fill,minmax(130px,1fr))!important;gap:6px!important}
+.dm-kv div{padding:7px 10px!important}
+.dm-near{grid-template-columns:1fr 1fr;gap:6px!important}
+.dm-near div{padding:7px 9px!important;font-size:.82rem!important}
+.dm-note{margin-top:6px;font-size:.72rem;color:var(--muted)}
+.dm-desc{font-size:.9rem!important}
+.dm-side{padding:14px!important}
+.dm-owner{gap:10px!important}
+.dm-owner .avatar{width:40px!important;height:40px!important}
+.dm-owner a.name{display:block;color:var(--ink);text-decoration:none;font-weight:750;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dm-owner a.name small{color:var(--brand);font-weight:700}
+.dm-owner a.name:hover{color:var(--brand-dark);text-decoration:underline}
+.dm-owner-txt{flex:1}
+.dm-follow-pill{flex-shrink:0;padding:5px 10px;border-radius:99px;border:1.5px solid var(--brand);background:#fff;color:var(--brand-dark);font-family:inherit;font-weight:700;font-size:.74rem;cursor:pointer}
+.dm-follow-pill:hover{background:#e6f6ee}
+.dm-book{margin-top:12px!important;min-height:42px!important}
+.dm-perks{margin-top:10px!important;padding-top:0!important;border-top:0!important;justify-content:center}
+.dm-safe{display:flex;gap:7px;align-items:flex-start;margin-top:10px;padding:8px 10px;border-radius:9px;background:#fff8ec;border:1px solid #f3dfb8;color:#6b4712;font-size:.74rem;line-height:1.4}
+.dm-safe svg{width:15px;height:15px;flex-shrink:0;color:#b7791f;margin-top:1px}
+.dm-safe b{color:#6b4712}
+.dm-safe-rep{border:0;background:none;padding:0;color:#a1281f;font-family:inherit;font-weight:700;font-size:inherit;text-decoration:underline;cursor:pointer}
+.dm-actions{grid-template-columns:1fr 46px 46px!important;margin-top:10px!important}
+.dm-actions .dm-ic{padding:0!important;min-width:46px}
+.dm-actions .dm-ic svg{width:19px!important;height:19px!important}
+.dm-actions .dm-follow,.dm-side .dm-report{display:none}
+@media(max-width:900px){
+  .dm-body{grid-template-columns:1fr!important}
+  .dm-pane{max-height:none}
+  .dm-side{margin-top:14px!important}
+  .dm-actions{grid-template-columns:1fr 46px 46px!important}
+}
+@media(max-width:640px){
+  #detailModal .gallery.pgrid{height:auto!important}
+  .dm-head .dm-price{font-size:1.2rem}
+  .dm-near{grid-template-columns:1fr}
+
+}
+/* no photos yet: a short placeholder instead of a tall empty gallery */
+#detailModal .gallery:not(.pgrid){height:180px!important;min-height:0!important}
+@media(max-width:640px){#detailModal .gallery:not(.pgrid){height:140px!important}}
