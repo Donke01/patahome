@@ -335,6 +335,7 @@
         <button class="menu-item" onclick="openSettings('language')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>Change language</button>
         <div class="menu-sep"></div>
         <button class="menu-item danger" onclick="openSettings('delete')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M6 7l1 13h10l1-13"/></svg>Delete my account</button>
+        <button class="menu-item" onclick="logoutEverywhere()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="13" height="10" rx="1.5"/><path d="M6 18h5M8.5 14v4"/><rect x="17" y="8" width="5" height="12" rx="1.2"/></svg>Sign out of all devices</button>
         <button class="menu-item" onclick="logout()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 12H3M9 6l-6 6 6 6M15 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/></svg>Log out</button>
       </div>
     </div>
@@ -600,14 +601,88 @@ function show(id){$(id).classList.add("show")}
 function hide(id){$(id).classList.remove("show")}
 function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
 
-async function api(path, opts = {}) {
+async function api(path, opts = {}, _stepUpRetry) {
   const res = await fetch(API + path, {
     ...opts,
     headers: { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}), ...(opts.headers || {}) }
   });
   const data = await res.json().catch(() => ({}));
+  // Session ended on the server (inactivity, signed out elsewhere, password changed…)
+  if (res.status === 401 && data.code === "SESSION_EXPIRED" && token) { sessionEnded(data.error); throw new Error(data.error); }
+  // Critical action: the server wants a security code (or password) first.
+  if (res.status === 403 && data.stepUp && !_stepUpRetry) return stepUpPrompt(data.stepUp, path, opts);
   if (!res.ok) throw new Error(data.error || ("Request failed (" + res.status + ")"));
   return data;
+}
+
+/* ---------- security confirmation for critical actions ----------
+   The original request is re-sent with {securityCode} or {currentPassword}
+   once the user confirms; the caller just awaits the final result. */
+function stepUpPrompt(info, path, opts){
+  const retry=(extra)=>{
+    const body=Object.assign(opts.body?JSON.parse(opts.body):{},extra);
+    return api(path,{...opts,body:JSON.stringify(body)},true);
+  };
+  return new Promise((resolve,reject)=>{
+    const why={phone:"change your phone number",email:"change your email",password:"change your password",delete:"delete your account"}[info.action]||"continue";
+    show("setModal");$("setErr").textContent="";
+    if(info.channel==="password"){
+      $("setTitle").textContent="Confirm it's you";
+      $("setSub").textContent=`To ${why}, enter your current password.`;
+      $("setBody").innerHTML=`<label>Current password</label><input id="suPw" type="password" autocomplete="current-password" placeholder="Your password">`;
+      $("setActions").innerHTML=`<button class="btn btn-ghost" id="suCancel">Cancel</button><button class="btn btn-primary" id="suGo">Confirm</button>`;
+      const go=async()=>{
+        $("setErr").textContent="";
+        try{resolve(await retry({currentPassword:$("suPw").value}))}catch(e){$("setErr").textContent=e.message}
+      };
+      $("suGo").onclick=go;$("suPw").onkeydown=e=>{if(e.key==="Enter")go()};
+      $("suCancel").onclick=()=>{hide("setModal");reject(new Error("Cancelled"))};
+      setTimeout(()=>$("suPw").focus(),50);
+      return;
+    }
+    showCodeStep({
+      title:"Confirm it's you", target:info.target||"your email", verifyLabel:"Confirm",
+      confirm:async(code)=>{const d=await retry({securityCode:code});resolve(d);return d},
+      resend:()=>api("/api/account/security-code",{method:"POST",body:JSON.stringify({action:info.action})}),
+      onCancel:()=>reject(new Error("Cancelled")),
+      done:()=>{}
+    });
+    $("setSub").innerHTML=`To ${esc(why)}, enter the 6-digit security code we sent to <b>${esc(info.target||"your email")}</b>.`;
+  });
+}
+
+/* ---------- session limits ----------
+   The server ends idle sessions; this mirrors it in the browser so an
+   unattended screen locks itself even if no request is made. */
+let idleTimer=null, lastActivity=Date.now();
+function sessionEnded(msg){
+  token=null;ME=null;localStorage.removeItem("pb_token");localStorage.removeItem("pb_name");
+  clearTimeout(idleTimer);
+  try{closeMenu();hide("setModal")}catch(e){}
+  $("headerRight").style.display="none";
+  showAuth();setMode("login");
+  $("authErr").textContent=msg||"You've been signed out — please log in again";
+}
+function armIdleTimer(){
+  const mins=(CONFIG&&CONFIG.sessionIdleMinutes)||240;
+  clearTimeout(idleTimer);
+  if(!token)return;
+  const left=mins*60e3-(Date.now()-lastActivity);
+  if(left<=0){
+    fetch("/api/auth/logout",{method:"POST",headers:{Authorization:"Bearer "+token}}).catch(()=>{});
+    const h=Math.round(mins/6)/10;
+    sessionEnded(`You were signed out after ${h} hour${h===1?"":"s"} of inactivity — please log in again`);
+    return;
+  }
+  idleTimer=setTimeout(armIdleTimer,Math.min(left,60e3));
+}
+["pointerdown","keydown","scroll","touchstart"].forEach(ev=>addEventListener(ev,()=>{lastActivity=Date.now()},{passive:true}));
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)armIdleTimer()});
+async function logoutEverywhere(){
+  closeMenu();
+  if(!confirm("Sign out of PataHome on every device, including this one?"))return;
+  try{await api("/api/auth/logout-all",{method:"POST"})}catch(e){}
+  sessionEnded("Signed out on all devices.");
 }
 
 /* ---------- auth ---------- */
@@ -649,6 +724,7 @@ async function submitAuth(){
 function saveSession(r){
   token=r.token;ME=r.user;userName=r.user.name;
   localStorage.setItem("pb_token",token);localStorage.setItem("pb_name",userName);
+  lastActivity=Date.now();armIdleTimer();
 }
 /* Google Identity Services — official rendered button (reliable on mobile,
    unlike prompt() which Google suppresses after a dismissal) */
@@ -672,6 +748,8 @@ async function onGoogleCredential(resp){
   }catch(e){$("authErr").textContent=e.message}
 }
 function logout(){
+  if(token)fetch("/api/auth/logout",{method:"POST",headers:{Authorization:"Bearer "+token}}).catch(()=>{});
+  clearTimeout(idleTimer);
   token=null;ME=null;localStorage.removeItem("pb_token");localStorage.removeItem("pb_name");
   closeMenu();
   $("headerRight").style.display="none";
@@ -1361,11 +1439,14 @@ function showCodeStep(cfg){
   inp.focus();
   window._setSave=async()=>{
     $("setErr").textContent="";
+    const cfg=_codeCfg; // a confirm may open a follow-up code step; don't run its "done"
     try{
-      const user=await _codeCfg.confirm($("sCode").value.trim());
+      const user=await cfg.confirm($("sCode").value.trim());
+      if(cfg!==_codeCfg)return;
       clearInterval(_cdTimer);
-      if(_codeCfg.done)_codeCfg.done(user);
-    }catch(e){$("setErr").textContent=e.message;const i=$("sCode");i.classList.remove("shake");void i.offsetWidth;i.classList.add("shake")}
+      if(cfg.done)cfg.done(user);
+    }catch(e){
+      if(cfg!==_codeCfg)return;$("setErr").textContent=e.message;const i=$("sCode");i.classList.remove("shake");void i.offsetWidth;i.classList.add("shake")}
   };
   startCountdown();
 }
@@ -1484,8 +1565,12 @@ async function doDelete(){
   const gsiPoll=setInterval(()=>{if(typeof google!=="undefined"){initGoogle();clearInterval(gsiPoll)}},400);
   setTimeout(()=>clearInterval(gsiPoll),8000);
   if(token){
-    try{ME=await api("/api/auth/me");userName=ME.name;await enterDash();return}
-    catch{token=null;localStorage.removeItem("pb_token")}
+    try{ME=await api("/api/auth/me");userName=ME.name;await enterDash();armIdleTimer();return}
+    catch(e){
+      const msg=/signed out|session/i.test(e.message)?e.message:"";
+      token=null;localStorage.removeItem("pb_token");
+      showAuth();if(msg)$("authErr").textContent=msg;return;
+    }
   }
   showAuth();
 })();

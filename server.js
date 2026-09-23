@@ -82,14 +82,51 @@ const listingView = (row, userLat, userLng) => ({
   // NOTE: owner phone deliberately excluded — request via POST /api/listings/:id/contact
 });
 
+/* ================= sessions =================
+   Every login creates a server-side session; the token only carries its id.
+   A session ends when:
+   - it has been idle for SESSION_IDLE_HOURS (default 4),
+   - it is older than SESSION_MAX_DAYS (default 14), or
+   - it is revoked (logout, sign-out-everywhere, password/phone/email change).
+   Tokens issued before sessions existed have no sid and are no longer accepted. */
+const SESSION_IDLE_MS = Math.max(0.25, +process.env.SESSION_IDLE_HOURS || 4) * 3600e3;
+const SESSION_MAX_MS = Math.max(1, +process.env.SESSION_MAX_DAYS || 14) * 86400e3;
+const clientIp = (req) => String(req.headers["cf-connecting-ip"] || req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "").split(",")[0].trim().slice(0, 64);
+function createSession(u, req) {
+  const sid = crypto.randomBytes(24).toString("base64url"), now = Date.now();
+  db.prepare("INSERT INTO sessions (id,user_id,created_at,last_seen,expires_at,ua,ip) VALUES (?,?,?,?,?,?,?)")
+    .run(sid, u.id, now, now, now + SESSION_MAX_MS, String(req?.headers?.["user-agent"] || "").slice(0, 200), req ? clientIp(req) : "");
+  // housekeeping: drop this user's dead sessions
+  db.prepare("DELETE FROM sessions WHERE user_id=? AND (expires_at<? OR last_seen<?)").run(u.id, now, now - SESSION_IDLE_MS);
+  return signToken({ id: u.id, name: u.name, role: u.role, sid }, Math.ceil(SESSION_MAX_MS / 86400e3));
+}
+const revokeSessions = (userId, keepSid) => keepSid
+  ? db.prepare("DELETE FROM sessions WHERE user_id=? AND id!=?").run(userId, keepSid)
+  : db.prepare("DELETE FROM sessions WHERE user_id=?").run(userId);
+
+// returns the token payload, or null; sets req._authFail to explain why
 function getUser(req) {
   const h = req.headers.authorization || "";
   if (!h.startsWith("Bearer ")) return null;
-  return verifyToken(h.slice(7));
+  const p = verifyToken(h.slice(7));
+  if (!p || !p.sid) { req._authFail = "expired"; return null; }
+  const row = db.prepare("SELECT * FROM sessions WHERE id=? AND user_id=?").get(p.sid, p.id);
+  const now = Date.now();
+  if (!row) { req._authFail = "expired"; return null; }
+  if (now - row.last_seen > SESSION_IDLE_MS) { db.prepare("DELETE FROM sessions WHERE id=?").run(row.id); req._authFail = "idle"; return null; }
+  if (now > row.expires_at) { db.prepare("DELETE FROM sessions WHERE id=?").run(row.id); req._authFail = "expired"; return null; }
+  if (now - row.last_seen > 60e3) db.prepare("UPDATE sessions SET last_seen=? WHERE id=?").run(now, row.id);
+  return p;
 }
 const requireAuth = (req, res) => {
   const u = getUser(req);
-  if (!u) { send(res, 401, { error: "Login required" }); return null; }
+  if (!u) {
+    const idleH = Math.round(SESSION_IDLE_MS / 3600e3 * 10) / 10;
+    const msg = req._authFail === "idle" ? `You were signed out after ${idleH} hour${idleH === 1 ? "" : "s"} of inactivity — please log in again`
+      : req._authFail ? "Your session has ended — please log in again" : "Login required";
+    send(res, 401, { error: msg, code: req._authFail ? "SESSION_EXPIRED" : "LOGIN_REQUIRED" });
+    return null;
+  }
   return u;
 };
 function send(res, code, obj) {
@@ -153,8 +190,89 @@ async function sendPhoneCode(userId, phone) {
   return true;
 }
 const age = (dob) => { const d = new Date(dob); return isNaN(d) ? null : Math.floor((Date.now() - d.getTime()) / 31557600000); };
-const authResponse = (res, code, u) =>
-  send(res, code, { token: signToken({ id: u.id, name: u.name, role: u.role }), user: publicUser(u) });
+const authResponse = (res, code, u, req) =>
+  send(res, code, { token: createSession(u, req), user: publicUser(u) });
+
+/* ================= step-up confirmation for critical actions =================
+   Changing phone/email/password or deleting the account needs a fresh 6-digit
+   code (10 min, 5 tries, single use) sent to the account's email. If the
+   account has no usable email: verified phone by SMS, else the current password.
+   Flow: call the action → 403 {stepUp:{...}} (code already sent) → call again
+   with {securityCode} (or {currentPassword}). */
+const STEP_UP_ACTIONS = { phone: "change your phone number", email: "change your email", password: "change your password", delete: "delete your account" };
+const maskEmail = (e) => { const [a, d] = String(e).split("@"); return (a.length <= 2 ? a[0] + "*" : a.slice(0, 2) + "***") + "@" + d; };
+const maskPhone = (p) => String(p).slice(0, 4) + "***" + String(p).slice(-2);
+function stepUpChannel(row) {
+  if (row.email && row.email_verified) return { channel: "email", to: row.email, target: maskEmail(row.email) };
+  if (realPhone(row.phone) && row.phone_verified && phoneVerifyEnabled()) return { channel: "sms", to: row.phone, target: maskPhone(row.phone) };
+  if (row.password_hash) return { channel: "password" };
+  if (row.email) return { channel: "email", to: row.email, target: maskEmail(row.email) };
+  return null;
+}
+async function sendStepUpCode(row, action, ch) {
+  const code = String(crypto.randomInt(100000, 1000000));
+  db.prepare("DELETE FROM verify_codes WHERE user_id=? AND kind='stepup'").run(row.id);
+  db.prepare("INSERT INTO verify_codes (user_id,kind,target,code,expires_at) VALUES (?,?,?,?,datetime('now','+10 minutes'))")
+    .run(row.id, "stepup", action, code);
+  const what = STEP_UP_ACTIONS[action];
+  if (ch.channel === "sms") await sendSms({ to: ch.to, text: `${code} is your PataHome security code to ${what}. Never share it. If this wasn't you, change your password.` });
+  else await sendMail({ to: ch.to, subject: `${code} is your PataHome security code`,
+    text: `Hi ${row.name || ""},\n\nSomeone (hopefully you) asked to ${what} on PataHome.\n\nYour security code is: ${code}\n\nIt expires in 10 minutes. If this wasn't you, don't share the code — change your password and contact us at info@patahome.co.ke.\n\n— PataHome · patahome.co.ke` });
+}
+// Returns true when the request carries valid proof; otherwise responds and returns false.
+async function requireStepUp(req, res, u, action) {
+  const row = db.prepare("SELECT * FROM users WHERE id=?").get(u.id);
+  const ch = stepUpChannel(row);
+  if (!ch) return true; // nothing to verify against (shouldn't happen for real accounts)
+  const b = req.body || {};
+  if (ch.channel === "password") {
+    if (b.currentPassword && verifyPassword(String(b.currentPassword), row.password_hash)) return true;
+    send(res, b.currentPassword ? 401 : 403, b.currentPassword ? { error: "That password is wrong" }
+      : { error: "Confirm it's you", stepUp: { action, channel: "password" } });
+    return false;
+  }
+  const pending = db.prepare("SELECT * FROM verify_codes WHERE user_id=? AND kind='stepup'").get(u.id);
+  if (b.securityCode) {
+    if (!pending || pending.target !== action) { send(res, 400, { error: "No pending code — tap Resend" }); return false; }
+    if (new Date(pending.expires_at + "Z") < new Date()) { db.prepare("DELETE FROM verify_codes WHERE id=?").run(pending.id); send(res, 400, { error: "Code expired — tap Resend" }); return false; }
+    if (pending.attempts >= 5) { db.prepare("DELETE FROM verify_codes WHERE id=?").run(pending.id); send(res, 400, { error: "Too many attempts — tap Resend for a new code" }); return false; }
+    if (pending.code !== String(b.securityCode).trim()) { db.prepare("UPDATE verify_codes SET attempts=attempts+1 WHERE id=?").run(pending.id); send(res, 400, { error: "Wrong code — check and try again" }); return false; }
+    db.prepare("DELETE FROM verify_codes WHERE id=?").run(pending.id);
+    return true;
+  }
+  // No code yet: send one (unless a fresh one for this action went out < 60 s ago)
+  const fresh = pending && pending.target === action && (Date.now() - new Date(pending.created_at + "Z").getTime()) < 60e3;
+  let sent = !!fresh;
+  if (!fresh) {
+    try { await sendStepUpCode(row, action, ch); sent = true; }
+    catch (e) { console.error("step-up send failed:", e.message); send(res, 400, { error: "Couldn't send your security code — please try again shortly" }); return false; }
+  }
+  send(res, 403, { error: "Confirm it's you", stepUp: { action, channel: ch.channel, target: ch.target, sent } });
+  return false;
+}
+router.add("POST", "/api/account/security-code", async (req, res) => {
+  const u = requireAuth(req, res); if (!u) return;
+  const action = String((req.body || {}).action || "");
+  if (!STEP_UP_ACTIONS[action]) return send(res, 400, { error: "Unknown action" });
+  const row = db.prepare("SELECT * FROM users WHERE id=?").get(u.id);
+  const ch = stepUpChannel(row);
+  if (!ch || ch.channel === "password") return send(res, 200, { channel: ch ? "password" : null });
+  const pending = db.prepare("SELECT created_at FROM verify_codes WHERE user_id=? AND kind='stepup'").get(u.id);
+  if (pending) {
+    const wait = 60 - Math.floor((Date.now() - new Date(pending.created_at + "Z").getTime()) / 1000);
+    if (wait > 0) return send(res, 429, { error: `Please wait ${wait}s before requesting another code`, retryIn: wait });
+  }
+  try { await sendStepUpCode(row, action, ch); }
+  catch (e) { console.error("step-up send failed:", e.message); return send(res, 400, { error: "Couldn't send the code — try again shortly" }); }
+  send(res, 200, { channel: ch.channel, target: ch.target, sent: true });
+});
+// Best-effort "your account changed" notice to the account email.
+function securityNotice(row, what) {
+  if (!row || !row.email || !mailConfigured()) return;
+  sendMail({ to: row.email, subject: "PataHome security notice",
+    text: `Hi ${row.name || ""},\n\n${what} on your PataHome account just now.\n\nIf this was you, no action is needed. If it wasn't, reset your password immediately and contact info@patahome.co.ke.\n\n— PataHome · patahome.co.ke` })
+    .catch(e => console.error("security notice failed:", e.message));
+}
 
 /* Sign up with ONE identifier — either a Kenyan phone or an email.
    Whichever they give is the one we verify; the other is added later in
@@ -214,7 +332,7 @@ router.add("POST", "/api/auth/register", async (req, res) => {
   }
 
   send(res, 201, {
-    token: signToken({ id: user.id, name: user.name, role: user.role }),
+    token: createSession(user, req),
     user: publicUser(user),
     verifyKind: willVerify ? (isEmail ? "email" : "phone") : null,
     verifyTarget: willVerify ? identifier : null,
@@ -285,7 +403,7 @@ router.add("POST", "/api/auth/login", (req, res) => {
   const user = db.prepare("SELECT * FROM users WHERE phone=? OR (email IS NOT NULL AND email=?)").get(id, id.toLowerCase());
   if (!user || !user.password_hash || !verifyPassword(password || "", user.password_hash))
     return send(res, 401, { error: "Wrong phone/email or password" });
-  authResponse(res, 200, user);
+  authResponse(res, 200, user, req);
 });
 
 /* Google Sign-In: browser sends the Google ID token; we verify it via Google's tokeninfo. */
@@ -308,12 +426,23 @@ router.add("POST", "/api/auth/google", async (req, res) => {
       db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
         .run(user.id, "system", "Karibu to PataHome", "Add your phone number in Settings to start posting listings.");
     }
-    authResponse(res, 200, user);
+    authResponse(res, 200, user, req);
   } catch (e) {
     console.error("google auth error:", e.message);
     // 401 (not 502) — Cloudflare replaces 502 responses with its own HTML page
     send(res, 401, { error: "Could not verify Google sign-in — please try again" });
   }
+});
+
+router.add("POST", "/api/auth/logout", (req, res) => {
+  const u = getUser(req);
+  if (u && u.sid) db.prepare("DELETE FROM sessions WHERE id=?").run(u.sid);
+  send(res, 200, { ok: true });
+});
+router.add("POST", "/api/auth/logout-all", (req, res) => {
+  const u = requireAuth(req, res); if (!u) return;
+  const n = revokeSessions(u.id).changes;
+  send(res, 200, { ok: true, signedOut: n });
 });
 
 router.add("GET", "/api/auth/me", (req, res) => {
@@ -349,14 +478,20 @@ router.add("POST", "/api/account/change-phone", async (req, res) => {
   const u = requireAuth(req, res); if (!u) return;
   const phone = (req.body.phone || "").trim();
   if (!/^0[17]\d{8}$/.test(phone)) return send(res, 400, { error: "Enter a valid Kenyan phone e.g. 0712345678" });
-  const before = db.prepare("SELECT phone FROM users WHERE id=?").get(u.id);
+  const before = db.prepare("SELECT * FROM users WHERE id=?").get(u.id);
   if (before && before.phone === phone)
-    return send(res, 200, publicUser(db.prepare("SELECT * FROM users WHERE id=?").get(u.id)));
+    return send(res, 200, publicUser(before));
+  // Replacing an existing number is critical; adding a first one (new or Google accounts) isn't.
+  const replacing = !!realPhone(before && before.phone);
+  // check before asking for a security code, so a code isn't spent on a number that can't be used
+  if (db.prepare("SELECT id FROM users WHERE phone=? AND id!=?").get(phone, u.id)) return send(res, 409, { error: "That phone is already registered" });
+  if (replacing && !(await requireStepUp(req, res, u, "phone"))) return;
   try {
     // A new number is unverified until proven — otherwise someone could verify
     // one phone then swap in another and keep the trusted badge.
     db.prepare("UPDATE users SET phone=?, phone_verified=0 WHERE id=?").run(phone, u.id);
   } catch (e) { return send(res, 409, { error: "That phone is already registered" }); }
+  if (replacing) { revokeSessions(u.id, u.sid); securityNotice(before, `Your phone number was changed to ${maskPhone(phone)}`); }
   let codeSent = false;
   const wantVerify = phoneVerifyEnabled();
   if (wantVerify) {
@@ -373,6 +508,11 @@ router.add("POST", "/api/account/change-email", async (req, res) => {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return send(res, 400, { error: "Enter a valid email address" });
   const taken = db.prepare("SELECT id FROM users WHERE email=? AND id!=?").get(email, u.id);
   if (taken) return send(res, 409, { error: "That email is already registered" });
+  const cur = db.prepare("SELECT email FROM users WHERE id=?").get(u.id);
+  // Resending the code for a change that already passed step-up shouldn't ask again.
+  const pendingNew = db.prepare("SELECT target FROM verify_codes WHERE user_id=? AND kind='email'").get(u.id);
+  const alreadyAuthorised = pendingNew && pendingNew.target === email;
+  if (cur && cur.email && cur.email !== email && !alreadyAuthorised && !(await requireStepUp(req, res, u, "email"))) return;
   if (!mailConfigured()) {
     // no mail provider configured yet — apply directly (legacy behavior)
     db.prepare("UPDATE users SET email=? WHERE id=?").run(email, u.id);
@@ -413,14 +553,16 @@ router.add("POST", "/api/account/change-email/confirm", (req, res) => {
     db.prepare("UPDATE verify_codes SET attempts=attempts+1 WHERE id=?").run(row.id);
     return send(res, 400, { error: "Wrong code — check the email and try again" });
   }
+  const prev = db.prepare("SELECT * FROM users WHERE id=?").get(u.id);
   try {
-    db.prepare("UPDATE users SET email=? WHERE id=?").run(row.target, u.id);
+    db.prepare("UPDATE users SET email=?, email_verified=1 WHERE id=?").run(row.target, u.id);
   } catch (e) { return send(res, 409, { error: "That email is already registered" }); }
   db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id);
+  if (prev.email && prev.email !== row.target) { revokeSessions(u.id, u.sid); securityNotice(prev, `Your email was changed to ${maskEmail(row.target)}`); }
   send(res, 200, publicUser(db.prepare("SELECT * FROM users WHERE id=?").get(u.id)));
 });
 
-router.add("POST", "/api/account/change-password", (req, res) => {
+router.add("POST", "/api/account/change-password", async (req, res) => {
   const u = requireAuth(req, res); if (!u) return;
   const { currentPassword, newPassword } = req.body || {};
   if (!newPassword || newPassword.length < 8) return send(res, 400, { error: "New password must be at least 8 characters" });
@@ -428,7 +570,10 @@ router.add("POST", "/api/account/change-password", (req, res) => {
   if (row.password_hash) {
     if (!verifyPassword(currentPassword || "", row.password_hash)) return send(res, 401, { error: "Current password is wrong" });
   }
+  if (!(await requireStepUp(req, res, u, "password"))) return;
   db.prepare("UPDATE users SET password_hash=? WHERE id=?").run(hashPassword(newPassword), u.id);
+  revokeSessions(u.id, u.sid); // sign out every other device
+  securityNotice(row, row.password_hash ? "Your password was changed" : "A password was added");
   send(res, 200, { ok: true });
 });
 
@@ -449,12 +594,13 @@ router.add("POST", "/api/account/request-verification", (req, res) => {
   send(res, 200, publicUser(db.prepare("SELECT * FROM users WHERE id=?").get(u.id)));
 });
 
-router.add("DELETE", "/api/account", (req, res) => {
+router.add("DELETE", "/api/account", async (req, res) => {
   const u = requireAuth(req, res); if (!u) return;
   const row = db.prepare("SELECT * FROM users WHERE id=?").get(u.id);
   if (row.role === "admin") return send(res, 403, { error: "Admin accounts can't be self-deleted" });
   if (row.password_hash && !verifyPassword((req.body && req.body.password) || "", row.password_hash))
     return send(res, 401, { error: "Enter your current password to delete your account" });
+  if (!(await requireStepUp(req, res, u, "delete"))) return;
   // reclaim listing photos, then remove the account (cascades to listings/followers/notifications)
   for (const l of db.prepare("SELECT photos FROM listings WHERE owner_id=?").all(u.id))
     for (const id of parsePhotos(l.photos)) cldDestroy(id);
@@ -464,7 +610,8 @@ router.add("DELETE", "/api/account", (req, res) => {
 
 /* ================= public config ================= */
 router.add("GET", "/api/config", (req, res) => {
-  send(res, 200, { googleClientId: GOOGLE_CLIENT_ID || null, cloudinary: cldEnabled(), phoneVerify: phoneVerifyEnabled() });
+  send(res, 200, { googleClientId: GOOGLE_CLIENT_ID || null, cloudinary: cldEnabled(), phoneVerify: phoneVerifyEnabled(),
+    sessionIdleMinutes: Math.round(SESSION_IDLE_MS / 60e3) });
 });
 
 /* ================= areas ================= */

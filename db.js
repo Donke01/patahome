@@ -207,4 +207,20 @@ try { db.exec("ALTER TABLE followers ADD COLUMN follower_email TEXT"); } catch (
 try { db.exec("ALTER TABLE followers ADD COLUMN follower_user_id INTEGER"); } catch (e) { /* exists */ }
 try { db.exec("ALTER TABLE followers ADD COLUMN verified INTEGER NOT NULL DEFAULT 0"); } catch (e) { /* exists */ }
 
+/* Login sessions — one row per signed-in device. Tokens carry the session id,
+   so a session can be expired for inactivity, capped in length, or revoked
+   (logout, "sign out everywhere", password/phone/email change). */
+db.exec(`
+CREATE TABLE IF NOT EXISTS sessions (
+  id TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at INTEGER NOT NULL,
+  last_seen INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL,
+  ua TEXT,
+  ip TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+`);
+
 module.exports = db;

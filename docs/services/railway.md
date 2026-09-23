@@ -41,6 +41,8 @@ Set these under **Variables** in the Railway service:
 | `INFOBIP_BASE_URL`      | See `infobip.md` — e.g. `xyz123.api.infobip.com`     |
 | `PHONE_VERIFY`          | Set to `off` to pause SMS verification; unset to enable |
 | `SMS_SENDER`            | Alphanumeric sender ID, defaults to `PataHome`       |
+| `SESSION_IDLE_HOURS`    | Sign users out after this much inactivity (default `4`) |
+| `SESSION_MAX_DAYS`      | Hard limit on any login, even if active (default `14`) |
 
 ## Persistent volume (critical)
 
