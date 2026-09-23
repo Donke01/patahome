@@ -298,7 +298,7 @@
   .reply-box input{flex:1}
   .badge-new{background:var(--amber);color:#fff;font-size:.68rem;font-weight:800;border-radius:999px;padding:2px 9px}
 </style>
-  <link rel="stylesheet" href="/refresh.css?v=20260924-2">
+  <link rel="stylesheet" href="/refresh.css?v=20260924-3">
 </head>
 <body class="page-dashboard">
 
@@ -410,7 +410,8 @@
 
   <nav class="pnav" id="pnav">
     <button class="pt on" data-t="listings" onclick="showTab('listings')">My Listings</button>
-    <button class="pt" data-t="feedback" onclick="showTab('feedback')">Feedback<span class="pn-badge" id="bFeedback" style="display:none">0</span></button>
+    <button class="pt" data-t="feedback" onclick="showTab('feedback')">Messages<span class="pn-badge" id="bFeedback" style="display:none">0</span></button>
+    <button class="pt" data-t="viewings" onclick="showTab('viewings')">Viewings<span class="pn-badge" id="bViewings" style="display:none">0</span></button>
     <button class="pt" data-t="perf" onclick="showTab('perf')">Performance</button>
     <button class="pt" data-t="followers" onclick="showTab('followers')">Followers<span class="pn-badge gold" id="bFollowers" style="display:none">0</span></button>
     <button class="pt" data-t="following" onclick="showTab('following')">Following</button>
@@ -430,8 +431,16 @@
 
   <!-- Feedback -->
   <section class="tabpane" id="tab-feedback" style="display:none">
-    <div class="section-head"><h2>Feedback from Tenants &amp; Buyers</h2></div>
+    <div class="section-head"><h2>Messages from tenants &amp; buyers</h2></div>
+    <p class="pane-sub">Conversations stay here on PataHome — reply as often as you like. Tenants get your replies by email or SMS with a link back to the chat.</p>
     <div class="inbox" id="inbox"></div>
+  </section>
+
+  <!-- Viewings -->
+  <section class="tabpane" id="tab-viewings" style="display:none">
+    <div class="section-head"><h2>Viewing requests</h2></div>
+    <p class="pane-sub">Confirm or decline each request — the tenant is told straight away, and both of you get a reminder the day before.</p>
+    <div class="inbox" id="viewingsList"></div>
   </section>
 
   <!-- Performance -->
@@ -460,7 +469,7 @@
         <div class="tc-num" id="tcLeads">0</div>
       </div>
     </div>
-    <div class="section-head"><h2>Leads per listing</h2></div>
+    <div class="section-head"><h2>How each listing is doing <small style="font-weight:500;color:var(--muted);font-size:.8rem">last 30 days</small></h2></div>
     <div class="table" id="perfTable"></div>
   </section>
 
@@ -551,6 +560,31 @@
       </div>
       <div class="photo-note" id="eFeeNote">Shown clearly to tenants on your listing. Honest fees build trust — undisclosed fees get listings reported.</div>
     </div>
+    <details class="em-more" id="eMore">
+      <summary>Home details <small>— the questions tenants always ask</small></summary>
+      <div class="em-grid">
+        <div><label>Deposit</label><input id="fDeposit" maxlength="40" placeholder="e.g. 1 month's rent"></div>
+        <div><label>Service charge</label><input id="fSvc" maxlength="40" placeholder="e.g. KES 1,500/month or none"></div>
+        <div><label>Water</label><select id="fWater"><option value="">Not stated</option><option value="included">Included in rent</option><option value="metered">Metered (pay per use)</option><option value="borehole">Borehole</option><option value="tank">Tank / delivered</option></select></div>
+        <div><label>Electricity</label><select id="fPower"><option value="">Not stated</option><option value="token">Prepaid tokens</option><option value="postpaid">Postpaid bill</option><option value="included">Included in rent</option><option value="solar">Solar</option></select></div>
+        <div><label>Floor</label><input id="fFloor" maxlength="20" placeholder="e.g. Ground, 3rd"></div>
+      </div>
+      <div class="em-ticks" id="fTicks">
+        <label><input type="checkbox" value="parking"> Parking</label>
+        <label><input type="checkbox" value="security"> Security guard</label>
+        <label><input type="checkbox" value="gated"> Gated compound</label>
+        <label><input type="checkbox" value="borehole"> Borehole</label>
+        <label><input type="checkbox" value="backupPower"> Backup power</label>
+        <label><input type="checkbox" value="wifi"> Wi-Fi available</label>
+        <label><input type="checkbox" value="furnished"> Furnished</label>
+        <label><input type="checkbox" value="pets"> Pets allowed</label>
+      </div>
+    </details>
+    <div id="videoWrap" style="display:none">
+      <label>Video walkthrough <small style="text-transform:none;letter-spacing:0;font-weight:500">(optional · up to 90 seconds)</small></label>
+      <div id="videoBox"></div>
+      <input type="file" id="videoFile" accept="video/mp4,video/quicktime,video/webm,video/3gpp" style="display:none" onchange="uploadVideo(this.files[0]);this.value=''">
+    </div>
     <div id="emStatusWrap" style="display:none">
       <label>Status</label>
       <select id="eStatus"><option value="active">Active</option><option value="rented">Rented out</option><option value="sold">Sold</option></select>
@@ -597,7 +631,7 @@
 const API = ""; // same origin
 let token = localStorage.getItem("pb_token") || null;
 let userName = localStorage.getItem("pb_name") || "";
-let mode = "login", areas = [], myListings = [], myInquiries = [], editId = null;
+let mode = "login", areas = [], myListings = [], myInquiries = [], editId = null, myViewings = [], myListingStats = null;
 let ME = null, CONFIG = null, pendingStatusAction = null;
 let pendingPhoneVerify = null;   // phone to verify after the email step, set at signup
 const LANGS = { en: "English", sw: "Kiswahili" };
@@ -823,16 +857,20 @@ async function enterDash(){
 }
 let chart=null, lastUpdated=null, lastSeries=null, activeTab="listings";
 async function refresh(){
-  const [listings,inquiries,stats,notifs]=await Promise.all([
+  const [listings,inquiries,stats,notifs,viewings,lstats]=await Promise.all([
     api("/api/my/listings"),api("/api/my/inquiries"),
     api("/api/my/stats").catch(()=>null),
-    api("/api/my/notifications").catch(()=>null)]);
-  myListings=listings;myInquiries=inquiries;
+    api("/api/my/notifications").catch(()=>null),
+    api("/api/my/viewings").catch(()=>[]),
+    api("/api/my/listing-stats").catch(()=>null)]);
+  myListings=listings;myInquiries=inquiries;myViewings=viewings;myListingStats=lstats;
+  badge("bViewings",myViewings.filter(v=>v.status==="requested").length);
+  renderViewings();
   const active=myListings.filter(x=>x.status==="active");
   const totalLeads=myListings.reduce((s,x)=>s+x.leads,0);
   $("sActive").textContent=active.length;
   $("sLeads").textContent=totalLeads;
-  const unreplied=myInquiries.filter(x=>!x.reply).length;
+  const unreplied=myInquiries.filter(x=>x.unread||(!x.reply&&(x.messages||[]).slice(-1)[0]?.sender!=="owner")).length;
   const greetingName=(ME&&ME.name?String(ME.name).trim().split(/\s+/)[0]:"");
   if($("ownerGreetingName"))$("ownerGreetingName").textContent=greetingName?`, ${greetingName}`:"";
   if($("oActive"))$("oActive").textContent=active.length;
@@ -877,6 +915,7 @@ async function showTab(t){
     else if(chart)setTimeout(()=>chart.resize(),50);
   }
   if(t==="followers")loadFollowers();
+  if(t==="feedback")setTimeout(markThreadsRead,1500);
   if(t==="following")loadFollowing();
   if(t==="notifs")loadNotifs();
   if(t==="help")loadTickets();
@@ -969,16 +1008,24 @@ function renderFaq(){
 function renderPerfTable(){
   const el=$("perfTable");if(!el)return;
   if(!myListings.length){el.innerHTML=`<div class="empty">Post a listing to see its performance here.</div>`;return}
-  const sorted=[...myListings].sort((a,b)=>b.leads-a.leads);
-  el.innerHTML=`<div class="row head" style="grid-template-columns:2fr 1fr 1fr 1fr"><div>Listing</div><div>Status</div><div>Leads</div><div>Share</div></div>`+
-    sorted.map(x=>{
-      const total=sorted.reduce((s,y)=>s+y.leads,0)||1;
-      const pct=Math.round(x.leads/total*100);
-      return `<div class="row" style="grid-template-columns:2fr 1fr 1fr 1fr">
-        <div><div class="title">${esc(x.title)}</div><div class="area">${esc(x.area)}</div></div>
-        <div><span class="pill ${x.status}">${x.status}</span></div>
-        <div class="leads-badge">${x.leads}</div>
-        <div class="area">${pct}%</div>
+  const st=Object.fromEntries(((myListingStats&&myListingStats.listings)||[]).map(x=>[x.id,x]));
+  const cols="grid-template-columns:2fr .7fr .7fr .7fr .8fr 1.6fr";
+  el.innerHTML=`<div class="row head" style="${cols}"><div>Listing</div><div>Views</div><div>Saves</div><div>Contacts</div><div>Viewings</div><div>Price vs area</div></div>`+
+    [...myListings].sort((a,b)=>((st[b.id]||{}).views||0)-((st[a.id]||{}).views||0)).map(x=>{
+      const s2=st[x.id]||{views:0,saves:0,contacts:0,messages:0,viewings:0,conversion:0,price:null};
+      const pc=s2.price;
+      const priceTxt=!pc?'<span class="area">Not enough similar homes yet</span>'
+        :Math.abs(pc.pct)<=10?`<span style="color:var(--green-dark);font-weight:700">About right</span><div class="area">typical ${fmt(pc.median)} · ${pc.count} similar in ${esc(pc.county)}</div>`
+        :pc.pct>0?`<span style="color:#9a6017;font-weight:700">${pc.pct}% above typical</span><div class="area">typical ${fmt(pc.median)} — a lower price may get more contacts</div>`
+        :`<span style="color:var(--green-dark);font-weight:700">${Math.abs(pc.pct)}% below typical</span><div class="area">typical ${fmt(pc.median)} in ${esc(pc.county)}</div>`;
+      const hint=s2.views>=20&&!(s2.contacts+s2.messages)?'<div class="area" style="color:#9a6017">Lots of views, no contacts — try better photos or a clearer price</div>':"";
+      return `<div class="row" style="${cols}">
+        <div><div class="title">${esc(x.title)}</div><div class="area">${esc(x.area)} · <span class="pill ${x.status}">${x.status}</span></div>${hint}</div>
+        <div class="leads-badge">${s2.views}</div>
+        <div class="area"><b>${s2.saves}</b>${s2.shares?` · ${s2.shares} shared`:""}</div>
+        <div class="area"><b>${s2.contacts+s2.messages}</b>${s2.views?` <span>(${s2.conversion}%)</span>`:""}</div>
+        <div class="area"><b>${s2.viewings}</b></div>
+        <div>${priceTxt}</div>
       </div>`;
     }).join("");
 }
@@ -1023,23 +1070,53 @@ setInterval(()=>{if(token&&$("dashView").style.display!=="none"&&!document.hidde
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&token&&$("dashView").style.display!=="none")refresh().catch(()=>{})});
 function renderInbox(){
   if(!myInquiries.length){$("inbox").innerHTML=`<div class="inq" style="text-align:center;color:var(--muted)">No messages yet — they'll appear here when tenants and buyers reach out.</div>`;return}
-  $("inbox").innerHTML=myInquiries.map(q=>`
-    <div class="inq ${q.reply?"":"unreplied"} is-clickable" data-card-tab="feedback" tabindex="0" role="link">
+  const sorted=[...myInquiries].sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt)));
+  $("inbox").innerHTML=sorted.map(q=>{
+    const msgs=q.messages&&q.messages.length?q.messages:[{sender:"tenant",body:q.message,at:q.createdAt}];
+    const waiting=msgs[msgs.length-1].sender==="tenant";
+    return `
+    <div class="inq thread ${waiting?"unreplied":""}">
       <div class="inq-top">
         <span class="inq-from">${esc(q.fromName)}</span>
-        <span class="inq-phone">${esc(q.fromPhone)}</span>
+        <a class="inq-phone" href="tel:${esc(q.fromPhone)}">${esc(q.fromPhone)}</a>
         <span class="inq-listing">${esc(q.listingTitle)}</span>
-        ${q.reply?"":`<span class="badge-new">NEEDS REPLY</span>`}
-        <span class="inq-time">${esc(q.createdAt)}</span>
+        ${waiting?`<span class="badge-new">NEEDS REPLY</span>`:""}
+        <span class="inq-time">${esc(q.updatedAt||q.createdAt)}</span>
       </div>
-      <div class="inq-msg">${esc(q.message)}</div>
-      ${q.reply?`
-        <div class="inq-reply"><div class="r-lbl">Your reply · ${esc(q.repliedAt||"")}</div>${esc(q.reply)}</div>`:`
-        <div class="reply-box">
-          <input id="rep${q.id}" placeholder="Type your reply… e.g. Yes, available! Viewing Sat 10am works.">
-          <button class="btn btn-primary btn-sm" onclick="sendReply(${q.id})">Reply</button>
-        </div>`}
+      <div class="bubbles">${msgs.map(m=>`<div class="bub ${m.sender}"><div>${esc(m.body)}</div><span>${m.sender==="owner"?"You":esc(q.fromName)} · ${esc(m.at||"")}</span></div>`).join("")}</div>
+      <div class="reply-box">
+        <input id="rep${q.id}" placeholder="${waiting?"Type your reply… e.g. Yes, available! Viewing Sat 10am works.":"Send another message…"}" onkeydown="if(event.key==='Enter')sendReply(${q.id})">
+        <button class="btn btn-primary btn-sm" onclick="sendReply(${q.id})">Send</button>
+      </div>
+    </div>`}).join("");
+}
+function markThreadsRead(){
+  myInquiries.filter(q=>q.unread).forEach(q=>{q.unread=false;api(`/api/inquiries/${q.id}/reply`,{method:"POST",body:JSON.stringify({markRead:true})}).catch(()=>{})});
+}
+/* ---------- viewings ---------- */
+function renderViewings(){
+  const el=$("viewingsList");if(!el)return;
+  if(!myViewings.length){el.innerHTML=`<div class="inq" style="text-align:center;color:var(--muted)">No viewing requests yet. Tenants can book a time straight from your listing.</div>`;return}
+  const pill={requested:'<span class="badge-new">NEW REQUEST</span>',confirmed:'<span class="pill active">confirmed</span>',declined:'<span class="pill rented">declined</span>',cancelled:'<span class="pill rented">cancelled by tenant</span>'};
+  el.innerHTML=myViewings.map(v=>`
+    <div class="inq ${v.status==="requested"?"unreplied":""}">
+      <div class="inq-top">
+        <span class="inq-from">📅 ${esc(v.slotLabel)}</span>
+        <span class="inq-listing">${esc(v.title)}</span>
+        ${pill[v.status]||""}${v.past?'<span class="inq-time">past</span>':""}
+      </div>
+      <div class="inq-msg"><b>${esc(v.name)}</b> · <a href="tel:${esc(v.phone)}">${esc(v.phone)}</a>${v.email?" · "+esc(v.email):""}${v.note?`<div style="margin-top:6px;color:var(--muted)">“${esc(v.note)}”</div>`:""}</div>
+      ${v.status==="requested"&&!v.past?`<div class="reply-box">
+        <input id="vmsg${v.id}" placeholder="Optional note to the tenant, e.g. Call me when you reach the gate">
+        <button class="btn btn-primary btn-sm" onclick="respondViewing(${v.id},'confirm')">Confirm</button>
+        <button class="btn btn-ghost btn-sm" onclick="respondViewing(${v.id},'decline')">Can't make it</button>
+      </div>`:v.status==="confirmed"&&!v.past?`<div class="reply-box"><button class="btn btn-ghost btn-sm" onclick="respondViewing(${v.id},'decline')">Cancel this viewing</button></div>`:""}
     </div>`).join("");
+}
+async function respondViewing(id,action){
+  const m=$("vmsg"+id);
+  try{await api(`/api/viewings/${id}/respond`,{method:"POST",body:JSON.stringify({action,message:m?m.value:""})});toast(action==="confirm"?"Confirmed — the tenant has been told":"The tenant has been told");await refresh()}
+  catch(e){toast(e.message)}
 }
 async function sendReply(id){
   const box=$("rep"+id);
@@ -1231,14 +1308,15 @@ async function uploadPhotos(files){
 async function preparePhotoSection(){
   const on=await initPhotoUI();
   $("photoWrap").style.display=on?"block":"none";
-  if(on)renderPhotos();
+  $("videoWrap").style.display=on?"block":"none";
+  if(on){renderPhotos();renderVideo()}
 }
 function openAdd(){
   editId=null;photoIds=[];uploads.forEach(u=>{u.cancelled=true;try{u.xhr&&u.xhr.abort()}catch{}});uploads=[];uploadingCount=0;saveLabel=null;$("emSave").disabled=false;
   $("emTitle").textContent="New Listing";$("emSave").textContent="Publish";
   $("emCatWrap").style.display="block";$("emStatusWrap").style.display="none";
   $("eTitle").value="";$("eDesc").value="";$("ePrice").value="";$("eBeds").value="";$("emErr").textContent="";
-  pickListerRole(defaultListerRole());setFeeFields("");
+  pickListerRole(defaultListerRole());setFeeFields("");setFeatureFields({});videoId="";videoUp=null;
   preparePhotoSection();
   show("editModal");
 }
@@ -1254,10 +1332,53 @@ function openEdit(id){
     ?'<option value="active">Active</option><option value="rented">Rented out</option>'
     :'<option value="active">Active</option><option value="sold">Sold</option>';
   $("eStatus").value=x.status;$("emErr").textContent="";
-  pickListerRole(x.listerRole||"owner");setFeeFields(x.agentFee||"");
+  pickListerRole(x.listerRole||"owner");setFeeFields(x.agentFee||"");setFeatureFields(x.features);videoId=x.videoId||"";videoUp=null;
   preparePhotoSection();
   show("editModal");
 }
+/* ---------- home details ---------- */
+function setFeatureFields(f){
+  f=f||{};
+  $("fDeposit").value=f.deposit||"";$("fSvc").value=f.serviceCharge||"";$("fFloor").value=f.floor||"";
+  $("fWater").value=f.water||"";$("fPower").value=f.power||"";
+  document.querySelectorAll("#fTicks input").forEach(c=>c.checked=!!f[c.value]);
+  $("eMore").open=Object.keys(f).length>0;
+}
+function featureValues(){
+  const f={deposit:$("fDeposit").value.trim(),serviceCharge:$("fSvc").value.trim(),floor:$("fFloor").value.trim(),water:$("fWater").value,power:$("fPower").value};
+  document.querySelectorAll("#fTicks input").forEach(c=>{if(c.checked)f[c.value]=true});
+  Object.keys(f).forEach(k=>{if(f[k]===""||f[k]===false)delete f[k]});
+  return f;
+}
+/* ---------- video walkthrough (direct to Cloudinary, with progress) ---------- */
+let videoId="", videoUp=null;
+function renderVideo(){
+  const box=$("videoBox");if(!box)return;
+  if(videoUp){box.innerHTML=`<div class="vid-row"><div class="up-bar" style="flex:1"><i style="width:${videoUp.pct}%"></i></div><span>${videoUp.pct}%</span><button type="button" class="btn btn-ghost btn-sm" onclick="cancelVideo()">Cancel</button></div>`;return}
+  if(videoId&&signCfg&&signCfg.cloudName){
+    box.innerHTML=`<div class="vid-row"><video src="https://res.cloudinary.com/${signCfg.cloudName}/video/upload/q_auto,c_limit,w_480/${videoId}.mp4" muted playsinline controls preload="metadata" style="width:180px;border-radius:10px;background:#000"></video><button type="button" class="btn btn-ghost btn-sm" onclick="videoId='';renderVideo()">Remove video</button></div>`;
+    return;
+  }
+  box.innerHTML=`<button type="button" class="photo-add" style="width:100%;aspect-ratio:auto;padding:14px" onclick="$('videoFile').click()"><span>▶</span>Add a short video tour</button>`;
+}
+function cancelVideo(){if(videoUp&&videoUp.xhr)videoUp.xhr.abort();videoUp=null;renderVideo()}
+async function uploadVideo(file){
+  if(!file)return;
+  let cfg;try{cfg=await api("/api/uploads/sign?kind=video")}catch(e){toast(e.message);return}
+  if(file.size>cfg.maxBytes){toast("Video is over 80 MB — trim it or record at a lower quality");return}
+  const secs=await new Promise(r=>{const v=document.createElement("video");v.preload="metadata";v.onloadedmetadata=()=>{r(v.duration);URL.revokeObjectURL(v.src)};v.onerror=()=>r(0);v.src=URL.createObjectURL(file)});
+  if(secs>cfg.maxSeconds+1){toast(`Keep it under ${cfg.maxSeconds} seconds — this one is ${Math.round(secs)}s`);return}
+  const fd=new FormData();fd.append("file",file);fd.append("api_key",cfg.apiKey);fd.append("timestamp",cfg.timestamp);fd.append("signature",cfg.signature);fd.append("folder",cfg.folder);
+  const x=new XMLHttpRequest();videoUp={pct:0,xhr:x};renderVideo();setSaveBusy("Uploading video… 0%");
+  x.open("POST",`https://api.cloudinary.com/v1_1/${cfg.cloudName}/video/upload`);
+  x.upload.onprogress=e=>{if(e.lengthComputable){videoUp.pct=Math.round(e.loaded/e.total*100);renderVideo();setSaveBusy(`Uploading video… ${videoUp.pct}%`)}};
+  x.onload=()=>{let d={};try{d=JSON.parse(x.responseText)}catch{};videoUp=null;setSaveBusy();
+    if(x.status>=200&&x.status<300&&d.public_id){videoId=d.public_id;toast("Video added")}else toast("Video upload failed: "+((d.error&&d.error.message)||"try again"));renderVideo()};
+  x.onerror=()=>{videoUp=null;setSaveBusy();toast("Network error — check your connection");renderVideo()};
+  x.onabort=()=>{videoUp=null;setSaveBusy();renderVideo()};
+  x.send(fd);
+}
+
 /* ---------- who's posting (owner / agent / caretaker) ---------- */
 let listerRole="owner";
 function defaultListerRole(){
@@ -1292,7 +1413,8 @@ async function saveListing(){
   $("emErr").textContent="";
   if(uploads.length){$("emErr").textContent="Wait for photos to finish uploading…";return}
   const photos=signCfg?{photos:photoIds}:{};
-  const lister={listerRole,agentFee:feeText()};
+  const lister={listerRole,agentFee:feeText(),features:featureValues(),...(signCfg?{video:videoId}:{})};
+  if(videoUp){$("emErr").textContent="Wait for the video to finish uploading…";return}
   if(listerRole==="agent"&&!lister.agentFee){$("emErr").textContent="State your fee to the tenant, or choose “No fee to tenant”";return}
   setSaveBusy(editId==null?"Publishing…":"Saving…");
   try{

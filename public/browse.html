@@ -452,7 +452,7 @@
     .foot-tag{margin-left:auto;margin-right:auto;text-align:center}
   }
 </style>
-  <link rel="stylesheet" href="/refresh.css?v=20260924-2">
+  <link rel="stylesheet" href="/refresh.css?v=20260924-3">
 </head>
 <body class="page-browse">
 
@@ -479,6 +479,7 @@
     <div class="np-label">Explore</div>
     <a class="np-item" href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>Home</a>
     <a class="np-item" href="/browse.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Browse all listings</a>
+    <a class="np-item" href="/messages.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>My messages &amp; viewings</a>
     <a class="np-item" href="/browse.html?cat=rent&beds=0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9V6M2 9h20v9M2 9v9M22 12H2M6 9V7.5A1.5 1.5 0 0 1 7.5 6h3A1.5 1.5 0 0 1 12 7.5V9"/></svg>Bedsitters</a>
     <a class="np-item" href="/browse.html?cat=rent&beds=1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg>1 Bedroom</a>
     <a class="np-item" href="/browse.html?cat=rent&beds=2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3"/><path d="M2 13a2 2 0 0 1 4 0v2h12v-2a2 2 0 0 1 4 0v3a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z"/></svg>2 Bedroom and more</a>
@@ -550,6 +551,7 @@
     </select>
     <label class="direct-toggle"><input type="checkbox" id="directOnly" onchange="render()"> Direct from owners only</label>
     <span class="sort-label" id="resultCount"></span>
+    <button type="button" class="alert-btn" onclick="openAlert()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>Alert me</button>
   </div>
 
   <div class="insights" id="insights">
@@ -587,7 +589,7 @@
     </div>
   </div>
   <nav class="pf-links" aria-label="Footer">
-    <div class="pf-col"><h4>Explore</h4><p><a href="/browse.html?cat=rent"><b>Rent</b></a><a href="/browse.html?cat=sale"><b>Buy</b></a><a href="/browse.html?cat=shortlet"><b>Airbnb</b></a><a href="/browse.html?nearby=1">Near me</a></p></div>
+    <div class="pf-col"><h4>Explore</h4><p><a href="/browse.html?cat=rent"><b>Rent</b></a><a href="/browse.html?cat=sale"><b>Buy</b></a><a href="/browse.html?cat=shortlet"><b>Airbnb</b></a><a href="/browse.html?nearby=1">Near me</a><a href="/messages.html">My messages</a></p></div>
     <div class="pf-col"><h4>Owners</h4><p><a href="/dashboard.html"><b>List a property</b></a><a href="/dashboard.html">Dashboard</a></p></div>
     <div class="pf-col"><h4>Contact</h4><p><a class="pf-call" href="tel:+254748181876" aria-label="Call PataHome on 0748 181 876"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z"/></svg><b>Call us</b></a><a class="pf-call pf-mail" href="mailto:info@patahome.co.ke" aria-label="Email PataHome at info@patahome.co.ke"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h15A1.5 1.5 0 0 1 21 6.5v11a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5zm2 .9v.2l7 4.6 7-4.6v-.2zm14 2.6-6.45 4.25a1 1 0 0 1-1.1 0L5 10v7h14z"/></svg><b>Email us</b></a></p></div>
     <div class="pf-col"><h4>Follow</h4><div class="pf-social">
@@ -612,13 +614,18 @@
         <div class="dm-price" id="dPrice"></div>
         <div class="dm-facts" id="dFacts"></div>
         <div class="sub" id="dSub" hidden></div>
-        <div class="dm-sec">
-          <h4>What's included</h4>
+        <div class="dm-sec" id="dDetailsWrap">
+          <h4>Home details</h4>
+          <div class="dm-kv" id="dKv"></div>
           <div class="chips" id="dChips"></div>
         </div>
         <div class="dm-sec" id="dDescWrap">
           <h4>About this home</h4>
           <p class="dm-desc" id="dDesc"></p>
+        </div>
+        <div class="dm-sec" id="dNearWrap">
+          <h4>Around this home <small>approximate distances</small></h4>
+          <div class="dm-near" id="dNear"></div>
         </div>
       </div>
       <aside class="dm-side">
@@ -631,6 +638,7 @@
           </div>
         </div>
         <div class="phone" id="dPhone"></div>
+        <button class="btn btn-ghost dm-book" id="dBookBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>Book a viewing</button>
         <a id="dOwnerProfile" class="dm-link" href="#">View owner profile →</a>
         <div class="safe-note" role="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.5 8 8 11 4.5-3 8-6 8-11V5z"/><path d="M12 8v4M12 16h.01"/></svg><span><b>Stay safe:</b> never pay rent, a deposit or a "viewing fee" before you've seen the house and met the owner. PataHome never asks you for money.</span></div>
         <div class="dm-perks" id="dPerks"><span>✓ No agent fees</span><span>✓ No viewing fees</span></div>
@@ -638,10 +646,59 @@
       </aside>
       <div class="dm-actions">
         <button class="btn btn-primary" id="dContactBtn">Contact Owner</button>
+        <button class="btn btn-ghost" id="dShareBtn" aria-label="Share this listing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/></svg><span>Share</span></button>
         <button class="btn btn-ghost" id="dMapBtn" aria-label="View on map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.1-7-11a7 7 0 0 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span>Map</span></button>
         <button class="btn btn-ghost dm-follow" id="dFollowBtn">Follow owner</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- Book a viewing -->
+<div class="overlay" id="viewModal" onclick="if(event.target===this)closeModal('viewModal')">
+  <div class="modal">
+    <button class="close-x" onclick="closeModal('viewModal')" aria-label="Close">✕</button>
+    <h2>Book a viewing</h2>
+    <div class="sub" id="vwSub"></div>
+    <label>Day</label>
+    <div class="vw-days" id="vwDays"></div>
+    <label>Time</label>
+    <div class="vw-times" id="vwTimes"></div>
+    <label>Your name</label><input id="vwName" autocomplete="name" placeholder="Your name">
+    <label>Phone</label><input id="vwPhone" inputmode="tel" autocomplete="tel" placeholder="07XXXXXXXX">
+    <label>Email <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional — for confirmation & reminder)</span></label><input id="vwEmail" type="email" placeholder="you@example.com">
+    <label>Note to the owner (optional)</label><input id="vwNote" maxlength="500" placeholder="e.g. I'll come with my spouse">
+    <div class="safe-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.5 8 8 11 4.5-3 8-6 8-11V5z"/><path d="M12 8v4M12 16h.01"/></svg><span>Viewings on PataHome are free. <b>Never pay a "viewing fee".</b></span></div>
+    <div class="err" id="vwErr"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('viewModal')">Cancel</button>
+      <button class="btn btn-primary" id="vwSend" onclick="sendViewing()">Request viewing</button>
+    </div>
+  </div>
+</div>
+
+<!-- New-listing alert -->
+<div class="overlay" id="alertModal" onclick="if(event.target===this)closeModal('alertModal')">
+  <div class="modal">
+    <button class="close-x" onclick="closeModal('alertModal')" aria-label="Close">✕</button>
+    <h2>Get new matches first</h2>
+    <div class="sub">We'll email you as soon as a new home matches:</div>
+    <div class="al-crit" id="alCrit"></div>
+    <label>Email</label><input id="alEmail" type="email" autocomplete="email" placeholder="you@example.com">
+    <div class="photo-note" style="margin-top:6px">We'll send one email to confirm. Every alert has a one-tap unsubscribe link.</div>
+    <div class="err" id="alErr"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('alertModal')">Cancel</button>
+      <button class="btn btn-primary" id="alSend" onclick="sendAlert()">Create alert</button>
+    </div>
+  </div>
+</div>
+
+<!-- Video tour -->
+<div class="overlay" id="videoModal" onclick="if(event.target===this)closeVideo()">
+  <div class="modal vid-modal">
+    <button class="close-x" onclick="closeVideo()" aria-label="Close">✕</button>
+    <video id="vidPlayer" controls playsinline preload="metadata"></video>
   </div>
 </div>
 
@@ -714,6 +771,7 @@
     <label>Or send a message</label>
     <input id="qName" placeholder="Your name" style="margin-bottom:8px">
     <input id="qPhone" placeholder="Your phone e.g. 0712 345 678" style="margin-bottom:8px">
+    <input id="qEmail" type="email" placeholder="Your email (optional — to get the owner's reply)" style="margin-bottom:8px">
     <textarea id="qMsg" rows="2" placeholder="e.g. Is it still available? Can I view Saturday?"></textarea>
     <button class="btn btn-primary" style="width:100%;margin-top:12px;padding:12px" onclick="sendInquiry()">Send Message</button>
   </div>
@@ -816,6 +874,7 @@ const toItem=x=>({
   price:x.price,beds:x.bedrooms,lat:x.lat,lng:x.lng,
   posted:timeAgo(x.createdAt),owner:x.ownerName,ownerId:x.ownerId,verified:x.ownerVerified,
   role:x.listerRole||"owner",fee:x.agentFee||"",
+  features:x.features||{},video:x.video||null,nearby:x.nearby||null,
   photos:x.photoUrls||[]
 });
 // How a listing's poster is labelled everywhere (cards, popup).
@@ -1023,6 +1082,7 @@ function toggleFav(id){
   const adding=!favs.has(id);
   adding?favs.add(id):favs.delete(id);
   saveFavs();
+  track(id,adding?"save":"unsave");
   const n=favs.size,pill=document.getElementById("favCount");
   pill.textContent=n;pill.style.display=n?"flex":"none";
   if(adding)toast("Saved to favourites");
@@ -1316,9 +1376,24 @@ function openDetail(id){
   if(x.beds!==null&&x.beds!==undefined)facts.push([BED_SVG,x.beds===0?"Bedsitter":x.beds+" bedroom"+(x.beds===1?"":"s")]);
   if(dTxt)facts.push([PIN_SVG,dTxt]);
   facts.push([CLOCK_SVG,"Posted "+x.posted]);
+  if(x.video)facts.push(['<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>',"Video tour"]);
   if(x.photos&&x.photos.length)facts.push(['<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h3l2-2h6l2 2h3v13H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',x.photos.length+" photo"+(x.photos.length===1?"":"s")]);
-  document.getElementById("dFacts").innerHTML=facts.map(([ic,t])=>`<span>${ic}${esc(t)}</span>`).join("");
-  document.getElementById("dChips").innerHTML=AMENITIES[x.cat].map(a=>`<span class="chip">✓ ${a}</span>`).join("");
+  document.getElementById("dFacts").innerHTML=facts.map(([ic,t])=>t==="Video tour"
+    ?`<button type="button" class="dm-vid" onclick="playVideo(${x.id})">${ic}${t}</button>`:`<span>${ic}${esc(t)}</span>`).join("");
+  // Only what the owner actually told us — no made-up amenities.
+  const F=x.features||{};
+  const KV=[["Deposit",F.deposit],["Service charge",F.serviceCharge],["Water",{included:"Included in rent",metered:"Metered",borehole:"Borehole",tank:"Tank / delivered"}[F.water]],
+    ["Electricity",{token:"Prepaid tokens",postpaid:"Postpaid bill",included:"Included in rent",solar:"Solar"}[F.power]],["Floor",F.floor]].filter(k=>k[1]);
+  const TICK={parking:"Parking",security:"Security guard",gated:"Gated compound",borehole:"Borehole",backupPower:"Backup power",wifi:"Wi-Fi",furnished:"Furnished",pets:"Pets allowed"};
+  const ticks=Object.keys(TICK).filter(k=>F[k]);
+  document.getElementById("dKv").innerHTML=KV.map(([k,v])=>`<div><span>${k}</span><b>${esc(v)}</b></div>`).join("");
+  document.getElementById("dChips").innerHTML=ticks.map(k=>`<span class="chip">✓ ${TICK[k]}</span>`).join("");
+  document.getElementById("dDetailsWrap").style.display=(KV.length||ticks.length)?"":"none";
+  const N=x.nearby||{},NL={stage:["🚌","Matatu stage"],supermarket:["🛒","Supermarket"],health:["🏥","Hospital / clinic"],school:["🏫","School"]};
+  const dist2=m=>m<1000?Math.max(50,Math.round(m/50)*50)+" m":(m/1000).toFixed(1)+" km";
+  const near=Object.keys(NL).filter(k=>N[k]);
+  document.getElementById("dNear").innerHTML=near.map(k=>`<div><span class="ni">${NL[k][0]}</span><span class="nt">${NL[k][1]}<small>${esc(N[k].name!==NL[k][1]?N[k].name:"")}</small></span><b>~${dist2(N[k].m)}</b></div>`).join("");
+  document.getElementById("dNearWrap").style.display=near.length?"":"none";
   document.getElementById("dDesc").textContent=x.desc||"";
   document.getElementById("dDescWrap").style.display=x.desc?"":"none";
   document.getElementById("dVerify").style.display=x.verified===false?"none":"";
@@ -1334,8 +1409,97 @@ function openDetail(id){
   document.getElementById("dMapBtn").onclick=()=>focusOnMap(id);
   document.getElementById("dFollowBtn").onclick=()=>openFollow(id);
   document.getElementById("dReportBtn").onclick=()=>openReport(id);
+  document.getElementById("dBookBtn").onclick=()=>openViewing(id);
+  document.getElementById("dShareBtn").onclick=()=>shareListing(id);
+  track(id,"view");
   openModal("detailModal");
 }
+/* ---------- analytics (anonymous counts only) ---------- */
+function track(id,event){try{fetch(`/api/listings/${id}/track`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({event}),keepalive:true})}catch(e){}}
+/* ---------- share ---------- */
+async function shareListing(id){
+  const x=BYID.get(id);if(!x)return;
+  const c=CAT[x.cat];
+  const url=`${location.origin}/listing/${x.id}/${x.title.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")}`;
+  const text=`${x.title} — ${fmt(x.price)}${c.unit} in ${x.area}. On PataHome:`;
+  track(id,"share");
+  if(navigator.share){try{await navigator.share({title:x.title,text,url});return}catch(e){if(e&&e.name==="AbortError")return}}
+  window.open("https://wa.me/?text="+encodeURIComponent(text+" "+url),"_blank","noopener");
+}
+/* ---------- video ---------- */
+function playVideo(id){
+  const x=BYID.get(id);if(!x||!x.video)return;
+  const v=document.getElementById("vidPlayer");v.poster=x.video.poster;v.src=x.video.url;
+  openModal("videoModal");v.play().catch(()=>{});
+}
+function closeVideo(){const v=document.getElementById("vidPlayer");v.pause();v.removeAttribute("src");v.load();closeModal("videoModal")}
+/* ---------- book a viewing ---------- */
+let viewId=null,vwDay=null,vwTime=null;
+function openViewing(id){
+  viewId=id;vwDay=null;vwTime=null;
+  const x=BYID.get(id);
+  document.getElementById("vwSub").textContent=x?`${x.title} · ${x.area}`:"";
+  const days=[];for(let i=0;i<14;i++){const d=new Date(Date.now()+i*864e5);days.push(d)}
+  document.getElementById("vwDays").innerHTML=days.map((d,i)=>{const iso=d.toLocaleDateString("en-CA",{timeZone:"Africa/Nairobi"});
+    return `<button type="button" data-d="${iso}" onclick="pickDay('${iso}')"><small>${i===0?"Today":i===1?"Tomorrow":d.toLocaleDateString("en-KE",{weekday:"short",timeZone:"Africa/Nairobi"})}</small><b>${d.toLocaleDateString("en-KE",{day:"numeric",timeZone:"Africa/Nairobi"})}</b><small>${d.toLocaleDateString("en-KE",{month:"short",timeZone:"Africa/Nairobi"})}</small></button>`}).join("");
+  document.getElementById("vwTimes").innerHTML='<div class="photo-note">Pick a day first</div>';
+  ["vwName","vwPhone","vwEmail","vwNote"].forEach(k=>{const el=document.getElementById(k);if(k!=="vwNote"&&localStorage.getItem("ph_"+k))el.value=localStorage.getItem("ph_"+k);if(k==="vwNote")el.value=""});
+  document.getElementById("vwErr").textContent="";
+  closeModal("detailModal");openModal("viewModal");
+}
+function pickDay(iso){
+  vwDay=iso;vwTime=null;
+  document.querySelectorAll("#vwDays button").forEach(b=>b.classList.toggle("on",b.dataset.d===iso));
+  const now=Date.now(),slots=[];
+  for(let h=8;h<=18;h++)for(const m of ["00","30"]){if(h===18&&m==="30")continue;const t=`${String(h).padStart(2,"0")}:${m}`;if(new Date(`${iso}T${t}:00+03:00`).getTime()>now+60*60e3)slots.push(t)}
+  document.getElementById("vwTimes").innerHTML=slots.length?slots.map(t=>{const [h,m]=t.split(":");const lab=`${(+h%12)||12}:${m} ${+h<12?"am":"pm"}`;return `<button type="button" data-t="${t}" onclick="pickTime('${t}')">${lab}</button>`}).join(""):'<div class="photo-note">No times left today — pick another day</div>';
+}
+function pickTime(t){vwTime=t;document.querySelectorAll("#vwTimes button").forEach(b=>b.classList.toggle("on",b.dataset.t===t))}
+async function sendViewing(){
+  const err=document.getElementById("vwErr");err.textContent="";
+  if(!vwDay||!vwTime){err.textContent="Pick a day and a time";return}
+  const body={date:vwDay,time:vwTime,name:document.getElementById("vwName").value.trim(),phone:document.getElementById("vwPhone").value.trim().replace(/\s/g,""),
+    email:document.getElementById("vwEmail").value.trim(),note:document.getElementById("vwNote").value.trim()};
+  const btn=document.getElementById("vwSend");btn.disabled=true;
+  try{
+    const r=await api(`/api/listings/${viewId}/viewings`,{method:"POST",body:JSON.stringify(body)});
+    ["vwName","vwPhone","vwEmail"].forEach(k=>{try{localStorage.setItem("ph_"+k,document.getElementById(k).value.trim())}catch(e){}});
+    rememberViewing(r.token,(BYID.get(viewId)||{}).title||"");
+    closeModal("viewModal");toast("Viewing requested — you'll hear back once the owner confirms.");
+  }catch(e){err.textContent=e.message}
+  finally{btn.disabled=false}
+}
+/* ---------- conversations & viewings saved on this device ---------- */
+function remember(key,token,title){try{const a=JSON.parse(localStorage.getItem(key)||"[]").filter(x=>x.t!==token);a.unshift({t:token,title,at:Date.now()});localStorage.setItem(key,JSON.stringify(a.slice(0,30)))}catch(e){}}
+const rememberThread=(t,title)=>t&&remember("ph_threads",t,title);
+const rememberViewing=(t,title)=>t&&remember("ph_viewings",t,title);
+/* ---------- new-listing alerts ---------- */
+function alertCriteria(){
+  return {cat:activeCat,q:document.getElementById("searchInput").value.trim(),price:document.getElementById("priceFilter").value,
+    beds:document.getElementById("bedFilter").value,direct:document.getElementById("directOnly").checked};
+}
+function openAlert(){
+  const c=alertCriteria(),bits=[];
+  bits.push(c.beds==="0"?"Bedsitters":c.beds==="3"?"3+ bedrooms":c.beds?c.beds+" bedroom":"Any size");
+  bits.push(c.cat==="all"?"rent, sale or Airbnb":CAT[c.cat].label);
+  if(c.q)bits.push("“"+c.q+"”");
+  if(c.price)bits.push(document.getElementById("priceFilter").selectedOptions[0].textContent);
+  if(c.direct)bits.push("direct owners only");
+  document.getElementById("alCrit").innerHTML=bits.map(b=>`<span>${esc(b)}</span>`).join("")+`<div class="photo-note" style="width:100%">Change the search or filters first to narrow it down.</div>`;
+  document.getElementById("alErr").textContent="";
+  try{document.getElementById("alEmail").value=localStorage.getItem("ph_vwEmail")||""}catch(e){}
+  openModal("alertModal");
+}
+async function sendAlert(){
+  const err=document.getElementById("alErr");err.textContent="";
+  const btn=document.getElementById("alSend");btn.disabled=true;
+  try{
+    await api("/api/alerts",{method:"POST",body:JSON.stringify({email:document.getElementById("alEmail").value.trim(),criteria:alertCriteria()})});
+    closeModal("alertModal");toast("Check your email to confirm the alert ✓");
+  }catch(e){err.textContent=e.message}
+  finally{btn.disabled=false}
+}
+
 let reportId=null;
 function openReport(id){
   reportId=id;
@@ -1445,11 +1609,13 @@ async function sendInquiry(){
   const message=document.getElementById("qMsg").value.trim();
   if(!name||!phone||!message){toast("Fill in your name, phone and message");return}
   try{
-    await api(`/api/listings/${contactId}/inquire`,{method:"POST",body:JSON.stringify({name,phone,message})});
+    const email=document.getElementById("qEmail").value.trim();
+    const r=await api(`/api/listings/${contactId}/inquire`,{method:"POST",body:JSON.stringify({name,phone,message,email})});
     const x=BYID.get(contactId);
+    rememberThread(r.threadToken,x?x.title:"");
     closeModal("contactModal");
     document.getElementById("qMsg").value="";
-    toast("Message sent — the owner will get back to you.");
+    toast("Message sent — follow the chat under “My messages”.");
   }catch(e){toast(e.message)}
 }
 
@@ -1510,6 +1676,7 @@ async function paintAccount(){
   if(P.get("beds")!==null&&P.get("beds")!==undefined&&P.get("beds")!=="")document.getElementById("bedFilter").value=P.get("beds");
   render();
   if(P.get("open"))setTimeout(()=>{try{openDetail(+P.get("open"))}catch(e){}},400);
+  if(P.get("notice")){setTimeout(()=>toast(P.get("notice")),700);history.replaceState(null,"",location.pathname)}
   try{initMap()}catch(e){
     // Map library unavailable (slow/blocked CDN) — hide the map gracefully, keep the site working
     document.getElementById("mapPanel").style.display="none";

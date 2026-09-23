@@ -934,3 +934,52 @@ footer.pf .pf-mail:hover{background:rgba(95,211,160,.14)}
 .rp-reasons input{margin-top:2px;accent-color:var(--brand)}
 @media(max-width:900px){.dm-actions .dm-report{min-height:26px}}
 .page-dashboard .pill.under_review,.pill.under_review{background:#fde8e6;color:#9b2c24}
+
+/* ===== Dashboard: threads, viewings, listing form extras ===== */
+.bubbles{display:flex;flex-direction:column;gap:8px;margin-top:6px;max-height:320px;overflow:auto;padding:2px}
+.bub{max-width:78%;padding:9px 12px;border-radius:14px;font-size:.9rem;line-height:1.45;background:#f1f4f2;align-self:flex-start;white-space:pre-line}
+.bub.owner{align-self:flex-end;background:#dff4ea}
+.bub span{display:block;margin-top:3px;font-size:.68rem;color:var(--muted)}
+.em-more{margin-top:14px;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.em-more summary{cursor:pointer;font-weight:700;font-size:.9rem}
+.em-more summary small{font-weight:500;color:var(--muted)}
+.em-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.em-ticks{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.em-ticks label{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1.5px solid var(--line);border-radius:99px;font-size:.8rem;font-weight:600;text-transform:none;letter-spacing:0;margin:0;cursor:pointer}
+.em-ticks label:has(input:checked){border-color:var(--green,#0B5D3B);background:#eef8f3}
+.vid-row{display:flex;align-items:center;gap:10px;font-size:.8rem;font-weight:700}
+@media(max-width:560px){.em-grid{grid-template-columns:1fr}}
+
+/* ===== Browse: details, nearby, viewing, alerts, video ===== */
+.dm-kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:10px}
+.dm-kv div{padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:#fbfdfc}
+.dm-kv span{display:block;font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.dm-kv b{font-size:.88rem}
+.dm-sec h4 small{text-transform:none;letter-spacing:0;font-family:inherit;font-weight:500;margin-left:6px}
+.dm-near{display:grid;gap:6px}
+.dm-near div{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;background:#f6f9f7;font-size:.86rem}
+.dm-near .ni{font-size:1.05rem}
+.dm-near .nt{flex:1;min-width:0}
+.dm-near .nt small{display:block;color:var(--muted);font-size:.72rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dm-near b{white-space:nowrap}
+.dm-vid{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:9px;border:0;background:var(--brand-dark);color:#fff;font-family:inherit;font-weight:600;font-size:.8125rem;cursor:pointer}
+.dm-vid svg{width:14px;height:14px;color:#fff!important}
+.dm-book{width:100%;margin-top:12px;min-height:44px;display:flex;align-items:center;justify-content:center;gap:7px;font-weight:700}
+.dm-book svg{width:17px;height:17px}
+.dm-actions{grid-template-columns:1fr auto auto!important}
+.dm-actions #dShareBtn svg{width:17px;height:17px}
+.vw-days{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
+.vw-days button{flex:0 0 62px;display:flex;flex-direction:column;align-items:center;padding:7px 4px;border:1.5px solid var(--line);border-radius:10px;background:#fff;cursor:pointer;font:inherit}
+.vw-days button small{font-size:.66rem;color:var(--muted)}
+.vw-days button b{font-size:1.05rem}
+.vw-days button.on,.vw-times button.on{border-color:var(--brand);background:#e6f6ee}
+.vw-times{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:6px}
+.vw-times button{padding:8px 4px;border:1.5px solid var(--line);border-radius:9px;background:#fff;font-family:inherit;font-weight:600;font-size:.8rem;cursor:pointer}
+.alert-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border:1.5px solid var(--brand);border-radius:99px;background:#fff;color:var(--brand-dark);font-family:inherit;font-weight:700;font-size:.8rem;cursor:pointer;white-space:nowrap}
+.alert-btn svg{width:15px;height:15px}
+.alert-btn:hover{background:#e6f6ee}
+.al-crit{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 6px}
+.al-crit span{padding:5px 10px;border-radius:99px;background:#eef8f3;font-size:.8rem;font-weight:600;color:var(--brand-dark)}
+.vid-modal{max-width:760px!important;padding:12px!important;background:#000!important}
+.vid-modal video{width:100%;max-height:78vh;border-radius:10px;background:#000;display:block}
+.vid-modal .close-x{color:#fff;z-index:2}

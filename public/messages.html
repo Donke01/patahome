@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My messages — PataHome</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<style>
+  :root{--brand:#0e7c5a;--brand-dark:#073d2e;--ink:#17201c;--muted:#5f6b66;--line:#e1e8e4;--bg:#f6f9f7}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+  header{background:#fff;border-bottom:1px solid var(--line);padding:12px 18px;display:flex;align-items:center;gap:12px}
+  header a.logo{font-weight:800;font-size:1.2rem;color:var(--brand-dark);text-decoration:none;letter-spacing:-.03em}
+  header a.logo b{color:var(--brand)}
+  header a.back{margin-left:auto;font-size:.85rem;color:var(--brand);font-weight:700;text-decoration:none}
+  .wrap{max-width:720px;margin:0 auto;padding:18px 16px 60px}
+  h1{font-size:1.35rem;margin:6px 0 4px;letter-spacing:-.02em}
+  .sub{color:var(--muted);font-size:.88rem;margin-bottom:14px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin:10px 0}
+  .item{display:flex;justify-content:space-between;align-items:center;gap:12px;text-decoration:none;color:inherit}
+  .item b{font-size:.95rem}
+  .item small{color:var(--muted)}
+  .pill{font-size:.7rem;font-weight:700;padding:3px 9px;border-radius:99px;background:#e6f6ee;color:var(--brand-dark);white-space:nowrap}
+  .pill.warn{background:#fff3e0;color:#9a6017}.pill.off{background:#eef1ef;color:var(--muted)}
+  .listing{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+  .listing a{color:var(--brand);font-weight:700;font-size:.85rem;text-decoration:none;white-space:nowrap}
+  .bubbles{display:flex;flex-direction:column;gap:8px;margin:12px 0}
+  .bub{max-width:80%;padding:10px 13px;border-radius:16px;font-size:.93rem;line-height:1.45;white-space:pre-line;background:#fff;border:1px solid var(--line);align-self:flex-start}
+  .bub.tenant{align-self:flex-end;background:#dff4ea;border-color:#cbe8da}
+  .bub span{display:block;font-size:.68rem;color:var(--muted);margin-top:3px}
+  .compose{position:sticky;bottom:0;background:var(--bg);padding:10px 0;display:flex;gap:8px}
+  textarea{flex:1;border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;font:inherit;resize:none;min-height:46px}
+  button{border:0;border-radius:10px;background:var(--brand-dark);color:#fff;font-weight:700;padding:0 18px;cursor:pointer;font:inherit;font-weight:700}
+  button:disabled{opacity:.6}
+  .safe{margin-top:6px;font-size:.78rem;color:#6b4712;background:#fff8ec;border:1px solid #f3dfb8;border-radius:10px;padding:9px 11px}
+  .empty{color:var(--muted);text-align:center;padding:30px 10px}
+  .err{color:#b3261e;font-size:.85rem;margin-top:6px}
+</style>
+</head>
+<body>
+<header><a class="logo" href="/">Pata<b>Home</b></a><a class="back" href="/browse.html">← Browse homes</a></header>
+<div class="wrap" id="app"><div class="empty">Loading…</div></div>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt=n=>"KES "+Number(n).toLocaleString("en-KE");
+const token=new URLSearchParams(location.search).get("t");
+const saved=k=>{try{return JSON.parse(localStorage.getItem(k)||"[]")}catch(e){return[]}};
+function remember(t,title){try{const a=saved("ph_threads").filter(x=>x.t!==t);a.unshift({t,title,at:Date.now()});localStorage.setItem("ph_threads",JSON.stringify(a.slice(0,30)))}catch(e){}}
+async function api(p,o={}){const r=await fetch(p,{...o,headers:{"Content-Type":"application/json"}});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||"Something went wrong");return d}
+
+async function list(){
+  const threads=saved("ph_threads"),views=saved("ph_viewings");
+  let html=`<h1>My messages &amp; viewings</h1><div class="sub">Saved on this device. Links in your emails/SMS open the same conversations.</div>`;
+  if(!threads.length&&!views.length){$("app").innerHTML=html+`<div class="card empty">Nothing here yet. Message an owner or book a viewing from any listing and it will show up here.</div>`;return}
+  const vs=await Promise.all(views.map(v=>api("/api/viewings/"+v.t).then(d=>({...d,t:v.t})).catch(()=>null)));
+  const ts=await Promise.all(threads.map(v=>api("/api/threads/"+v.t).then(d=>({...d,t:v.t})).catch(()=>null)));
+  const vv=vs.filter(Boolean),tt=ts.filter(Boolean);
+  if(vv.length)html+=`<h3>Viewings</h3>`+vv.map(v=>`<a class="card item" href="/viewing.html?t=${v.t}"><div><b>${esc(v.title)}</b><br><small>📅 ${esc(v.slotLabel)} · ${esc(v.area)}</small></div><span class="pill ${v.status==="confirmed"?"":v.status==="requested"?"warn":"off"}">${esc(v.status)}</span></a>`).join("");
+  if(tt.length)html+=`<h3>Conversations</h3>`+tt.map(c=>{const last=c.messages[c.messages.length-1];return `<a class="card item" href="/messages.html?t=${c.t}"><div><b>${esc(c.listing.title)}</b><br><small>${last.sender==="owner"?"Owner: ":"You: "}${esc(last.body.slice(0,70))}</small></div>${last.sender==="owner"?'<span class="pill">new reply</span>':""}</a>`}).join("");
+  $("app").innerHTML=html;
+}
+async function thread(){
+  let d;
+  try{d=await api("/api/threads/"+token)}catch(e){$("app").innerHTML=`<div class="card empty">${esc(e.message)}. <a href="/messages.html">See your saved conversations</a>.</div>`;return}
+  remember(token,d.listing.title);
+  const unit=d.listing.category==="rent"?"/month":d.listing.category==="shortlet"?"/night":"";
+  $("app").innerHTML=`
+    <div class="card listing"><div><b>${esc(d.listing.title)}</b><div class="sub" style="margin:2px 0 0">${fmt(d.listing.price)}${unit} · ${esc(d.listing.area)}${d.listing.live?"":" · no longer listed"}</div></div>
+      ${d.listing.live?`<a href="/browse.html?open=${d.listing.id}">View listing →</a>`:""}</div>
+    <h1>Chat with ${esc(d.ownerName)}${d.ownerVerified?' <span class="pill">✓ verified</span>':""}</h1>
+    <div class="bubbles" id="bubbles">${d.messages.map(m=>`<div class="bub ${m.sender}"><div>${esc(m.body)}</div><span>${m.sender==="tenant"?"You":esc(d.ownerName)} · ${esc(m.at||"")}</span></div>`).join("")}</div>
+    <div class="safe"><b>Stay safe:</b> never pay a deposit, rent or "viewing fee" before you've seen the house and met the owner.</div>
+    <div class="compose"><textarea id="msg" rows="1" maxlength="2000" placeholder="Write a message…"></textarea><button id="send" onclick="send()">Send</button></div>
+    <div class="err" id="err"></div>`;
+  window.scrollTo(0,document.body.scrollHeight);
+}
+async function send(){
+  const v=$("msg").value.trim();if(!v)return;
+  $("send").disabled=true;$("err").textContent="";
+  try{await api("/api/threads/"+token,{method:"POST",body:JSON.stringify({body:v})});await thread()}
+  catch(e){$("err").textContent=e.message}
+  finally{const b=$("send");if(b)b.disabled=false}
+}
+token?thread():list();
+if(token)setInterval(()=>{if(!document.hidden&&!($("msg")&&$("msg").value))thread()},30000);
+</script>
+</body>
+</html>

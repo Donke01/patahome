@@ -32,6 +32,7 @@ function cldSign(params) {
 // Incoming transformation: cap at 1280px, auto quality — keeps every stored image small
 const CLD_TRANSFORM = "c_limit,w_1280,h_1280,q_auto:good";
 const photoUrl = (id, t) => `https://res.cloudinary.com/${CLD.cloud}/image/upload/${t}/${id}`;
+const parseJson = (s, dflt) => { try { const v = JSON.parse(s); return v && typeof v === "object" ? v : dflt; } catch { return dflt; } };
 const parsePhotos = (s) => { try { const a = JSON.parse(s || "[]"); return Array.isArray(a) ? a : []; } catch { return []; } };
 const validPhotoId = (id) => typeof id === "string" && id.startsWith(CLD.folder + "/") &&
   /^[\w\-/]{1,200}$/.test(id);
@@ -73,6 +74,13 @@ const listingView = (row, userLat, userLng) => ({
     full: photoUrl(id, "c_limit,w_1280,q_auto:good")
   })) : [],
   featured: !!(row.featured_until && row.featured_until > new Date().toISOString()),
+  features: parseJson(row.features, {}),
+  video: row.video && cldEnabled() ? {
+    url: `https://res.cloudinary.com/${CLD.cloud}/video/upload/q_auto,vc_auto,c_limit,w_1280/${row.video}.mp4`,
+    poster: `https://res.cloudinary.com/${CLD.cloud}/video/upload/so_1,c_limit,w_720/${row.video}.jpg`
+  } : null,
+  nearby: row.nearby ? parseJson(row.nearby, null) : null,
+  videoId: row.video || "",
   ownerId: row.owner_id,
   ownerName: row.owner_name,
   ownerVerified: !!row.owner_verified,
@@ -807,14 +815,18 @@ router.add("POST", "/api/listings", (req, res) => {
     if (!Array.isArray(photos) || photos.length > CLD.maxPhotos || !photos.every(validPhotoId))
       return send(res, 400, { error: `photos must be up to ${CLD.maxPhotos} uploaded photo ids` });
   }
-  const info = db.prepare(`INSERT INTO listings (owner_id,category,title,description,area_id,price,bedrooms,lat,lng,photos,lister_role,agent_fee)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`)
+  const video = req.body.video ? String(req.body.video) : "";
+  if (video && !validVideoId(video)) return send(res, 400, { error: "Invalid video" });
+  const info = db.prepare(`INSERT INTO listings (owner_id,category,title,description,area_id,price,bedrooms,lat,lng,photos,lister_role,agent_fee,features,video)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
     .run(u.id, category, title.trim(), description || "", areaId, +price,
          bedrooms == null || bedrooms === "" ? null : +bedrooms, lat, lng,
-         JSON.stringify(photos || []), lister.role, lister.fee);
+         JSON.stringify(photos || []), lister.role, lister.fee, JSON.stringify(cleanFeatures(req.body.features)), video);
   const row = db.prepare(`${LISTING_SQL} WHERE l.id=?`).get(info.lastInsertRowid);
   notifyFollowers(u.id, "New listing from an owner you follow", `${row.title} is now live in ${row.area_name}.`).catch(e=>console.error("follower notification failed:",e.message));
   runScamChecks(row.id);
+  fetchNearby(row.id).catch(e => console.error("nearby failed:", e.message));
+  setTimeout(() => matchAlerts(row.id), 0);
   send(res, 201, listingView(row));
 });
 
@@ -1007,6 +1019,13 @@ router.add("PATCH", "/api/listings/:id", (req, res, p) => {
   const allowed = ["title", "description", "price", "bedrooms"];
   const sets = [], params = [];
   for (const k of allowed) if (body[k] !== undefined) { sets.push(`${k}=?`); params.push(body[k]); }
+  if (body.features !== undefined) { sets.push("features=?"); params.push(JSON.stringify(cleanFeatures(body.features))); }
+  if (body.video !== undefined) {
+    const v = String(body.video || "");
+    if (v && !validVideoId(v)) return send(res, 400, { error: "Invalid video" });
+    if (row.video && row.video !== v) cldDestroyVideo(row.video);
+    sets.push("video=?"); params.push(v);
+  }
   if (body.listerRole !== undefined || body.agentFee !== undefined) {
     const lister = listerFields({ listerRole: body.listerRole ?? row.lister_role, agentFee: body.agentFee ?? row.agent_fee });
     if (lister.error) return send(res, 400, { error: lister.error });
@@ -1071,6 +1090,12 @@ router.add("DELETE", "/api/listings/:id", (req, res, p) => {
 router.add("GET", "/api/uploads/sign", (req, res) => {
   const u = requireAuth(req, res); if (!u) return;
   if (!cldEnabled()) return send(res, 503, { error: "Photo uploads are not configured yet" });
+  if (req.query.kind === "video") {
+    // Videos: no image transformation; Cloudinary transcodes on delivery.
+    const timestamp = Math.floor(Date.now() / 1000), folder = VIDEO_FOLDER;
+    return send(res, 200, { cloudName: CLD.cloud, apiKey: CLD.key, timestamp, folder,
+      signature: cldSign({ folder, timestamp }), maxBytes: 80 * 1024 * 1024, maxSeconds: 90 });
+  }
   const folder = req.query.kind === "verify" ? "patahome/verify" : CLD.folder;
   const timestamp = Math.floor(Date.now() / 1000);
   const params = { folder, timestamp, transformation: CLD_TRANSFORM };
@@ -1099,17 +1124,20 @@ router.add("POST", "/api/listings/:id/contact", (req, res, p) => {
 router.add("POST", "/api/listings/:id/inquire", (req, res, p) => {
   const row = db.prepare("SELECT id, owner_id, title FROM listings WHERE id=? AND status='active'").get(p.id);
   if (!row) return send(res, 404, { error: "Listing not found" });
-  const { name, phone, message } = req.body || {};
+  const { name, phone, message, email } = req.body || {};
   if (!name || !phone || !message) return send(res, 400, { error: "name, phone and message are required" });
   if (String(message).length > 1000) return send(res, 400, { error: "Message too long (max 1000 chars)" });
-  const info = db.prepare("INSERT INTO inquiries (listing_id,from_name,from_phone,message) VALUES (?,?,?,?)")
-    .run(row.id, String(name).trim(), String(phone).trim(), String(message).trim());
+  const fromEmail = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(email || "").trim()) ? String(email).trim().toLowerCase() : "";
+  const threadToken = crypto.randomBytes(18).toString("base64url");
+  const info = db.prepare("INSERT INTO inquiries (listing_id,from_name,from_phone,message,thread_token,from_email,owner_unread,updated_at) VALUES (?,?,?,?,?,?,1,datetime('now'))")
+    .run(row.id, String(name).trim(), String(phone).trim(), String(message).trim(), threadToken, fromEmail);
+  db.prepare("INSERT INTO messages (inquiry_id,sender,body) VALUES (?,?,?)").run(info.lastInsertRowid, "tenant", String(message).trim());
   // an inquiry is also a lead
   const u = getUser(req);
   db.prepare("INSERT INTO leads (listing_id,user_id) VALUES (?,?)").run(row.id, u ? u.id : null);
   db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
     .run(row.owner_id, "inquiry", "New message", `${String(name).trim()} asked about "${row.title}".`);
-  send(res, 201, { ok: true, inquiryId: info.lastInsertRowid });
+  send(res, 201, { ok: true, inquiryId: info.lastInsertRowid, threadToken, threadUrl: `/messages.html?t=${threadToken}` });
 });
 
 /* -------- followers: renters/buyers follow an owner for updates -------- */
@@ -1239,8 +1267,10 @@ router.add("GET", "/api/my/inquiries", (req, res) => {
     WHERE l.owner_id = ? ORDER BY i.created_at DESC, i.id DESC`).all(u.id);
   send(res, 200, rows.map(r => ({
     id: r.id, listingId: r.listing_id, listingTitle: r.listing_title, category: r.category,
-    fromName: r.from_name, fromPhone: r.from_phone, message: r.message,
-    reply: r.owner_reply, repliedAt: r.replied_at, createdAt: r.created_at
+    fromName: r.from_name, fromPhone: r.from_phone, fromEmail: r.from_email || "", message: r.message,
+    reply: r.owner_reply, repliedAt: r.replied_at, createdAt: r.created_at,
+    unread: !!r.owner_unread, updatedAt: r.updated_at || r.created_at,
+    messages: threadMessages(r)
   })));
 });
 
@@ -1250,10 +1280,14 @@ router.add("POST", "/api/inquiries/:id/reply", (req, res, p) => {
     SELECT i.id, l.owner_id FROM inquiries i JOIN listings l ON l.id = i.listing_id WHERE i.id=?`).get(p.id);
   if (!row) return send(res, 404, { error: "Inquiry not found" });
   if (row.owner_id !== u.id && u.role !== "admin") return send(res, 403, { error: "Not your inquiry" });
+  if ((req.body || {}).markRead) { db.prepare("UPDATE inquiries SET owner_unread=0 WHERE id=?").run(row.id); return send(res, 200, { ok: true }); }
   const { reply } = req.body || {};
   if (!reply || !String(reply).trim()) return send(res, 400, { error: "reply is required" });
-  db.prepare("UPDATE inquiries SET owner_reply=?, replied_at=datetime('now') WHERE id=?")
-    .run(String(reply).trim(), row.id);
+  const text = String(reply).trim().slice(0, 2000);
+  db.prepare("UPDATE inquiries SET owner_reply=?, replied_at=datetime('now'), owner_unread=0, tenant_unread=1, updated_at=datetime('now') WHERE id=?")
+    .run(text, row.id);
+  db.prepare("INSERT INTO messages (inquiry_id,sender,body) VALUES (?,?,?)").run(row.id, "owner", text);
+  notifyTenantOfReply(row.id).catch(e => console.error("tenant reply notice failed:", e.message));
   send(res, 200, { ok: true });
 });
 
@@ -1344,6 +1378,326 @@ router.add("GET", "/api/my/stats", (req, res) => {
     topListing: top && top.n > 0 ? { id: top.id, title: top.title, leads: top.n } : null
   });
 });
+
+/* =====================================================================
+   Listing details, video, neighbourhood, viewings, message threads,
+   saved-search alerts and owner analytics.
+   ===================================================================== */
+const SITE = () => process.env.BASE_URL || "https://patahome.co.ke";
+const VIDEO_FOLDER = "patahome/videos";
+const validVideoId = (id) => typeof id === "string" && id.startsWith(VIDEO_FOLDER + "/") && /^[\w\-/]{1,200}$/.test(id);
+function cldDestroyVideo(publicId) {
+  if (!cldEnabled() || !validVideoId(publicId)) return;
+  const timestamp = Math.floor(Date.now() / 1000);
+  const body = new URLSearchParams({ public_id: publicId, timestamp, api_key: CLD.key, signature: cldSign({ public_id: publicId, timestamp }) });
+  fetch(`https://api.cloudinary.com/v1_1/${CLD.cloud}/video/destroy`, { method: "POST", body, signal: AbortSignal.timeout(10000) })
+    .catch(e => console.error("video destroy failed:", e.message));
+}
+
+/* ---------- 8 · structured listing details ---------- */
+const FEATURE_ENUMS = {
+  water: ["included", "metered", "borehole", "tank"],
+  power: ["token", "postpaid", "included", "solar"]
+};
+const FEATURE_BOOLS = ["parking", "pets", "furnished", "security", "borehole", "wifi", "gated", "backupPower"];
+function cleanFeatures(f) {
+  const out = {};
+  if (!f || typeof f !== "object") return out;
+  if (f.deposit) out.deposit = String(f.deposit).trim().slice(0, 40);
+  if (f.serviceCharge) out.serviceCharge = String(f.serviceCharge).trim().slice(0, 40);
+  if (f.floor) out.floor = String(f.floor).trim().slice(0, 20);
+  for (const [k, allowed] of Object.entries(FEATURE_ENUMS)) if (allowed.includes(f[k])) out[k] = f[k];
+  for (const k of FEATURE_BOOLS) if (f[k] === true || f[k] === "true" || f[k] === 1) out[k] = true;
+  return out;
+}
+
+/* ---------- 10 · neighbourhood: nearest places from OpenStreetMap ----------
+   Listing pins are approximate (area centre ± ~500 m), so distances are
+   shown as "about". Results are cached on the listing; a few missing ones
+   are backfilled each hour. */
+const NEARBY_KINDS = {
+  stage:       { label: "Matatu stage", test: t => t.highway === "bus_stop" || t.amenity === "bus_station" || t.public_transport === "platform" },
+  supermarket: { label: "Supermarket",  test: t => t.shop === "supermarket" || t.shop === "mall" },
+  health:      { label: "Hospital / clinic", test: t => ["hospital", "clinic", "doctors"].includes(t.amenity) },
+  school:      { label: "School",       test: t => ["school", "college", "university"].includes(t.amenity) }
+};
+async function fetchNearby(listingId) {
+  const l = db.prepare("SELECT id, lat, lng FROM listings WHERE id=?").get(listingId);
+  if (!l || l.lat == null) return;
+  const q = `[out:json][timeout:20];(
+    nwr(around:2500,${l.lat},${l.lng})[highway=bus_stop];nwr(around:2500,${l.lat},${l.lng})[amenity=bus_station];
+    nwr(around:3000,${l.lat},${l.lng})[shop~"^(supermarket|mall)$"];
+    nwr(around:4000,${l.lat},${l.lng})[amenity~"^(hospital|clinic|doctors)$"];
+    nwr(around:2500,${l.lat},${l.lng})[amenity~"^(school|college|university)$"];);out center 120;`;
+  const r = await fetch("https://overpass-api.de/api/interpreter", {
+    method: "POST", body: new URLSearchParams({ data: q }),
+    headers: { "User-Agent": "PataHome/1.0 (info@patahome.co.ke)" }, signal: AbortSignal.timeout(25000)
+  });
+  if (!r.ok) throw new Error("overpass " + r.status);
+  const d = await r.json();
+  const best = {};
+  for (const el of d.elements || []) {
+    const lat = el.lat ?? el.center?.lat, lng = el.lon ?? el.center?.lon, t = el.tags || {};
+    if (lat == null) continue;
+    for (const [k, def] of Object.entries(NEARBY_KINDS)) {
+      if (!def.test(t)) continue;
+      const m = Math.round(km(l.lat, l.lng, lat, lng) * 1000);
+      if (!best[k] || m < best[k].m) best[k] = { name: String(t.name || def.label).slice(0, 60), m };
+    }
+  }
+  db.prepare("UPDATE listings SET nearby=? WHERE id=?").run(JSON.stringify({ ...best, at: new Date().toISOString() }), l.id);
+}
+async function backfillNearby() {
+  const rows = db.prepare("SELECT id FROM listings WHERE status='active' AND nearby IS NULL ORDER BY id DESC LIMIT 4").all();
+  for (const r of rows) { try { await fetchNearby(r.id); } catch (e) { console.error("nearby backfill:", e.message); break; } }
+}
+
+/* ---------- 16 · analytics counters ---------- */
+const trackSeen = new Map(); // "ip|listing|event|day" → true (in memory; resets on restart)
+router.add("POST", "/api/listings/:id/track", (req, res, p) => {
+  const ev = String((req.body || {}).event || "");
+  if (!["view", "save", "unsave", "share"].includes(ev)) return send(res, 400, { error: "Unknown event" });
+  const l = db.prepare("SELECT id FROM listings WHERE id=? AND status='active'").get(p.id);
+  if (!l) return send(res, 404, { error: "Listing not found" });
+  const day = new Date().toISOString().slice(0, 10);
+  const key = `${clientIp(req)}|${l.id}|${ev}|${day}`;
+  if (trackSeen.has(key)) return send(res, 200, { ok: true });
+  trackSeen.set(key, 1);
+  if (trackSeen.size > 50000) trackSeen.clear();
+  const col = ev === "view" ? "views" : ev === "share" ? "shares" : "saves";
+  const delta = ev === "unsave" ? -1 : 1;
+  db.prepare(`INSERT INTO listing_stats (listing_id, day, ${col}) VALUES (?,?,?)
+    ON CONFLICT(listing_id, day) DO UPDATE SET ${col} = MAX(0, ${col} + ?)`).run(l.id, day, Math.max(delta, 0), delta);
+  send(res, 200, { ok: true });
+});
+function priceComparison(row) {
+  if (row.bedrooms == null) return null;
+  const comps = db.prepare(`SELECT l.price FROM listings l JOIN areas a ON a.id=l.area_id
+    WHERE l.status='active' AND l.category=? AND l.bedrooms=? AND a.county=? AND l.id!=? ORDER BY l.price`)
+    .all(row.category, row.bedrooms, row.county, row.id).map(r => r.price);
+  if (comps.length < 3) return null;
+  const median = comps[Math.floor(comps.length / 2)];
+  return { median, count: comps.length, pct: Math.round((row.price - median) / median * 100), county: row.county };
+}
+router.add("GET", "/api/my/listing-stats", (req, res) => {
+  const u = requireAuth(req, res); if (!u) return;
+  const days = Math.min(90, Math.max(7, +req.query.days || 30));
+  const since = `-${days} days`;
+  const rows = db.prepare(`${LISTING_SQL} WHERE l.owner_id=? AND l.status != 'removed'`).all(u.id);
+  const out = rows.map(r => {
+    const st = db.prepare("SELECT COALESCE(SUM(views),0) v, COALESCE(SUM(saves),0) s, COALESCE(SUM(shares),0) sh FROM listing_stats WHERE listing_id=? AND day >= date('now', ?)").get(r.id, since);
+    const contacts = db.prepare("SELECT COUNT(*) n FROM leads WHERE listing_id=? AND created_at >= datetime('now', ?)").get(r.id, since).n;
+    const messages = db.prepare("SELECT COUNT(*) n FROM inquiries WHERE listing_id=? AND created_at >= datetime('now', ?)").get(r.id, since).n;
+    const viewings = db.prepare("SELECT COUNT(*) n FROM viewings WHERE listing_id=? AND created_at >= datetime('now', ?)").get(r.id, since).n;
+    return { id: r.id, title: r.title, views: st.v, saves: st.s, shares: st.sh, contacts, messages, viewings,
+      conversion: st.v ? Math.round((contacts + messages) / st.v * 100) : 0, price: priceComparison(r) };
+  });
+  send(res, 200, { days, listings: out });
+});
+
+/* ---------- 5 · book a viewing ---------- */
+const eatLabel = (iso) => new Date(iso).toLocaleString("en-KE", { timeZone: "Africa/Nairobi", weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+async function tellTenant(v, subject, text) {
+  if (v.email && mailConfigured()) return sendMail({ to: v.email, subject, text }).catch(e => console.error("viewing mail:", e.message));
+  if (realPhone(v.phone) && smsConfigured()) return sendSms({ to: v.phone, text: text.split("\n\n").slice(0, 2).join(" ").slice(0, 300) }).catch(e => console.error("viewing sms:", e.message));
+}
+async function tellOwner(ownerId, title, body) {
+  db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)").run(ownerId, "viewing", title, body);
+  const o = db.prepare("SELECT email, email_verified, phone FROM users WHERE id=?").get(ownerId);
+  if (o && o.email && mailConfigured()) sendMail({ to: o.email, subject: `PataHome — ${title}`, text: `${body}\n\nManage it from your dashboard: ${SITE()}/dashboard.html\n\n— PataHome` })
+    .catch(e => console.error("owner mail:", e.message));
+}
+router.add("POST", "/api/listings/:id/viewings", async (req, res, p) => {
+  const l = db.prepare("SELECT id, owner_id, title FROM listings WHERE id=? AND status='active'").get(p.id);
+  if (!l) return send(res, 404, { error: "Listing not found" });
+  const b = req.body || {};
+  const name = String(b.name || "").trim().slice(0, 80), phone = String(b.phone || "").trim();
+  const email = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(b.email || "").trim()) ? String(b.email).trim().toLowerCase() : "";
+  if (!name) return send(res, 400, { error: "Enter your name" });
+  if (!/^0[17]\d{8}$/.test(phone)) return send(res, 400, { error: "Enter a valid Kenyan phone e.g. 0712345678" });
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date || "") || !/^\d{2}:\d{2}$/.test(b.time || "")) return send(res, 400, { error: "Pick a date and time" });
+  const slot = new Date(`${b.date}T${b.time}:00+03:00`);
+  const hr = +b.time.slice(0, 2);
+  if (isNaN(slot) || slot < Date.now() + 30 * 60e3 || slot > Date.now() + 31 * 86400e3) return send(res, 400, { error: "Pick a time from 30 minutes to 30 days from now" });
+  if (hr < 7 || hr > 18) return send(res, 400, { error: "Viewings can be booked between 7am and 7pm" });
+  if (db.prepare("SELECT 1 FROM viewings WHERE listing_id=? AND phone=? AND status IN ('requested','confirmed') AND slot_at > ?").get(l.id, phone, new Date().toISOString()))
+    return send(res, 409, { error: "You already have a viewing request for this home — check your messages or cancel it first" });
+  const token = crypto.randomBytes(18).toString("base64url");
+  const info = db.prepare("INSERT INTO viewings (listing_id,name,phone,email,slot_at,note,token) VALUES (?,?,?,?,?,?,?)")
+    .run(l.id, name, phone, email, slot.toISOString(), String(b.note || "").trim().slice(0, 500), token);
+  db.prepare("INSERT INTO leads (listing_id,user_id) VALUES (?,NULL)").run(l.id);
+  tellOwner(l.owner_id, "New viewing request", `${name} (${phone}) would like to view "${l.title}" on ${eatLabel(slot)}.${b.note ? ` Note: "${String(b.note).slice(0, 200)}"` : ""} Confirm or decline it in your dashboard.`);
+  if (email) tellTenant({ email, phone }, `Viewing requested — ${l.title}`,
+    `Hi ${name},\n\nYour request to view "${l.title}" on ${eatLabel(slot)} has been sent to the owner. We'll let you know when they confirm.\n\nSee or cancel your request: ${SITE()}/viewing.html?t=${token}\n\nStay safe: never pay before you've seen the house and met the owner.\n\n— PataHome`);
+  send(res, 201, { ok: true, id: info.lastInsertRowid, token, manageUrl: `/viewing.html?t=${token}` });
+});
+router.add("GET", "/api/viewings/:token", (req, res, p) => {
+  const v = db.prepare(`SELECT v.*, l.title, l.price, l.category, a.name area, a.county, u.name owner_name FROM viewings v
+    JOIN listings l ON l.id=v.listing_id JOIN areas a ON a.id=l.area_id JOIN users u ON u.id=l.owner_id WHERE v.token=?`).get(p.token);
+  if (!v) return send(res, 404, { error: "Viewing not found" });
+  send(res, 200, { listingId: v.listing_id, title: v.title, area: `${v.area}, ${v.county}`, price: v.price, category: v.category,
+    ownerName: v.owner_name, name: v.name, slotAt: v.slot_at, slotLabel: eatLabel(v.slot_at), status: v.status, note: v.note });
+});
+router.add("POST", "/api/viewings/:token/cancel", (req, res, p) => {
+  const v = db.prepare("SELECT v.*, l.owner_id, l.title FROM viewings v JOIN listings l ON l.id=v.listing_id WHERE v.token=?").get(p.token);
+  if (!v) return send(res, 404, { error: "Viewing not found" });
+  if (!["requested", "confirmed"].includes(v.status)) return send(res, 409, { error: "This viewing is already " + v.status });
+  db.prepare("UPDATE viewings SET status='cancelled' WHERE id=?").run(v.id);
+  tellOwner(v.owner_id, "Viewing cancelled", `${v.name} cancelled their viewing of "${v.title}" on ${eatLabel(v.slot_at)}.`);
+  send(res, 200, { ok: true });
+});
+router.add("GET", "/api/my/viewings", (req, res) => {
+  const u = requireAuth(req, res); if (!u) return;
+  const rows = db.prepare(`SELECT v.*, l.title FROM viewings v JOIN listings l ON l.id=v.listing_id
+    WHERE l.owner_id=? AND (v.slot_at >= datetime('now','-2 days') OR v.status='requested') ORDER BY v.slot_at`).all(u.id);
+  send(res, 200, rows.map(v => ({ id: v.id, listingId: v.listing_id, title: v.title, name: v.name, phone: v.phone, email: v.email,
+    slotAt: v.slot_at, slotLabel: eatLabel(v.slot_at), note: v.note, status: v.status, past: new Date(v.slot_at) < Date.now() })));
+});
+router.add("POST", "/api/viewings/:id/respond", async (req, res, p) => {
+  const u = requireAuth(req, res); if (!u) return;
+  const v = db.prepare("SELECT v.*, l.owner_id, l.title FROM viewings v JOIN listings l ON l.id=v.listing_id WHERE v.id=?").get(p.id);
+  if (!v) return send(res, 404, { error: "Viewing not found" });
+  if (v.owner_id !== u.id && u.role !== "admin") return send(res, 403, { error: "Not your listing" });
+  const action = String((req.body || {}).action || ""), msg = String((req.body || {}).message || "").trim().slice(0, 300);
+  if (!["confirm", "decline"].includes(action)) return send(res, 400, { error: "action must be confirm or decline" });
+  if (v.status !== "requested" && !(v.status === "confirmed" && action === "decline")) return send(res, 409, { error: "This viewing is already " + v.status });
+  const status = action === "confirm" ? "confirmed" : "declined";
+  db.prepare("UPDATE viewings SET status=? WHERE id=?").run(status, v.id);
+  const owner = db.prepare("SELECT name, phone FROM users WHERE id=?").get(v.owner_id);
+  await tellTenant(v, status === "confirmed" ? `Viewing confirmed — ${v.title}` : `Viewing not available — ${v.title}`,
+    status === "confirmed"
+      ? `Hi ${v.name},\n\n${owner.name} confirmed your viewing of "${v.title}" on ${eatLabel(v.slot_at)}.${msg ? `\n\nMessage from the owner: "${msg}"` : ""}\n\nOwner's phone: ${realPhone(owner.phone) || "shared on the day"}\nDetails or cancel: ${SITE()}/viewing.html?t=${v.token}\n\nStay safe: never pay before you've seen the house and met the owner.\n\n— PataHome`
+      : `Hi ${v.name},\n\nSorry — the owner can't do ${eatLabel(v.slot_at)} for "${v.title}".${msg ? `\n\nMessage from the owner: "${msg}"` : ""}\n\nYou can pick another time on PataHome: ${SITE()}/browse.html?open=${v.listing_id}\n\n— PataHome`);
+  send(res, 200, { ok: true, status });
+});
+async function viewingReminders() {
+  const due = db.prepare(`SELECT v.*, l.owner_id, l.title FROM viewings v JOIN listings l ON l.id=v.listing_id
+    WHERE v.status='confirmed' AND v.reminded=0 AND v.slot_at > ? AND v.slot_at <= ?`).all(new Date().toISOString(), new Date(Date.now() + 26 * 3600e3).toISOString());
+  for (const v of due) {
+    db.prepare("UPDATE viewings SET reminded=1 WHERE id=?").run(v.id);
+    tellTenant(v, `Reminder: viewing ${eatLabel(v.slot_at)}`, `Hi ${v.name},\n\nA reminder that you're viewing "${v.title}" on ${eatLabel(v.slot_at)}.\n\nDetails or cancel: ${SITE()}/viewing.html?t=${v.token}\n\n— PataHome`);
+    db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)").run(v.owner_id, "viewing", "Viewing coming up", `${v.name} (${v.phone}) is viewing "${v.title}" on ${eatLabel(v.slot_at)}.`);
+  }
+}
+
+/* ---------- 6 · message threads ---------- */
+function threadMessages(inq) {
+  const rows = db.prepare("SELECT sender, body, created_at FROM messages WHERE inquiry_id=? ORDER BY id").all(inq.id);
+  if (rows.length) return rows.map(m => ({ sender: m.sender, body: m.body, at: m.created_at }));
+  // inquiries created before threads existed
+  const legacy = [{ sender: "tenant", body: inq.message, at: inq.created_at }];
+  if (inq.owner_reply) legacy.push({ sender: "owner", body: inq.owner_reply, at: inq.replied_at || inq.created_at });
+  return legacy;
+}
+async function notifyTenantOfReply(inquiryId) {
+  const i = db.prepare("SELECT i.*, l.title FROM inquiries i JOIN listings l ON l.id=i.listing_id WHERE i.id=?").get(inquiryId);
+  if (!i) return;
+  if (!i.thread_token) { i.thread_token = crypto.randomBytes(18).toString("base64url"); db.prepare("UPDATE inquiries SET thread_token=? WHERE id=?").run(i.thread_token, i.id); }
+  const link = `${SITE()}/messages.html?t=${i.thread_token}`;
+  if (i.from_email && mailConfigured())
+    return sendMail({ to: i.from_email, subject: `Reply about "${i.title}"`, text: `Hi ${i.from_name},\n\nThe owner replied to your message about "${i.title}":\n\n"${i.owner_reply}"\n\nReply here: ${link}\n\n— PataHome` });
+  if (realPhone(i.from_phone) && smsConfigured())
+    return sendSms({ to: i.from_phone, text: `PataHome: the owner replied about "${i.title.slice(0, 40)}". Read & reply: ${link}` });
+}
+router.add("GET", "/api/threads/:token", (req, res, p) => {
+  const i = db.prepare(`SELECT i.*, l.title, l.price, l.category, l.status lstatus, a.name area, a.county, u.name owner_name, u.verified owner_verified
+    FROM inquiries i JOIN listings l ON l.id=i.listing_id JOIN areas a ON a.id=l.area_id JOIN users u ON u.id=l.owner_id WHERE i.thread_token=?`).get(p.token);
+  if (!i) return send(res, 404, { error: "Conversation not found" });
+  db.prepare("UPDATE inquiries SET tenant_unread=0 WHERE id=?").run(i.id);
+  send(res, 200, { listing: { id: i.listing_id, title: i.title, price: i.price, category: i.category, area: `${i.area}, ${i.county}`, live: i.lstatus === "active" },
+    ownerName: i.owner_name, ownerVerified: !!i.owner_verified, you: i.from_name, messages: threadMessages(i) });
+});
+router.add("POST", "/api/threads/:token", (req, res, p) => {
+  const i = db.prepare("SELECT i.*, l.owner_id, l.title FROM inquiries i JOIN listings l ON l.id=i.listing_id WHERE i.thread_token=?").get(p.token);
+  if (!i) return send(res, 404, { error: "Conversation not found" });
+  const body = String((req.body || {}).body || "").trim();
+  if (!body) return send(res, 400, { error: "Write a message" });
+  if (body.length > 2000) return send(res, 400, { error: "Message too long" });
+  const recent = db.prepare("SELECT COUNT(*) n FROM messages WHERE inquiry_id=? AND sender='tenant' AND created_at > datetime('now','-1 hour')").get(i.id).n;
+  if (recent >= 20) return send(res, 429, { error: "Too many messages — please wait a bit" });
+  db.prepare("INSERT INTO messages (inquiry_id,sender,body) VALUES (?,?,?)").run(i.id, "tenant", body);
+  db.prepare("UPDATE inquiries SET owner_unread=1, updated_at=datetime('now') WHERE id=?").run(i.id);
+  db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)").run(i.owner_id, "inquiry", "New message", `${i.from_name} replied about "${i.title}".`);
+  send(res, 201, { ok: true });
+});
+
+/* ---------- 7 · saved searches / alerts ---------- */
+function alertMatches(c, r) {
+  if (r.status !== "active") return false;
+  if (c.cat && c.cat !== "all" && r.category !== c.cat) return false;
+  if (c.direct && (r.lister_role || "owner") !== "owner") return false;
+  if (c.price) { const [lo, hi] = String(c.price).split("-").map(Number); if ((Number.isFinite(lo) && r.price < lo) || (Number.isFinite(hi) && r.price > hi)) return false; }
+  if (c.beds !== undefined && c.beds !== "") { if (r.bedrooms == null) return false; if (String(c.beds) === "3" ? r.bedrooms < 3 : r.bedrooms !== +c.beds) return false; }
+  if (c.q) { const { tokens, priceCap } = parseSearch(c.q); if (priceCap !== null && r.price > priceCap) return false; if (tokens.length && !searchScore(r, tokens)) return false; }
+  return true;
+}
+function describeAlert(c) {
+  const bits = [];
+  bits.push(c.beds === "0" ? "Bedsitters" : c.beds === "3" ? "3+ bedroom homes" : c.beds ? `${c.beds} bedroom homes` : "Homes");
+  bits.push(c.cat === "sale" ? "for sale" : c.cat === "shortlet" ? "(Airbnb)" : c.cat === "rent" ? "for rent" : "");
+  if (c.q) bits.push(`matching “${c.q}”`);
+  if (c.price) { const [lo, hi] = String(c.price).split("-").map(Number); bits.push(hi >= 999999999 ? `above KES ${lo.toLocaleString("en-KE")}` : lo ? `KES ${lo.toLocaleString("en-KE")}–${hi.toLocaleString("en-KE")}` : `under KES ${hi.toLocaleString("en-KE")}`); }
+  if (c.direct) bits.push("direct from owners");
+  return bits.filter(Boolean).join(" ").slice(0, 140);
+}
+router.add("POST", "/api/alerts", async (req, res) => {
+  const b = req.body || {};
+  const email = String(b.email || "").trim().toLowerCase(), phone = String(b.phone || "").trim();
+  const useEmail = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email), usePhone = /^0[17]\d{8}$/.test(phone);
+  if (!useEmail && !usePhone) return send(res, 400, { error: "Enter your email (or phone) for alerts" });
+  if (useEmail && !mailConfigured()) return send(res, 400, { error: "Email alerts aren't available yet" });
+  if (!useEmail && !smsConfigured()) return send(res, 400, { error: "SMS alerts aren't available yet — use your email" });
+  const c = b.criteria || {};
+  const criteria = { cat: ["rent", "sale", "shortlet"].includes(c.cat) ? c.cat : "all", q: String(c.q || "").trim().slice(0, 80),
+    price: /^\d+-\d+$/.test(c.price || "") ? c.price : "", beds: ["0", "1", "2", "3"].includes(String(c.beds)) ? String(c.beds) : "", direct: !!c.direct };
+  const who = useEmail ? email : phone;
+  if (db.prepare(`SELECT COUNT(*) n FROM saved_searches WHERE ${useEmail ? "email" : "phone"}=?`).get(who).n >= 10)
+    return send(res, 400, { error: "You already have 10 alerts — remove one first (link in any alert email)" });
+  const token = crypto.randomBytes(18).toString("base64url"), label = describeAlert(criteria);
+  db.prepare("INSERT INTO saved_searches (email,phone,criteria,label,token) VALUES (?,?,?,?,?)").run(useEmail ? email : "", useEmail ? "" : phone, JSON.stringify(criteria), label, token);
+  const confirm = `${SITE()}/api/alerts/${token}/confirm`;
+  try {
+    if (useEmail) await sendMail({ to: email, subject: "Confirm your PataHome alert", text: `Karibu!\n\nConfirm you'd like an email when new listings match:\n\n${label}\n\nConfirm alert: ${confirm}\n\nIf you didn't ask for this, ignore this email — nothing will be sent.\n\n— PataHome` });
+    else await sendSms({ to: phone, text: `PataHome: confirm alerts for "${label.slice(0, 60)}": ${confirm}` });
+  } catch (e) { console.error("alert confirm send:", e.message); return send(res, 400, { error: "Couldn't send the confirmation — try again shortly" }); }
+  send(res, 201, { ok: true, label, pendingConfirm: true });
+});
+const noticeRedirect = (res, msg, to = "/browse.html") => { res.writeHead(302, { Location: `${to}?notice=${encodeURIComponent(msg)}` }); res.end(); };
+router.add("GET", "/api/alerts/:token/confirm", (req, res, p) => {
+  const a = db.prepare("SELECT * FROM saved_searches WHERE token=?").get(p.token);
+  if (!a) return noticeRedirect(res, "That alert link has expired.");
+  db.prepare("UPDATE saved_searches SET confirmed=1 WHERE id=?").run(a.id);
+  noticeRedirect(res, `Alert on: we'll tell you about new ${a.label}.`);
+});
+router.add("GET", "/api/alerts/:token/unsubscribe", (req, res, p) => {
+  db.prepare("DELETE FROM saved_searches WHERE token=?").run(p.token);
+  noticeRedirect(res, "Alert removed — you won't get these emails any more.");
+});
+function matchAlerts(listingId) {
+  const r = db.prepare(`${LISTING_SQL} WHERE l.id=?`).get(listingId);
+  if (!r || r.status !== "active") return;
+  const today = new Date().toISOString().slice(0, 10);
+  const url = `${SITE()}/listing/${r.id}/${slugify(r.title)}`;
+  const unit = r.category === "rent" ? "/month" : r.category === "shortlet" ? "/night" : "";
+  for (const a of db.prepare("SELECT * FROM saved_searches WHERE confirmed=1").all()) {
+    let c; try { c = JSON.parse(a.criteria); } catch { continue; }
+    if (!alertMatches(c, r)) continue;
+    const sent = a.sent_day === today ? a.sent_today : 0;
+    if (sent >= 5) continue; // daily cap per alert
+    db.prepare("UPDATE saved_searches SET sent_day=?, sent_today=? WHERE id=?").run(today, sent + 1, a.id);
+    const off = `${SITE()}/api/alerts/${a.token}/unsubscribe`;
+    if (a.email && mailConfigured()) sendMail({ to: a.email, subject: `New on PataHome: ${r.title} — ${fmtKes(r.price)}${unit}`,
+      text: `A new listing matches your alert (${a.label}):\n\n${r.title}\n${fmtKes(r.price)}${unit} · ${r.area_name}, ${r.county}${r.bedrooms != null ? ` · ${r.bedrooms === 0 ? "Bedsitter" : r.bedrooms + " bedroom"}` : ""}\n\nSee it: ${url}\n\nStay safe: never pay before you've seen the house and met the owner.\n\nStop this alert: ${off}\n\n— PataHome` })
+      .catch(e => console.error("alert mail:", e.message));
+    else if (a.phone && smsConfigured()) sendSms({ to: a.phone, text: `PataHome: new ${r.title.slice(0, 40)} ${fmtKes(r.price)}${unit} in ${r.area_name}. ${url} Stop: ${off}` })
+      .catch(e => console.error("alert sms:", e.message));
+  }
+}
+
+/* hourly jobs for this block (reminders + neighbourhood backfill) */
+setTimeout(() => { viewingReminders().catch(() => {}); backfillNearby().catch(() => {}); }, 8000);
+setInterval(() => { viewingReminders().catch(e => console.error("viewing reminders:", e.message)); backfillNearby().catch(() => {}); }, 3600e3);
+
 
 /* ================= admin (role: admin only) ================= */
 function requireAdmin(req, res) {
@@ -1561,7 +1915,7 @@ function areaBySlug(slug) {
   return db.prepare("SELECT * FROM areas").all().find((a) => slugify(a.name) === slug) || null;
 }
 
-function pageShell({ title, description, canonical, jsonLd, bodyHtml }) {
+function pageShell({ title, description, canonical, jsonLd, bodyHtml, image, imageAlt }) {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1575,7 +1929,9 @@ function pageShell({ title, description, canonical, jsonLd, bodyHtml }) {
 <meta property="og:url" content="${canonical}">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="PataHome">
-<meta property="og:image" content="${BASE_URL}/og-image.png">
+<meta property="og:image" content="${image || BASE_URL + "/og-image.png"}">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+${imageAlt ? `<meta property="og:image:alt" content="${escapeHtml(imageAlt)}">` : ""}
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#0e8a68">
 <link rel="icon" href="/favicon.ico" sizes="48x48">
@@ -1598,6 +1954,15 @@ ${jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script
   .links a{margin-right:12px;white-space:nowrap;display:inline-block}
   .cta{display:inline-block;background:#0e7c5a;color:#fff;border-radius:10px;padding:10px 20px;text-decoration:none;font-weight:700;margin-top:10px}
   footer{text-align:center;color:#5f6b66;font-size:.8rem;padding:20px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin:16px 0}
+  .lcard{background:#fff;border:1px solid #e3e8e5;border-radius:14px;overflow:hidden;text-decoration:none;color:inherit;display:block;transition:transform .15s,box-shadow .15s}
+  .lcard:hover{transform:translateY(-3px);box-shadow:0 10px 24px rgba(20,40,30,.1)}
+  .lcard .ph{aspect-ratio:4/3;background:#e8f0ec center/cover no-repeat}
+  .lcard .bd{padding:12px 14px}
+  .lcard .t{font-weight:700;color:#1c2320;line-height:1.3}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px}
+  .chips a{padding:6px 12px;border-radius:99px;background:#fff;border:1px solid #d3e8de;text-decoration:none;font-size:.85rem;font-weight:600}
+  .chips a.on{background:#0e7c5a;color:#fff;border-color:#0e7c5a}
 </style>
 </head>
 <body>
@@ -1639,7 +2004,11 @@ function listingPage(req, res, p) {
     offers: { "@type": "Offer", price: row.price, priceCurrency: "KES", availability: "https://schema.org/InStock", url: canonical },
     additionalType: "https://schema.org/RealEstateListing"
   };
+  const photos = parsePhotos(row.photos);
+  const image = photos.length && cldEnabled() ? photoUrl(photos[0], "c_fill,g_auto,w_1200,h_630,q_auto:good,f_jpg") : null;
+  const shareTitle = `${fmtKes(row.price)}${unit} · ${row.bedrooms != null ? (row.bedrooms === 0 ? "Bedsitter" : row.bedrooms + " bedroom") + " · " : ""}${row.area_name}`;
   const bodyHtml = `
+    ${image ? `<img src="${image}" alt="${escapeHtml(row.title)}" style="width:100%;border-radius:14px;aspect-ratio:1200/630;object-fit:cover">` : ""}
     <h1>${escapeHtml(row.title)}</h1>
     <div class="card">
       <div class="price">${fmtKes(row.price)}${unit}</div>
@@ -1647,46 +2016,60 @@ function listingPage(req, res, p) {
         ${row.bedrooms != null ? ` · 🛏 ${row.bedrooms === 0 ? "Bedsitter" : row.bedrooms + " bedroom(s)"}` : ""}
         · Listed by ${escapeHtml(row.owner_name)}${row.owner_verified ? " ✓ verified owner" : ""}</div>
       ${row.description ? `<p>${escapeHtml(row.description)}</p>` : ""}
-      <a class="cta" href="/#listing-${row.id}">View on PataHome &amp; contact owner</a>
+      <a class="cta" href="/browse.html?open=${row.id}">See photos &amp; contact the ${row.lister_role === "agent" ? "agent" : "owner"}</a>
     </div>
     <p><a href="/${catSlug}/${slugify(row.area_name)}">More ${escapeHtml(CATS[catSlug].label.toLowerCase())} in ${escapeHtml(row.area_name)} →</a></p>
     ${areaLinksHtml()}`;
-  sendHtml(res, 200, pageShell({ title: `${row.title} — ${row.area_name} | PataHome`, description: desc, canonical, jsonLd, bodyHtml }));
+  sendHtml(res, 200, pageShell({ title: `${shareTitle} — ${row.title} | PataHome`, description: desc, canonical, jsonLd, bodyHtml, image, imageAlt: row.title }));
 }
 router.add("GET", "/listing/:id", listingPage);
 router.add("GET", "/listing/:id/:slug", listingPage);
 
-/* ---- category+area landing pages: /rentals/ruaka etc ---- */
-router.add("GET", "/:catSlug/:areaSlug", (req, res, p) => {
+/* ---- category+area landing pages ----
+   /rentals/ruaka, /for-sale/nyali, /short-stays/diani, and for rentals
+   bedroom-type pages: /rentals/ruaka/bedsitters, /rentals/ruaka/2-bedroom … */
+const BED_SLUGS = { bedsitters: 0, "1-bedroom": 1, "2-bedroom": 2, "3-bedroom": 3 };
+const BED_LABEL = { bedsitters: "Bedsitters", "1-bedroom": "1 Bedroom", "2-bedroom": "2 Bedroom", "3-bedroom": "3+ Bedroom" };
+function landingPage(req, res, p) {
   const cat = CATS[p.catSlug];
   const area = cat ? areaBySlug(p.areaSlug) : null;
-  if (!cat || !area) return send(res, 404, { error: "Not found" });
-  const rows = db.prepare(`${LISTING_SQL} WHERE l.status='active' AND l.category=? AND l.area_id=? ORDER BY l.featured_until DESC, l.id DESC`)
-    .all(cat.db, area.id);
-  const canonical = `${BASE_URL}/${p.catSlug}/${p.areaSlug}`;
+  const bedSlug = p.beds || null;
+  if (!cat || !area || (bedSlug && (cat.db === "sale" || !(bedSlug in BED_SLUGS)))) return send(res, 404, { error: "Not found" });
+  const beds = bedSlug ? BED_SLUGS[bedSlug] : null;
+  const bedSql = beds === null ? "" : beds === 3 ? " AND l.bedrooms >= 3" : ` AND l.bedrooms = ${beds}`;
+  const rows = db.prepare(`${LISTING_SQL} WHERE l.status='active' AND l.category=? AND l.area_id=?${bedSql} ORDER BY l.featured_until DESC, l.id DESC`).all(cat.db, area.id);
+  const canonical = `${BASE_URL}/${p.catSlug}/${p.areaSlug}${bedSlug ? "/" + bedSlug : ""}`;
+  const what = bedSlug ? `${BED_LABEL[bedSlug]} ${cat.db === "shortlet" ? "Airbnbs" : "houses for rent"}` : cat.label;
   const minPrice = rows.length ? Math.min(...rows.map((r) => r.price)) : null;
-  const title = `${cat.label} in ${area.name}, ${area.county} | PataHome`;
+  const title = `${what} in ${area.name}, ${area.county}${minPrice ? ` from ${fmtKes(minPrice)}` : ""} | PataHome`;
   const desc = rows.length
-    ? `${rows.length} ${cat.label.toLowerCase()} in ${area.name}, ${area.county} County from ${fmtKes(minPrice)}${cat.unit}. Deal directly with verified owners on PataHome.`
-    : `Find ${cat.label.toLowerCase()} in ${area.name}, ${area.county} County on PataHome. New listings added daily by verified owners.`;
-  const jsonLd = {
-    "@context": "https://schema.org", "@type": "ItemList",
-    name: title,
-    itemListElement: rows.map((r, i) => ({ "@type": "ListItem", position: i + 1, url: `${BASE_URL}/listing/${r.id}/${slugify(r.title)}` }))
-  };
+    ? `${rows.length} ${what.toLowerCase()} in ${area.name}, ${area.county} County from ${fmtKes(minPrice)}${cat.unit}. Photos, prices and direct contact with verified owners — no viewing fees.`
+    : `Find ${what.toLowerCase()} in ${area.name}, ${area.county} County on PataHome. Get an alert when new homes are listed.`;
+  const jsonLd = { "@context": "https://schema.org", "@type": "ItemList", name: title,
+    itemListElement: rows.map((r, i) => ({ "@type": "ListItem", position: i + 1, url: `${BASE_URL}/listing/${r.id}/${slugify(r.title)}` })) };
+  const chip = (slug, label) => `<a class="${(bedSlug || "") === slug ? "on" : ""}" href="/${p.catSlug}/${p.areaSlug}${slug ? "/" + slug : ""}">${label}</a>`;
+  const nearby = db.prepare("SELECT * FROM areas WHERE county=? AND id!=? LIMIT 12").all(area.county, area.id);
+  const browseQ = `/browse.html?q=${encodeURIComponent(area.name)}&cat=${cat.db}${beds !== null ? "&beds=" + beds : ""}`;
   const bodyHtml = `
-    <h1>${escapeHtml(cat.label)} in ${escapeHtml(area.name)}, ${escapeHtml(area.county)} County</h1>
-    <p class="meta">${rows.length} listing(s)${minPrice ? ` · from ${fmtKes(minPrice)}${cat.unit}` : ""} · updated daily</p>
-    ${rows.length ? rows.map((r) => `
-      <div class="card">
-        <a href="/listing/${r.id}/${slugify(r.title)}">${escapeHtml(r.title)}</a>
+    <h1>${escapeHtml(what)} in ${escapeHtml(area.name)}, ${escapeHtml(area.county)} County</h1>
+    <p class="meta">${rows.length} listing${rows.length === 1 ? "" : "s"}${minPrice ? ` · from ${fmtKes(minPrice)}${cat.unit}` : ""} · direct from owners · updated daily</p>
+    ${cat.db !== "sale" ? `<div class="chips">${chip("", "All")}${Object.keys(BED_SLUGS).map(k => chip(k, BED_LABEL[k])).join("")}</div>` : ""}
+    ${rows.length ? `<div class="grid">${rows.map((r) => {
+      const ph = parsePhotos(r.photos)[0];
+      const img = ph && cldEnabled() ? photoUrl(ph, "c_fill,w_500,h_375,q_auto:eco") : "";
+      return `<a class="lcard" href="/listing/${r.id}/${slugify(r.title)}">
+        <div class="ph" ${img ? `style="background-image:url('${img}')"` : ""}></div>
+        <div class="bd"><div class="t">${escapeHtml(r.title)}</div>
         <div class="price">${fmtKes(r.price)}${cat.unit}</div>
-        <div class="meta">📍 ${escapeHtml(r.area_name)}${r.bedrooms != null ? ` · 🛏 ${r.bedrooms === 0 ? "Bedsitter" : r.bedrooms + " BR"}` : ""}</div>
-      </div>`).join("") : `<div class="card">No listings here yet — <a href="/dashboard.html">be the first to post</a>.</div>`}
-    <a class="cta" href="/">Search all listings on PataHome</a>
+        <div class="meta">📍 ${escapeHtml(r.area_name)}${r.bedrooms != null ? ` · 🛏 ${r.bedrooms === 0 ? "Bedsitter" : r.bedrooms + " BR"}` : ""}${(r.lister_role || "owner") === "owner" ? " · Direct owner" : " · Agent"}</div></div></a>`;
+    }).join("")}</div>` : `<div class="card">No ${escapeHtml(what.toLowerCase())} listed here right now. <a href="${browseQ}">Search nearby areas</a> or set an alert on the browse page to hear about new ones first.</div>`}
+    <a class="cta" href="${browseQ}">Search, filter &amp; see these on the map</a>
+    ${nearby.length ? `<div class="links"><strong>Nearby in ${escapeHtml(area.county)}:</strong><br>${nearby.map(a => `<a href="/${p.catSlug}/${slugify(a.name)}${bedSlug ? "/" + bedSlug : ""}">${escapeHtml(a.name)}</a>`).join(" ")}</div>` : ""}
     ${areaLinksHtml()}`;
   sendHtml(res, 200, pageShell({ title, description: desc, canonical, jsonLd, bodyHtml }));
-});
+}
+router.add("GET", "/:catSlug/:areaSlug", landingPage);
+router.add("GET", "/:catSlug/:areaSlug/:beds", landingPage);
 
 /* ---- browse index (crawl entry point) ---- */
 /* /browse = the interactive listings app; /areas = crawlable area directory for SEO */
@@ -1711,6 +2094,9 @@ router.add("GET", "/sitemap.xml", (req, res) => {
   const listings = db.prepare("SELECT id, title FROM listings WHERE status='active'").all();
   const urls = [`${BASE_URL}/`, `${BASE_URL}/browse`, `${BASE_URL}/areas`]
     .concat(Object.keys(CATS).flatMap((cs) => areas.map((a) => `${BASE_URL}/${cs}/${slugify(a.name)}`)))
+    .concat(db.prepare(`SELECT DISTINCT l.category, l.bedrooms, a.name FROM listings l JOIN areas a ON a.id=l.area_id
+      WHERE l.status='active' AND l.category!='sale' AND l.bedrooms IS NOT NULL`).all()
+      .map(r => `${BASE_URL}/${CAT_SLUG[r.category]}/${slugify(r.name)}/${Object.keys(BED_SLUGS).find(k => BED_SLUGS[k] === Math.min(r.bedrooms, 3))}`))
     .concat(listings.map((l) => `${BASE_URL}/listing/${l.id}/${slugify(l.title)}`));
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

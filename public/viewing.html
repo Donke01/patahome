@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your viewing — PataHome</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<style>
+  :root{--brand:#0e7c5a;--brand-dark:#073d2e;--ink:#17201c;--muted:#5f6b66;--line:#e1e8e4;--bg:#f6f9f7}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+  header{background:#fff;border-bottom:1px solid var(--line);padding:12px 18px;display:flex;align-items:center}
+  header a.logo{font-weight:800;font-size:1.2rem;color:var(--brand-dark);text-decoration:none;letter-spacing:-.03em}
+  header a.logo b{color:var(--brand)}
+  header a.back{margin-left:auto;font-size:.85rem;color:var(--brand);font-weight:700;text-decoration:none}
+  .wrap{max-width:560px;margin:0 auto;padding:22px 16px 60px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px}
+  .st{display:inline-block;font-size:.75rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:5px 11px;border-radius:99px;background:#fff3e0;color:#9a6017}
+  .st.confirmed{background:#e6f6ee;color:var(--brand-dark)}.st.declined,.st.cancelled{background:#eef1ef;color:var(--muted)}
+  h1{font-size:1.4rem;margin:12px 0 4px;letter-spacing:-.02em}
+  .when{font-size:1.15rem;font-weight:700;margin:14px 0 4px}
+  .muted{color:var(--muted);font-size:.9rem}
+  .row{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+  a.btn,button{border:0;border-radius:10px;padding:12px 16px;font:inherit;font-weight:700;cursor:pointer;text-decoration:none;text-align:center;flex:1}
+  a.btn{background:var(--brand-dark);color:#fff}
+  button{background:#fff;border:1.5px solid var(--line);color:#b3261e}
+  .safe{margin-top:16px;font-size:.8rem;color:#6b4712;background:#fff8ec;border:1px solid #f3dfb8;border-radius:10px;padding:10px 12px}
+</style>
+</head>
+<body>
+<header><a class="logo" href="/">Pata<b>Home</b></a><a class="back" href="/messages.html">My messages</a></header>
+<div class="wrap" id="app">Loading…</div>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const token=new URLSearchParams(location.search).get("t");
+const TXT={requested:"Waiting for the owner to confirm",confirmed:"Confirmed — see you there",declined:"The owner can't make this time",cancelled:"You cancelled this viewing"};
+async function load(){
+  if(!token){$("app").innerHTML='<div class="card">No viewing selected. <a href="/messages.html">See your viewings</a>.</div>';return}
+  const r=await fetch("/api/viewings/"+token);const v=await r.json().catch(()=>({}));
+  if(!r.ok){$("app").innerHTML=`<div class="card">${esc(v.error||"Viewing not found")}.</div>`;return}
+  try{const a=JSON.parse(localStorage.getItem("ph_viewings")||"[]").filter(x=>x.t!==token);a.unshift({t:token,title:v.title,at:Date.now()});localStorage.setItem("ph_viewings",JSON.stringify(a.slice(0,30)))}catch(e){}
+  const open=["requested","confirmed"].includes(v.status)&&new Date(v.slotAt)>Date.now();
+  $("app").innerHTML=`<div class="card">
+    <span class="st ${v.status}">${esc(v.status)}</span>
+    <h1>${esc(v.title)}</h1>
+    <div class="muted">${esc(v.area)} · with ${esc(v.ownerName)}</div>
+    <div class="when">📅 ${esc(v.slotLabel)}</div>
+    <div class="muted">${TXT[v.status]||""}</div>
+    <div class="row">
+      <a class="btn" href="/browse.html?open=${v.listingId}">View the listing</a>
+      ${open?`<button onclick="cancelIt()">Cancel viewing</button>`:""}
+    </div>
+    <div class="safe"><b>Stay safe:</b> viewings are free. Never pay a deposit, rent or "viewing fee" before you've seen the house and met the owner.</div>
+  </div>`;
+}
+async function cancelIt(){
+  if(!confirm("Cancel this viewing? The owner will be told."))return;
+  const r=await fetch(`/api/viewings/${token}/cancel`,{method:"POST"});
+  if(!r.ok){const d=await r.json().catch(()=>({}));alert(d.error||"Couldn't cancel");return}
+  load();
+}
+load();
+</script>
+</body>
+</html>

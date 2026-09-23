@@ -249,6 +249,68 @@ CREATE TABLE IF NOT EXISTS photo_hashes (
 CREATE INDEX IF NOT EXISTS idx_photo_etag ON photo_hashes(etag);
 `);
 
+/* ---- Listing extras: structured details, video, nearby places ---- */
+try { db.exec("ALTER TABLE listings ADD COLUMN features TEXT NOT NULL DEFAULT '{}'"); } catch (e) { /* exists */ }
+try { db.exec("ALTER TABLE listings ADD COLUMN video TEXT NOT NULL DEFAULT ''"); } catch (e) { /* exists */ }
+try { db.exec("ALTER TABLE listings ADD COLUMN nearby TEXT"); } catch (e) { /* exists — JSON, NULL = not fetched yet */ }
+
+db.exec(`
+/* Viewing requests from tenants */
+CREATE TABLE IF NOT EXISTS viewings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  listing_id INTEGER NOT NULL REFERENCES listings(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  email TEXT NOT NULL DEFAULT '',
+  slot_at TEXT NOT NULL,                 -- ISO datetime (EAT shown to users)
+  note TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'requested', -- requested | confirmed | declined | cancelled
+  token TEXT NOT NULL,                   -- lets the tenant view/cancel without an account
+  reminded INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_viewings_listing ON viewings(listing_id, status);
+
+/* Message threads (each inquiry becomes a thread) */
+CREATE TABLE IF NOT EXISTS messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  inquiry_id INTEGER NOT NULL REFERENCES inquiries(id) ON DELETE CASCADE,
+  sender TEXT NOT NULL,                  -- tenant | owner
+  body TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_messages_inquiry ON messages(inquiry_id);
+
+/* Saved searches / new-listing alerts */
+CREATE TABLE IF NOT EXISTS saved_searches (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT NOT NULL DEFAULT '',
+  phone TEXT NOT NULL DEFAULT '',
+  criteria TEXT NOT NULL,                -- JSON {cat,q,price,beds,direct}
+  label TEXT NOT NULL DEFAULT '',
+  token TEXT NOT NULL UNIQUE,
+  confirmed INTEGER NOT NULL DEFAULT 0,
+  sent_today INTEGER NOT NULL DEFAULT 0,
+  sent_day TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+/* Per-listing daily counters for owner analytics */
+CREATE TABLE IF NOT EXISTS listing_stats (
+  listing_id INTEGER NOT NULL REFERENCES listings(id) ON DELETE CASCADE,
+  day TEXT NOT NULL,
+  views INTEGER NOT NULL DEFAULT 0,
+  saves INTEGER NOT NULL DEFAULT 0,
+  shares INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (listing_id, day)
+);
+`);
+try { db.exec("ALTER TABLE inquiries ADD COLUMN thread_token TEXT"); } catch (e) { /* exists */ }
+try { db.exec("ALTER TABLE inquiries ADD COLUMN from_email TEXT NOT NULL DEFAULT ''"); } catch (e) { /* exists */ }
+try { db.exec("ALTER TABLE inquiries ADD COLUMN owner_unread INTEGER NOT NULL DEFAULT 1"); } catch (e) { /* exists */ }
+try { db.exec("ALTER TABLE inquiries ADD COLUMN tenant_unread INTEGER NOT NULL DEFAULT 0"); } catch (e) { /* exists */ }
+try { db.exec("ALTER TABLE inquiries ADD COLUMN updated_at TEXT"); } catch (e) { /* exists */ }
+
 /* Login sessions — one row per signed-in device. Tokens carry the session id,
    so a session can be expired for inactivity, capped in length, or revoked
    (logout, "sign out everywhere", password/phone/email change). */
