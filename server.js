@@ -76,6 +76,9 @@ const listingView = (row, userLat, userLng) => ({
   ownerId: row.owner_id,
   ownerName: row.owner_name,
   ownerVerified: !!row.owner_verified,
+  listerRole: row.lister_role || "owner",
+  expiresAt: row.status === "active" ? expiryOf(row) : null,
+  agentFee: row.agent_fee || "",
   createdAt: row.created_at,
   distanceKm: (userLat != null && userLng != null)
     ? Math.round(km(userLat, userLng, row.lat, row.lng) * 10) / 10 : null
@@ -716,6 +719,7 @@ router.add("GET", "/api/search", (req, res) => {
     if (String(q.beds) === "3") where.push("l.bedrooms >= 3");
     else { where.push("l.bedrooms = ?"); params.push(+q.beds); }
   }
+  if (q.direct === "1") where.push("COALESCE(l.lister_role,'owner') = 'owner'");
   if (q.ids !== undefined) { // favourites view
     const ids = String(q.ids).split(",").map(Number).filter(n => Number.isInteger(n) && n > 0).slice(0, 200);
     where.push(ids.length ? `l.id IN (${ids.map(() => "?").join(",")})` : "0");
@@ -792,6 +796,8 @@ router.add("POST", "/api/listings", (req, res) => {
     return send(res, 400, { error: "Verify your email first (account menu → Verify email) before posting" });
   const { category, title, description, areaId, price, bedrooms } = req.body || {};
   if (!["rent", "sale", "shortlet"].includes(category)) return send(res, 400, { error: "Invalid category" });
+  const lister = listerFields(req.body || {});
+  if (lister.error) return send(res, 400, { error: lister.error });
   if (!title || !areaId || !price) return send(res, 400, { error: "title, areaId and price are required" });
   const area = db.prepare("SELECT * FROM areas WHERE id=?").get(areaId);
   if (!area) return send(res, 400, { error: "Unknown areaId — see GET /api/areas" });
@@ -801,15 +807,196 @@ router.add("POST", "/api/listings", (req, res) => {
     if (!Array.isArray(photos) || photos.length > CLD.maxPhotos || !photos.every(validPhotoId))
       return send(res, 400, { error: `photos must be up to ${CLD.maxPhotos} uploaded photo ids` });
   }
-  const info = db.prepare(`INSERT INTO listings (owner_id,category,title,description,area_id,price,bedrooms,lat,lng,photos)
-    VALUES (?,?,?,?,?,?,?,?,?,?)`)
+  const info = db.prepare(`INSERT INTO listings (owner_id,category,title,description,area_id,price,bedrooms,lat,lng,photos,lister_role,agent_fee)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`)
     .run(u.id, category, title.trim(), description || "", areaId, +price,
          bedrooms == null || bedrooms === "" ? null : +bedrooms, lat, lng,
-         JSON.stringify(photos || []));
+         JSON.stringify(photos || []), lister.role, lister.fee);
   const row = db.prepare(`${LISTING_SQL} WHERE l.id=?`).get(info.lastInsertRowid);
   notifyFollowers(u.id, "New listing from an owner you follow", `${row.title} is now live in ${row.area_name}.`).catch(e=>console.error("follower notification failed:",e.message));
+  runScamChecks(row.id);
   send(res, 201, listingView(row));
 });
+
+/* ================= listing freshness =================
+   A listing stays live for LISTING_TTL_DAYS (default 60) after the owner last
+   confirmed it (posting, editing, relisting or tapping "Still available").
+   REMIND_DAYS before that the owner gets an email/SMS/in-app nudge with
+   one-tap links; at the deadline it's paused (status 'expired', hidden from
+   search) until renewed. The sweep runs at boot and then hourly. */
+const LISTING_TTL_DAYS = Math.max(7, +process.env.LISTING_TTL_DAYS || 60);
+const REMIND_DAYS = 7;
+const lastConfirmed = (row) => new Date(String(row.confirmed_at || row.created_at).replace(" ", "T") + "Z").getTime();
+const expiryOf = (row) => new Date(lastConfirmed(row) + LISTING_TTL_DAYS * 86400e3).toISOString();
+// Signed one-tap link token: valid only for this listing's current confirmation cycle.
+const freshToken = (row, action) => crypto.createHmac("sha256", process.env.JWT_SECRET || "dev")
+  .update(`fresh:${row.id}:${action}:${row.confirmed_at || row.created_at}`).digest("base64url").slice(0, 32);
+function freshnessSweep() {
+  const base = process.env.BASE_URL || "https://patahome.co.ke";
+  // 1) reminders
+  const due = db.prepare(`SELECT l.*, u.email, u.email_verified, u.phone, u.phone_verified, u.name AS owner_name FROM listings l JOIN users u ON u.id=l.owner_id
+    WHERE l.status='active' AND datetime(COALESCE(l.confirmed_at,l.created_at)) <= datetime('now', ?)
+      AND (l.reminded_at IS NULL OR datetime(l.reminded_at) < datetime(COALESCE(l.confirmed_at,l.created_at)))`)
+    .all(`-${LISTING_TTL_DAYS - REMIND_DAYS} days`);
+  for (const r of due) {
+    db.prepare("UPDATE listings SET reminded_at=datetime('now') WHERE id=?").run(r.id);
+    const yes = `${base}/api/listings/${r.id}/fresh?a=yes&t=${freshToken(r, "yes")}`;
+    const taken = `${base}/api/listings/${r.id}/fresh?a=taken&t=${freshToken(r, "taken")}`;
+    db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
+      .run(r.owner_id, "listing", "Is your listing still available?", `"${r.title}" will be paused in ${REMIND_DAYS} days unless you confirm it's still available.`);
+    if (r.email && mailConfigured()) sendMail({ to: r.email, subject: `Is "${r.title}" still available?`,
+      text: `Hi ${r.owner_name || ""},\n\nYour PataHome listing "${r.title}" has been live for a while. To keep the site accurate for tenants, it will be paused in ${REMIND_DAYS} days unless you confirm it's still available.\n\n✓ Still available — keep it live:\n${yes}\n\n✗ It's taken — mark it rented/sold:\n${taken}\n\n— PataHome · patahome.co.ke` })
+      .catch(e => console.error("freshness mail failed:", e.message));
+    else if (realPhone(r.phone) && phoneVerifyEnabled()) sendSms({ to: r.phone, text: `PataHome: is "${r.title.slice(0, 40)}" still available? Keep it live: ${yes}` })
+      .catch(e => console.error("freshness sms failed:", e.message));
+  }
+  // 2) expiry
+  const stale = db.prepare(`SELECT id, owner_id, title FROM listings WHERE status='active'
+    AND datetime(COALESCE(confirmed_at,created_at)) <= datetime('now', ?)`).all(`-${LISTING_TTL_DAYS} days`);
+  for (const r of stale) {
+    db.prepare("UPDATE listings SET status='expired', status_changed_at=datetime('now') WHERE id=?").run(r.id);
+    db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
+      .run(r.owner_id, "listing", "Listing paused", `"${r.title}" was paused because it hadn't been confirmed in ${LISTING_TTL_DAYS} days. Renew it from your dashboard in one tap.`);
+  }
+  if (due.length || stale.length) console.log(`[freshness] reminded ${due.length}, paused ${stale.length}`);
+}
+setTimeout(() => { try { freshnessSweep(); } catch (e) { console.error("freshness sweep:", e.message); } }, 5000);
+setInterval(() => { try { freshnessSweep(); } catch (e) { console.error("freshness sweep:", e.message); } }, 3600e3);
+
+// Owner taps "Still available" (logged in) — also used to renew a paused listing.
+router.add("POST", "/api/listings/:id/confirm", (req, res, p) => {
+  const u = requireAuth(req, res); if (!u) return;
+  const row = db.prepare("SELECT * FROM listings WHERE id=?").get(p.id);
+  if (!row) return send(res, 404, { error: "Listing not found" });
+  if (row.owner_id !== u.id && u.role !== "admin") return send(res, 403, { error: "Not your listing" });
+  if (!["active", "expired"].includes(row.status)) return send(res, 409, { error: "Only live or paused listings can be confirmed" });
+  db.prepare(`UPDATE listings SET confirmed_at=datetime('now'), reminded_at=NULL, status='active'${row.status !== "active" ? ", status_changed_at=datetime('now')" : ""} WHERE id=?`).run(row.id);
+  send(res, 200, listingView(db.prepare(`${LISTING_SQL} WHERE l.id=?`).get(row.id)));
+});
+// One-tap links from the reminder email/SMS (no login needed; signed per cycle).
+router.add("GET", "/api/listings/:id/fresh", (req, res, p) => {
+  const row = db.prepare("SELECT * FROM listings WHERE id=?").get(p.id);
+  const a = req.query.a === "taken" ? "taken" : "yes";
+  const redirect = (msg) => { res.writeHead(302, { Location: "/dashboard.html?notice=" + encodeURIComponent(msg) }); res.end(); };
+  if (!row || !req.query.t || req.query.t !== freshToken(row, a)) return redirect("That link has expired — manage the listing from your dashboard.");
+  if (a === "yes") {
+    if (!["active", "expired"].includes(row.status)) return redirect("This listing is no longer live.");
+    db.prepare("UPDATE listings SET confirmed_at=datetime('now'), reminded_at=NULL, status='active', status_changed_at=CASE WHEN status='active' THEN status_changed_at ELSE datetime('now') END WHERE id=?").run(row.id);
+    return redirect(`Thanks! "${row.title}" stays live for another ${LISTING_TTL_DAYS} days.`);
+  }
+  const done = (row.category === "sale") ? "sold" : "rented";
+  db.prepare("UPDATE listings SET status=?, status_changed_at=datetime('now') WHERE id=?").run(done, row.id);
+  redirect(`"${row.title}" is marked ${done} and hidden from search. Relist it anytime.`);
+});
+
+/* ================= trust & safety =================
+   Tenants can report a listing. Enough independent reports pause it
+   ('under_review', hidden) until an admin clears or removes it. Separately,
+   every new/edited listing is checked for common scam patterns; hits are
+   recorded as flags for admin review and lower the report threshold. */
+const REPORT_REASONS = { scam: "Scam or asks for money before viewing", taken: "Already rented / sold", price: "Wrong or misleading price",
+  photos: "Fake or stolen photos", location: "Wrong location", other: "Something else" };
+const SERIOUS = ["scam", "photos"];
+function addFlag(listingId, kind, detail) {
+  if (db.prepare("SELECT 1 FROM listing_flags WHERE listing_id=? AND kind=? AND resolved=0").get(listingId, kind)) return false;
+  db.prepare("INSERT INTO listing_flags (listing_id,kind,detail) VALUES (?,?,?)").run(listingId, kind, String(detail).slice(0, 300));
+  console.log(`[trust] flag ${kind} on listing #${listingId}: ${detail}`);
+  return true;
+}
+function evaluateReports(listingId) {
+  const l = db.prepare("SELECT * FROM listings WHERE id=?").get(listingId);
+  if (!l || l.status !== "active") return;
+  const open = db.prepare("SELECT reason, ip FROM reports WHERE listing_id=? AND status='open'").all(listingId);
+  const people = (list) => new Set(list.map(r => r.ip || Math.random())).size;
+  const serious = people(open.filter(r => SERIOUS.includes(r.reason)));
+  const all = people(open);
+  const flagged = !!db.prepare("SELECT 1 FROM listing_flags WHERE listing_id=? AND resolved=0").get(listingId);
+  const takenCount = people(open.filter(r => r.reason === "taken"));
+  if (serious >= (flagged ? 2 : 3) || all >= (flagged ? 3 : 5)) {
+    db.prepare("UPDATE listings SET status='under_review', status_changed_at=datetime('now') WHERE id=?").run(listingId);
+    db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
+      .run(l.owner_id, "listing", "Listing under review", `"${l.title}" was paused after several reports from visitors. Our team will review it shortly — reply to info@patahome.co.ke if you think this is a mistake.`);
+    console.log(`[trust] listing #${listingId} paused for review (${all} reporters, ${serious} serious)`);
+  } else if (takenCount >= 2) {
+    db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
+      .run(l.owner_id, "listing", "Is your listing still available?", `Visitors say "${l.title}" is already taken. Mark it rented/sold, or confirm it's still available, from your dashboard.`);
+  }
+}
+router.add("POST", "/api/listings/:id/report", (req, res, p) => {
+  const b = req.body || {};
+  const reason = String(b.reason || "");
+  if (!REPORT_REASONS[reason]) return send(res, 400, { error: "Choose a reason for the report" });
+  const l = db.prepare("SELECT id, status FROM listings WHERE id=?").get(p.id);
+  if (!l || l.status !== "active") return send(res, 404, { error: "Listing not found" });
+  const ip = clientIp(req);
+  const recent = db.prepare("SELECT COUNT(*) n FROM reports WHERE ip=? AND created_at > datetime('now','-1 hour')").get(ip).n;
+  if (ip && recent >= 10) return send(res, 429, { error: "Too many reports — please try again later" });
+  if (ip && db.prepare("SELECT 1 FROM reports WHERE ip=? AND listing_id=? AND created_at > datetime('now','-1 day')").get(ip, l.id))
+    return send(res, 200, { ok: true, duplicate: true });
+  db.prepare("INSERT INTO reports (listing_id,reason,details,contact,ip) VALUES (?,?,?,?,?)")
+    .run(l.id, reason, String(b.details || "").trim().slice(0, 1000), String(b.contact || "").trim().slice(0, 80), ip);
+  evaluateReports(l.id);
+  send(res, 201, { ok: true });
+});
+
+// Cloudinary's etag is an MD5 of the uploaded file — identical photos share it.
+async function photoEtag(publicId) {
+  if (!cldEnabled()) return null;
+  const r = await fetch(`https://api.cloudinary.com/v1_1/${CLD.cloud}/resources/image/upload/${publicId.split("/").map(encodeURIComponent).join("/")}`,
+    { headers: { Authorization: "Basic " + Buffer.from(`${CLD.key}:${CLD.secret}`).toString("base64") }, signal: AbortSignal.timeout(10000) });
+  if (!r.ok) return null;
+  const d = await r.json();
+  return d.etag || null;
+}
+async function scamChecks(listingId) {
+  const l = db.prepare(`${LISTING_SQL} WHERE l.id=?`).get(listingId);
+  if (!l) return;
+  // 1) the same photo already used by a different account
+  for (const pid of parsePhotos(l.photos)) {
+    let h = db.prepare("SELECT etag FROM photo_hashes WHERE public_id=?").get(pid);
+    if (!h) {
+      const etag = await photoEtag(pid).catch(() => null);
+      if (!etag) continue;
+      db.prepare("INSERT OR REPLACE INTO photo_hashes (public_id,listing_id,owner_id,etag) VALUES (?,?,?,?)").run(pid, l.id, l.owner_id, etag);
+      h = { etag };
+    }
+    const other = db.prepare("SELECT listing_id FROM photo_hashes WHERE etag=? AND owner_id!=? LIMIT 1").get(h.etag, l.owner_id);
+    if (other) addFlag(l.id, "photo_reuse", `A photo is identical to one in listing #${other.listing_id} posted by another account`);
+  }
+  // 2) suspiciously cheap for the county (classic bait)
+  if (l.category !== "sale" && l.bedrooms != null) {
+    const comps = db.prepare(`SELECT l.price FROM listings l JOIN areas a ON a.id=l.area_id
+      WHERE l.status='active' AND l.category=? AND l.bedrooms=? AND a.county=? AND l.id!=? ORDER BY l.price`).all(l.category, l.bedrooms, l.county, l.id).map(r => r.price);
+    if (comps.length >= 5) {
+      const median = comps[Math.floor(comps.length / 2)];
+      if (l.price < median * 0.4) addFlag(l.id, "price_outlier", `KES ${l.price} vs typical KES ${median} for similar homes in ${l.county}`);
+    }
+  }
+  // 3) a self-described owner with live listings in many counties
+  if ((l.lister_role || "owner") === "owner") {
+    const counties = db.prepare(`SELECT COUNT(DISTINCT a.county) n FROM listings x JOIN areas a ON a.id=x.area_id WHERE x.owner_id=? AND x.status='active'`).get(l.owner_id).n;
+    if (counties >= 4) addFlag(l.id, "many_counties", `Posted as owner, with live listings in ${counties} different counties`);
+  }
+  // 4) the same WhatsApp number on more than one account
+  const me = db.prepare("SELECT whatsapp FROM users WHERE id=?").get(l.owner_id);
+  const wa = String(me && me.whatsapp || "").replace(/\D/g, "").slice(-9);
+  if (wa.length === 9) {
+    const dupe = db.prepare("SELECT id FROM users WHERE id!=? AND whatsapp IS NOT NULL AND whatsapp!='' AND substr(replace(replace(whatsapp,' ',''),'+',''),-9)=? LIMIT 1").get(l.owner_id, wa);
+    if (dupe) addFlag(l.id, "shared_contact", `WhatsApp number also used by account #${dupe.id}`);
+  }
+}
+const runScamChecks = (id) => scamChecks(id).catch(e => console.error("scam checks failed:", e.message));
+
+/* Agents and caretakers may post for owners, but tenants must always see who
+   they're dealing with — and an agent must state their fee up front. */
+function listerFields(body) {
+  const role = body.listerRole === undefined ? "owner" : String(body.listerRole);
+  if (!["owner", "agent", "caretaker"].includes(role)) return { error: "Choose who is posting: owner, agent or caretaker" };
+  let fee = String(body.agentFee || "").trim().slice(0, 60);
+  if (role === "agent" && !fee) return { error: "Agents must state their fee to tenants (or choose \"No fee to tenant\")" };
+  if (role === "owner") fee = "";
+  return { role, fee };
+}
 
 router.add("PATCH", "/api/listings/:id", (req, res, p) => {
   const u = requireAuth(req, res); if (!u) return;
@@ -820,10 +1007,17 @@ router.add("PATCH", "/api/listings/:id", (req, res, p) => {
   const allowed = ["title", "description", "price", "bedrooms"];
   const sets = [], params = [];
   for (const k of allowed) if (body[k] !== undefined) { sets.push(`${k}=?`); params.push(body[k]); }
+  if (body.listerRole !== undefined || body.agentFee !== undefined) {
+    const lister = listerFields({ listerRole: body.listerRole ?? row.lister_role, agentFee: body.agentFee ?? row.agent_fee });
+    if (lister.error) return send(res, 400, { error: lister.error });
+    sets.push("lister_role=?", "agent_fee=?"); params.push(lister.role, lister.fee);
+  }
 
   // A listing can be relisted, but it cannot be both rented and sold. Validate
   // the lifecycle on the server as well as in the owner UI so direct API calls
   // cannot make a listing disappear under an incompatible status.
+  if (row.status === "under_review" && u.role !== "admin")
+    return send(res, 409, { error: "This listing is under review after visitor reports. We'll email you once it's checked." });
   if (body.status !== undefined) {
     if (row.status === "removed")
       return send(res, 409, { error: "Removed listings cannot be relisted. Create a new listing instead." });
@@ -844,6 +1038,9 @@ router.add("PATCH", "/api/listings/:id", (req, res, p) => {
     sets.push("photos=?"); params.push(JSON.stringify(photos));
   }
   if (!sets.length) return send(res, 400, { error: "Nothing to update" });
+  if (body.photos !== undefined || body.price !== undefined) setTimeout(() => runScamChecks(row.id), 0);
+  // Any owner edit (or relisting) counts as "still available".
+  if (body.status === undefined || String(body.status) === "active") sets.push("confirmed_at=datetime('now')", "reminded_at=NULL");
   db.prepare(`UPDATE listings SET ${sets.join(",")} WHERE id=?`).run(...params, row.id);
   if (body.status !== undefined && String(body.status) !== row.status) {
     const status = String(body.status);
@@ -1167,8 +1364,51 @@ router.add("GET", "/api/admin/overview", (req, res) => {
     inquiries: one("SELECT COUNT(*) FROM inquiries"),
     unrepliedInquiries: one("SELECT COUNT(*) FROM inquiries WHERE owner_reply IS NULL"),
     openTickets: one("SELECT COUNT(*) FROM support_tickets WHERE status='open'"),
+    moderation: one("SELECT COUNT(*) FROM (SELECT listing_id FROM reports WHERE status='open' UNION SELECT listing_id FROM listing_flags WHERE resolved=0)"),
     byCategory: Object.fromEntries(db.prepare("SELECT category, COUNT(*) n FROM listings WHERE status='active' GROUP BY category").all().map(r => [r.category, r.n]))
   });
+});
+
+/* -------- moderation: tenant reports + automatic flags -------- */
+router.add("GET", "/api/admin/moderation", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const ids = db.prepare(`SELECT listing_id id FROM reports WHERE status='open' UNION SELECT listing_id FROM listing_flags WHERE resolved=0`).all().map(r => r.id);
+  const out = ids.map(id => {
+    const l = db.prepare(`${LISTING_SQL} WHERE l.id=?`).get(id);
+    if (!l) return null;
+    const owner = db.prepare("SELECT phone, email FROM users WHERE id=?").get(l.owner_id) || {};
+    return {
+      id: l.id, title: l.title, status: l.status, price: l.price, category: l.category, area: l.area_name, county: l.county,
+      ownerId: l.owner_id, ownerName: l.owner_name, ownerPhone: realPhone(owner.phone), ownerEmail: owner.email || "", listerRole: l.lister_role || "owner",
+      reports: db.prepare("SELECT reason, details, contact, created_at FROM reports WHERE listing_id=? AND status='open' ORDER BY id DESC").all(id)
+        .map(r => ({ reason: REPORT_REASONS[r.reason] || r.reason, details: r.details, contact: r.contact, at: r.created_at })),
+      flags: db.prepare("SELECT kind, detail, created_at FROM listing_flags WHERE listing_id=? AND resolved=0").all(id)
+    };
+  }).filter(Boolean).sort((a, b) => (b.status === "under_review") - (a.status === "under_review") || b.reports.length - a.reports.length);
+  send(res, 200, out);
+});
+router.add("POST", "/api/admin/moderation/:id", (req, res, p) => {
+  if (!requireAdmin(req, res)) return;
+  const l = db.prepare("SELECT * FROM listings WHERE id=?").get(p.id);
+  if (!l) return send(res, 404, { error: "Listing not found" });
+  const action = String((req.body || {}).action || "");
+  if (action === "clear") {
+    db.prepare("UPDATE reports SET status='dismissed' WHERE listing_id=? AND status='open'").run(l.id);
+    db.prepare("UPDATE listing_flags SET resolved=1 WHERE listing_id=?").run(l.id);
+    if (l.status === "under_review") {
+      db.prepare("UPDATE listings SET status='active', confirmed_at=datetime('now'), status_changed_at=datetime('now') WHERE id=?").run(l.id);
+      db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)").run(l.owner_id, "listing", "Listing restored", `"${l.title}" was reviewed and is live again.`);
+    }
+    return send(res, 200, { ok: true });
+  }
+  if (action === "remove") {
+    db.prepare("UPDATE listings SET status='removed', status_changed_at=datetime('now') WHERE id=?").run(l.id);
+    db.prepare("UPDATE reports SET status='actioned' WHERE listing_id=? AND status='open'").run(l.id);
+    db.prepare("UPDATE listing_flags SET resolved=1 WHERE listing_id=?").run(l.id);
+    db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)").run(l.owner_id, "listing", "Listing removed", `"${l.title}" was removed after review because it broke our listing rules. Contact info@patahome.co.ke if you'd like to discuss.`);
+    return send(res, 200, { ok: true });
+  }
+  send(res, 400, { error: "action must be clear or remove" });
 });
 
 /* -------- verification review queue -------- */

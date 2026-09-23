@@ -207,6 +207,48 @@ try { db.exec("ALTER TABLE followers ADD COLUMN follower_email TEXT"); } catch (
 try { db.exec("ALTER TABLE followers ADD COLUMN follower_user_id INTEGER"); } catch (e) { /* exists */ }
 try { db.exec("ALTER TABLE followers ADD COLUMN verified INTEGER NOT NULL DEFAULT 0"); } catch (e) { /* exists */ }
 
+/* Who posted a listing: the owner themself, an agent, or a caretaker/manager
+   acting for the owner. Agent listings must disclose their fee to tenants. */
+try { db.exec("ALTER TABLE listings ADD COLUMN lister_role TEXT NOT NULL DEFAULT 'owner'"); } catch (e) { /* exists */ }
+try { db.exec("ALTER TABLE listings ADD COLUMN agent_fee TEXT NOT NULL DEFAULT ''"); } catch (e) { /* exists */ }
+
+/* Listing freshness: listings expire LISTING_TTL_DAYS after the owner last
+   confirmed they're still available (or edited them). */
+try { db.exec("ALTER TABLE listings ADD COLUMN confirmed_at TEXT"); } catch (e) { /* exists */ }
+try { db.exec("ALTER TABLE listings ADD COLUMN reminded_at TEXT"); } catch (e) { /* exists */ }
+
+/* Trust & safety: tenant reports, automatic scam/duplicate flags, and the
+   Cloudinary content hash (etag) of every listing photo for reuse detection. */
+db.exec(`
+CREATE TABLE IF NOT EXISTS reports (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  listing_id INTEGER NOT NULL REFERENCES listings(id) ON DELETE CASCADE,
+  reason TEXT NOT NULL,
+  details TEXT NOT NULL DEFAULT '',
+  contact TEXT NOT NULL DEFAULT '',
+  ip TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'open',          -- open | dismissed | actioned
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_reports_listing ON reports(listing_id, status);
+CREATE TABLE IF NOT EXISTS listing_flags (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  listing_id INTEGER NOT NULL REFERENCES listings(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,                            -- photo_reuse | price_outlier | many_counties | shared_contact
+  detail TEXT NOT NULL DEFAULT '',
+  resolved INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_flags_listing ON listing_flags(listing_id, resolved);
+CREATE TABLE IF NOT EXISTS photo_hashes (
+  public_id TEXT PRIMARY KEY,
+  listing_id INTEGER NOT NULL,
+  owner_id INTEGER NOT NULL,
+  etag TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_photo_etag ON photo_hashes(etag);
+`);
+
 /* Login sessions — one row per signed-in device. Tokens carry the session id,
    so a session can be expired for inactivity, capped in length, or revoked
    (logout, "sign out everywhere", password/phone/email change). */

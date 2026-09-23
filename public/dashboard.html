@@ -298,7 +298,7 @@
   .reply-box input{flex:1}
   .badge-new{background:var(--amber);color:#fff;font-size:.68rem;font-weight:800;border-radius:999px;padding:2px 9px}
 </style>
-  <link rel="stylesheet" href="/refresh.css?v=20260923-17">
+  <link rel="stylesheet" href="/refresh.css?v=20260924-2">
 </head>
 <body class="page-dashboard">
 
@@ -533,6 +533,24 @@
     <input id="ePrice" type="number" placeholder="e.g. 15000">
     <label>Bedrooms (houses only)</label>
     <select id="eBeds"><option value="">N/A</option><option value="0">Bedsitter</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+    <label>Who is posting this listing?</label>
+    <div class="seg" id="eRoleSeg">
+      <button type="button" data-r="owner" onclick="pickListerRole('owner')">I'm the owner</button>
+      <button type="button" data-r="agent" onclick="pickListerRole('agent')">Agent</button>
+      <button type="button" data-r="caretaker" onclick="pickListerRole('caretaker')">Caretaker / manager</button>
+    </div>
+    <div id="eFeeWrap" style="display:none">
+      <label id="eFeeLbl">Your fee to the tenant</label>
+      <div style="display:flex;gap:8px">
+        <select id="eFeeKind" onchange="syncFeeInput()" style="flex:1.2">
+          <option value="none">No fee to tenant</option>
+          <option value="amount">Fixed amount (KES)</option>
+          <option value="custom">Other (describe)</option>
+        </select>
+        <input id="eFeeVal" style="flex:1;display:none" placeholder="e.g. 5000">
+      </div>
+      <div class="photo-note" id="eFeeNote">Shown clearly to tenants on your listing. Honest fees build trust — undisclosed fees get listings reported.</div>
+    </div>
     <div id="emStatusWrap" style="display:none">
       <label>Status</label>
       <select id="eStatus"><option value="active">Active</option><option value="rented">Rented out</option><option value="sold">Sold</option></select>
@@ -1041,17 +1059,26 @@ function renderTable(){
       const rentable=x.category==="rent"||x.category==="shortlet";
       const nextStatus=rentable?"rented":"sold";
       const closeLabel=rentable?"Mark rented":"Mark sold";
-      const lifecycle=x.status==="active"
-        ?`<button class="btn btn-sm status-action ${nextStatus}" onclick="openStatusConfirm(${x.id},'${nextStatus}')">${closeLabel}</button>`
+      const daysLeft=x.expiresAt?Math.ceil((new Date(x.expiresAt)-Date.now())/864e5):null;
+      const expiringSoon=x.status==="active"&&daysLeft!==null&&daysLeft<=7;
+      const lifecycle=x.status==="under_review"?""
+        :x.status==="expired"
+        ?`<button class="btn btn-primary btn-sm" onclick="confirmAvailable(${x.id})">Renew listing</button>`
+        :x.status==="active"
+        ?(expiringSoon?`<button class="btn btn-primary btn-sm" onclick="confirmAvailable(${x.id})">✓ Still available</button>`:"")+
+          `<button class="btn btn-sm status-action ${nextStatus}" onclick="openStatusConfirm(${x.id},'${nextStatus}')">${closeLabel}</button>`
         :`<button class="btn btn-ghost btn-sm" onclick="openStatusConfirm(${x.id},'active')">Relist</button>`;
-      const statusNote=x.status==="active"?"Visible in public search":"Hidden from public search";
+      const statusNote=x.status==="under_review"?"Paused after visitor reports — our team is reviewing it."
+        :x.status==="expired"?"Paused — not confirmed recently. Renew to show it again."
+        :x.status==="active"?(expiringSoon?`<b style="color:#9a6017">Pauses in ${Math.max(daysLeft,0)} day${daysLeft===1?"":"s"}</b> — confirm it's still available`:`Live · confirm again in ${daysLeft} days`)
+        :"Hidden from public search";
       return `
     <div class="row">
       <div><div class="title">${esc(x.title)}</div><div class="area">${esc(x.area)}, ${esc(x.county)}</div></div>
       <div>${CAT[x.category]||x.category}</div>
       <div>${fmt(x.price)}${x.category==="rent"?"<span style='color:var(--muted);font-size:.75rem'>/mo</span>":x.category==="shortlet"?"<span style='color:var(--muted);font-size:.75rem'>/night</span>":""}</div>
       <div class="leads-badge">${x.leads}</div>
-      <div><span class="pill ${x.status}">${x.status}</span><div class="status-note">${statusNote}</div></div>
+      <div><span class="pill ${x.status}">${x.status==="under_review"?"under review":x.status==="expired"?"paused":x.status}</span><div class="status-note">${statusNote}</div></div>
       <div class="actions">
         ${lifecycle}
         <button class="btn btn-ghost btn-sm" onclick="openEdit(${x.id})">Edit</button>
@@ -1061,6 +1088,10 @@ function renderTable(){
     }).join("");
 }
 
+async function confirmAvailable(id){
+  try{await api(`/api/listings/${id}/confirm`,{method:"POST"});toast("Thanks — your listing stays live");await refresh()}
+  catch(e){toast(e.message)}
+}
 function openStatusConfirm(id,status){
   const listing=myListings.find(x=>x.id===id);
   if(!listing)return;
@@ -1207,6 +1238,7 @@ function openAdd(){
   $("emTitle").textContent="New Listing";$("emSave").textContent="Publish";
   $("emCatWrap").style.display="block";$("emStatusWrap").style.display="none";
   $("eTitle").value="";$("eDesc").value="";$("ePrice").value="";$("eBeds").value="";$("emErr").textContent="";
+  pickListerRole(defaultListerRole());setFeeFields("");
   preparePhotoSection();
   show("editModal");
 }
@@ -1222,26 +1254,59 @@ function openEdit(id){
     ?'<option value="active">Active</option><option value="rented">Rented out</option>'
     :'<option value="active">Active</option><option value="sold">Sold</option>';
   $("eStatus").value=x.status;$("emErr").textContent="";
+  pickListerRole(x.listerRole||"owner");setFeeFields(x.agentFee||"");
   preparePhotoSection();
   show("editModal");
+}
+/* ---------- who's posting (owner / agent / caretaker) ---------- */
+let listerRole="owner";
+function defaultListerRole(){
+  const t=(ME&&ME.businessType)||"";
+  return /agent|agency/i.test(t)?"agent":/caretaker|manager/i.test(t)?"caretaker":"owner";
+}
+function pickListerRole(r){
+  listerRole=r;
+  document.querySelectorAll("#eRoleSeg button").forEach(b=>b.classList.toggle("on",b.dataset.r===r));
+  $("eFeeWrap").style.display=r==="owner"?"none":"block";
+  $("eFeeLbl").textContent=r==="agent"?"Your fee to the tenant (required)":"Any fee to the tenant? (optional)";
+}
+function syncFeeInput(){
+  const k=$("eFeeKind").value,v=$("eFeeVal");
+  v.style.display=k==="none"?"none":"block";
+  v.placeholder=k==="amount"?"e.g. 5000":"e.g. 50% of one month's rent";
+  v.type=k==="amount"?"number":"text";
+}
+function setFeeFields(fee){
+  if(!fee||fee==="No fee to tenant"){$("eFeeKind").value="none";$("eFeeVal").value=""}
+  else{const m=fee.match(/^KES ([\d,]+)$/);if(m){$("eFeeKind").value="amount";$("eFeeVal").value=m[1].replace(/,/g,"")}else{$("eFeeKind").value="custom";$("eFeeVal").value=fee}}
+  syncFeeInput();
+}
+function feeText(){
+  if(listerRole==="owner")return "";
+  const k=$("eFeeKind").value,v=$("eFeeVal").value.trim();
+  if(k==="none")return "No fee to tenant";
+  if(k==="amount")return v&&+v>0?"KES "+Number(v).toLocaleString("en-KE"):"";
+  return v;
 }
 async function saveListing(){
   $("emErr").textContent="";
   if(uploads.length){$("emErr").textContent="Wait for photos to finish uploading…";return}
   const photos=signCfg?{photos:photoIds}:{};
+  const lister={listerRole,agentFee:feeText()};
+  if(listerRole==="agent"&&!lister.agentFee){$("emErr").textContent="State your fee to the tenant, or choose “No fee to tenant”";return}
   setSaveBusy(editId==null?"Publishing…":"Saving…");
   try{
     if(editId==null){
       await api("/api/listings",{method:"POST",body:JSON.stringify({
         category:$("eCat").value,title:$("eTitle").value,description:$("eDesc").value,
         areaId:+$("eArea").value,price:+$("ePrice").value,
-        bedrooms:$("eBeds").value===""?null:+$("eBeds").value,...photos
+        bedrooms:$("eBeds").value===""?null:+$("eBeds").value,...photos,...lister
       })});
       toast("Listing published — it's now live on the site.");
     }else{
       await api("/api/listings/"+editId,{method:"PATCH",body:JSON.stringify({
         title:$("eTitle").value,description:$("eDesc").value,price:+$("ePrice").value,
-        bedrooms:$("eBeds").value===""?null:+$("eBeds").value,status:$("eStatus").value,...photos
+        bedrooms:$("eBeds").value===""?null:+$("eBeds").value,status:$("eStatus").value,...photos,...lister
       })});
       toast("Listing updated");
     }
@@ -1574,6 +1639,8 @@ async function doDelete(){
   }
   showAuth();
 })();
+// Messages passed back from one-tap email links (e.g. "Still available")
+(function(){const n=new URLSearchParams(location.search).get("notice");if(n){setTimeout(()=>toast(n),900);history.replaceState(null,"",location.pathname)}})();
 </script>
 </body>
 </html>

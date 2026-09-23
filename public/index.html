@@ -556,7 +556,7 @@
     .foot-tag{margin-left:auto;margin-right:auto;text-align:center}
   }
 </style>
-  <link rel="stylesheet" href="/refresh.css?v=20260923-17">
+  <link rel="stylesheet" href="/refresh.css?v=20260924-2">
 </head>
 <body class="page-home">
 
@@ -888,7 +888,7 @@ async function loadData(){
   LISTINGS=res.listings.filter(x=>CAT[x.category]).map(x=>({
     id:x.id,cat:x.category,title:x.title,desc:x.description,area:x.area+", "+x.county,
     price:x.price,beds:x.bedrooms,lat:x.lat,lng:x.lng,
-    posted:timeAgo(x.createdAt),owner:x.ownerName,ownerId:x.ownerId,verified:x.ownerVerified,
+    posted:timeAgo(x.createdAt),owner:x.ownerName,ownerId:x.ownerId,verified:x.ownerVerified,role:x.listerRole||"owner",
     photos:x.photoUrls||[]
   }));
 }
@@ -1155,7 +1155,7 @@ function renderLatest(){
         <div class="lc-price">${fmt(x.price)} <small>${c.unit}</small></div>
         <div class="lc-t">${esc(x.title)}</div>
         <div class="lc-a">${PIN_SVG}${esc(x.area)}</div>
-        <div class="lc-signal"><span>${x.verified?"✓ Verified owner":"Direct owner"}</span>${x.beds!==null?`<span>${x.beds===0?"Bedsitter":x.beds+" BR"}</span>`:""}</div>
+        <div class="lc-signal"><span>${x.role==="agent"?"Agent listing":x.role==="caretaker"?"Caretaker":x.verified?"✓ Verified owner":"Direct owner"}</span>${x.beds!==null?`<span>${x.beds===0?"Bedsitter":x.beds+" BR"}</span>`:""}</div>
       </div>
     </a>`;
   }).join("");

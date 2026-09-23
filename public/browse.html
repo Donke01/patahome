@@ -452,7 +452,7 @@
     .foot-tag{margin-left:auto;margin-right:auto;text-align:center}
   }
 </style>
-  <link rel="stylesheet" href="/refresh.css?v=20260923-17">
+  <link rel="stylesheet" href="/refresh.css?v=20260924-2">
 </head>
 <body class="page-browse">
 
@@ -548,6 +548,7 @@
       <option value="price-desc">Price: high → low</option>
       <option value="newest">Newest</option>
     </select>
+    <label class="direct-toggle"><input type="checkbox" id="directOnly" onchange="render()"> Direct from owners only</label>
     <span class="sort-label" id="resultCount"></span>
   </div>
 
@@ -624,20 +625,48 @@
         <div class="dm-owner">
           <div class="avatar" id="dAvatar"></div>
           <div class="dm-owner-txt">
-            <div class="dm-listed">Listed by</div>
+            <div class="dm-listed" id="dListed">Listed by</div>
             <div class="name" id="dOwner"></div>
             <div class="verify" id="dVerify"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span>ID &amp; ownership verified</span></div>
           </div>
         </div>
         <div class="phone" id="dPhone"></div>
         <a id="dOwnerProfile" class="dm-link" href="#">View owner profile →</a>
-        <div class="dm-perks"><span>✓ No agent fees</span><span>✓ No viewing fees</span></div>
+        <div class="safe-note" role="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.5 8 8 11 4.5-3 8-6 8-11V5z"/><path d="M12 8v4M12 16h.01"/></svg><span><b>Stay safe:</b> never pay rent, a deposit or a "viewing fee" before you've seen the house and met the owner. PataHome never asks you for money.</span></div>
+        <div class="dm-perks" id="dPerks"><span>✓ No agent fees</span><span>✓ No viewing fees</span></div>
+        <button class="dm-report" id="dReportBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 22V4M4 4h12l-2 4 2 4H4"/></svg>Report this listing</button>
       </aside>
       <div class="dm-actions">
         <button class="btn btn-primary" id="dContactBtn">Contact Owner</button>
         <button class="btn btn-ghost" id="dMapBtn" aria-label="View on map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.1-7-11a7 7 0 0 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span>Map</span></button>
         <button class="btn btn-ghost dm-follow" id="dFollowBtn">Follow owner</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Report listing modal -->
+<div class="overlay" id="reportModal" onclick="if(event.target===this)closeModal('reportModal')">
+  <div class="modal">
+    <button class="close-x" onclick="closeModal('reportModal')" aria-label="Close">✕</button>
+    <h2>Report this listing</h2>
+    <div class="sub" id="rpSub">Tell us what's wrong. Reports are anonymous to the owner.</div>
+    <div class="rp-reasons" id="rpReasons">
+      <label><input type="radio" name="rpReason" value="scam"> <span><b>Scam</b> — asks for money before viewing</span></label>
+      <label><input type="radio" name="rpReason" value="taken"> <span><b>Already taken</b> — rented or sold</span></label>
+      <label><input type="radio" name="rpReason" value="price"> <span><b>Wrong price</b> — different from what's listed</span></label>
+      <label><input type="radio" name="rpReason" value="photos"> <span><b>Fake photos</b> — not this house</span></label>
+      <label><input type="radio" name="rpReason" value="location"> <span><b>Wrong location</b></span></label>
+      <label><input type="radio" name="rpReason" value="other"> <span><b>Something else</b></span></label>
+    </div>
+    <label>Details (optional)</label>
+    <textarea id="rpDetails" rows="3" maxlength="1000" placeholder="What happened? e.g. they asked me to send KES 2,000 by M-Pesa before viewing"></textarea>
+    <label>Your phone or email (optional — only if you're happy for us to follow up)</label>
+    <input id="rpContact" maxlength="80" placeholder="07XXXXXXXX or you@email.com">
+    <div class="err" id="rpErr"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('reportModal')">Cancel</button>
+      <button class="btn btn-primary" id="rpSend" onclick="sendReport()">Send report</button>
     </div>
   </div>
 </div>
@@ -669,6 +698,7 @@
     <button class="close-x" onclick="closeModal('contactModal')">✕</button>
     <h2 id="cTitle"></h2>
     <div class="sub" id="cSub"></div>
+    <div class="safe-note" role="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.5 8 8 11 4.5-3 8-6 8-11V5z"/><path d="M12 8v4M12 16h.01"/></svg><span><b>Stay safe:</b> never pay rent, a deposit or a "viewing fee" before you've seen the house and met the owner. PataHome never asks you for money.</span></div>
     <div class="contact-row">
       <div class="avatar" id="cAvatar"></div>
       <div>
@@ -785,8 +815,16 @@ const toItem=x=>({
   id:x.id,cat:x.category,title:x.title,desc:x.description,area:x.area+", "+x.county,
   price:x.price,beds:x.bedrooms,lat:x.lat,lng:x.lng,
   posted:timeAgo(x.createdAt),owner:x.ownerName,ownerId:x.ownerId,verified:x.ownerVerified,
+  role:x.listerRole||"owner",fee:x.agentFee||"",
   photos:x.photoUrls||[]
 });
+// How a listing's poster is labelled everywhere (cards, popup).
+const ROLE_LABEL={owner:"Direct from owner",agent:"Listed by agent",caretaker:"Listed by caretaker"};
+function trustLine(x){
+  if(x.role==="agent")return {cls:"agent",txt:"Agent"+(x.fee?" · Fee: "+x.fee:"")};
+  if(x.role==="caretaker")return {cls:"caretaker",txt:"Caretaker listing"+(x.fee&&x.fee!=="No fee to tenant"?" · Fee: "+x.fee:"")};
+  return {cls:x.verified?"":"unverified",txt:x.verified?"Verified owner":"Direct owner listing"};
+}
 async function loadData(){
   const [areas,stats]=await Promise.all([api("/api/areas"),api("/api/stats/listings").catch(()=>null)]);
   for(const a of areas)AREAS[a.name+", "+a.county]=[a.lat,a.lng];
@@ -1130,6 +1168,7 @@ function searchQuery(page){
   else if(sort==="distance")sort="newest"; // nothing to measure from yet
   P.set("sort",sort);
   if(favView)P.set("ids",[...favs].join(","));
+  if(document.getElementById("directOnly").checked)P.set("direct","1");
   return P.toString();
 }
 const PIN_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11a7 7 0 0 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>';
@@ -1157,7 +1196,7 @@ function cardHTML(x,i){
           ${x.beds!==null?`<span>${BED_SVG}${x.beds===0?"Bedsitter":x.beds+" BR"}</span>`:""}
           <span>${CLOCK_SVG}${x.posted}</span>
         </div>
-        <div class="listing-trust ${x.verified?"":"unverified"}">${x.verified?"Verified owner":"Direct owner listing"}</div>
+        ${(()=>{const t=trustLine(x);return `<div class="listing-trust ${t.cls}">${esc(t.txt)}</div>`})()}
         <div class="card-actions">
           <button class="btn btn-primary" onclick="event.stopPropagation();openContact(${x.id})">Contact Owner</button>
           <button class="btn btn-ghost" onclick="event.stopPropagation();openDetail(${x.id})">Details</button>
@@ -1283,6 +1322,10 @@ function openDetail(id){
   document.getElementById("dDesc").textContent=x.desc||"";
   document.getElementById("dDescWrap").style.display=x.desc?"":"none";
   document.getElementById("dVerify").style.display=x.verified===false?"none":"";
+  document.getElementById("dListed").textContent=x.role==="agent"?"Agent":x.role==="caretaker"?"Caretaker / manager":"Listed by owner";
+  document.getElementById("dPerks").innerHTML=x.role==="owner"
+    ?"<span>✓ No agent fees</span><span>✓ No viewing fees</span>"
+    :`<span class="dm-fee">${x.fee?"Fee to tenant: <b>"+esc(x.fee)+"</b>":"No fee stated"}</span><span>Posting on the owner's behalf</span>`;
   document.getElementById("dOwner").textContent=x.owner;
   document.getElementById("dOwnerProfile").href="/owner.html?id="+encodeURIComponent(x.ownerId);
   document.getElementById("dPhone").textContent="Tap Contact Owner to reveal";
@@ -1290,7 +1333,28 @@ function openDetail(id){
   document.getElementById("dContactBtn").onclick=()=>{closeModal("detailModal");openContact(id)};
   document.getElementById("dMapBtn").onclick=()=>focusOnMap(id);
   document.getElementById("dFollowBtn").onclick=()=>openFollow(id);
+  document.getElementById("dReportBtn").onclick=()=>openReport(id);
   openModal("detailModal");
+}
+let reportId=null;
+function openReport(id){
+  reportId=id;
+  const x=BYID.get(id);
+  document.getElementById("rpSub").textContent=(x?`“${x.title}” · `:"")+"Tell us what's wrong. Reports are anonymous to the owner.";
+  document.querySelectorAll('input[name="rpReason"]').forEach(r=>r.checked=false);
+  document.getElementById("rpDetails").value="";document.getElementById("rpContact").value="";document.getElementById("rpErr").textContent="";
+  openModal("reportModal");
+}
+async function sendReport(){
+  const r=document.querySelector('input[name="rpReason"]:checked');
+  const err=document.getElementById("rpErr");err.textContent="";
+  if(!r){err.textContent="Choose a reason";return}
+  const btn=document.getElementById("rpSend");btn.disabled=true;
+  try{
+    await api(`/api/listings/${reportId}/report`,{method:"POST",body:JSON.stringify({reason:r.value,details:document.getElementById("rpDetails").value,contact:document.getElementById("rpContact").value})});
+    closeModal("reportModal");toast("Thanks — our team will review this listing.");
+  }catch(e){err.textContent=e.message}
+  finally{btn.disabled=false}
 }
 function openFollow(id){
   const x=BYID.get(id); if(!x||!x.ownerId)return;

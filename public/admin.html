@@ -109,7 +109,7 @@
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--ink);color:#fff;padding:12px 22px;border-radius:12px;font-size:.9rem;z-index:3000;opacity:0;transition:.3s}
   .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
 </style>
-<link rel="stylesheet" href="/refresh.css?v=20260923-17">
+<link rel="stylesheet" href="/refresh.css?v=20260924-2">
 </head>
 <body>
 
@@ -158,6 +158,7 @@
     <button class="tab on" id="tabL" onclick="setTab('listings')">Listings</button>
     <button class="tab" id="tabU" onclick="setTab('users')">Users</button>
     <button class="tab" id="tabV" onclick="setTab('verifs')">Verifications <span id="vCount" style="background:var(--red);color:#fff;border-radius:999px;padding:1px 8px;font-size:.7rem;display:none"></span></button>
+    <button class="tab" id="tabR" onclick="setTab('reports')">Reports &amp; flags <span id="rCount" style="background:var(--red);color:#fff;border-radius:999px;padding:1px 8px;font-size:.7rem;display:none"></span></button>
     <button class="tab" id="tabS" onclick="setTab('support')">Support <span id="sCount" style="background:var(--red);color:#fff;border-radius:999px;padding:1px 8px;font-size:.7rem;display:none"></span></button>
   </div>
   <div class="panel table-scroll" id="panel"></div>
@@ -204,7 +205,9 @@ async function refresh(){
     api("/api/admin/stats").catch(()=>null),
     api("/api/admin/verifications").catch(()=>[]),
     api("/api/admin/support").catch(()=>[])]);
-  cache={listings,users,verifs,tickets};
+  const moderation=await api("/api/admin/moderation").catch(()=>[]);
+  cache={listings,users,verifs,tickets,moderation};
+  const rc=$("rCount");rc.textContent=moderation.length;rc.style.display=moderation.length?"inline-block":"none";
   const vc=$("vCount");vc.textContent=verifs.length;vc.style.display=verifs.length?"inline-block":"none";
   const openTix=tickets.filter(t=>t.status==="open").length;
   const sc=$("sCount");sc.textContent=openTix;sc.style.display=openTix?"inline-block":"none";
@@ -271,6 +274,7 @@ function setTab(t){
   $("tabU").classList.toggle("on",t==="users");
   $("tabV").classList.toggle("on",t==="verifs");
   $("tabS").classList.toggle("on",t==="support");
+  $("tabR").classList.toggle("on",t==="reports");
   renderTab();
 }
 function renderTab(){
@@ -309,6 +313,25 @@ function renderTab(){
         <td class="muted">${esc(u.created_at)}</td>
         <td>${u.role!=="admin"?`<button class="btn btn-ghost btn-sm" onclick="setVerified(${u.id},${u.verified?0:1})">${u.verified?"Unverify":"Verify ✓"}</button>`:""}</td>
       </tr>`).join("")+`</table>`;
+  }else if(tab==="reports"){
+    const m=cache.moderation||[];
+    const FLAG={photo_reuse:"Photo reused from another account",price_outlier:"Suspiciously cheap",many_counties:"'Owner' in many counties",shared_contact:"WhatsApp shared with another account"};
+    $("panel").innerHTML=m.length?`<table><tr><th>Listing</th><th>Why it's here</th><th>Owner</th><th></th></tr>`+
+      m.map(x=>`<tr>
+        <td><b>${esc(x.title)}</b> ${x.status==="under_review"?'<span class="pill warn">paused for review</span>':`<span class="pill ok">${esc(x.status)}</span>`}
+          <div class="muted">#${x.id} · ${esc(x.area)}, ${esc(x.county)} · ${fmt(x.price)}${x.listerRole!=="owner"?" · "+esc(x.listerRole):""}</div>
+          <a class="muted" href="/browse.html?open=${x.id}" target="_blank" rel="noopener">View listing ↗</a></td>
+        <td style="white-space:normal;max-width:460px">
+          ${x.flags.map(f=>`<div style="margin-bottom:6px"><span class="pill feat">${esc(FLAG[f.kind]||f.kind)}</span> <span class="muted">${esc(f.detail)}</span></div>`).join("")}
+          ${x.reports.length?`<div style="margin-top:4px"><b>${x.reports.length} report${x.reports.length===1?"":"s"}</b></div>`+x.reports.map(r=>`<div class="muted" style="margin-top:4px">• <b>${esc(r.reason)}</b>${r.details?" — “"+esc(r.details)+"”":""}${r.contact?` <span style="white-space:nowrap">(${esc(r.contact)})</span>`:""} <span style="opacity:.7">${esc(r.at)}</span></div>`).join(""):""}
+        </td>
+        <td>${esc(x.ownerName)}<div class="muted">${esc(x.ownerPhone||"")}${x.ownerEmail?"<br>"+esc(x.ownerEmail):""}</div></td>
+        <td style="white-space:nowrap">
+          <button class="btn btn-primary btn-sm" onclick="moderate(${x.id},'clear')">${x.status==="under_review"?"Restore ✓":"Looks fine ✓"}</button>
+          <button class="btn btn-danger btn-sm" onclick="moderate(${x.id},'remove')">Remove</button>
+        </td>
+      </tr>`).join("")+`</table>`
+      :`<div style="padding:34px;text-align:center;color:var(--muted)">Nothing to review — visitor reports and automatic scam flags will appear here.</div>`;
   }else if(tab==="support"){
     const t=cache.tickets||[];
     if(!t.length){
@@ -341,6 +364,11 @@ function renderTab(){
       </tr>`;
       }).join("")+`</table>`;
   }
+}
+async function moderate(id,action){
+  if(action==="remove"&&!confirm("Remove this listing from PataHome? The owner will be notified."))return;
+  try{await api(`/api/admin/moderation/${id}`,{method:"POST",body:JSON.stringify({action})});toast(action==="remove"?"Listing removed":"Cleared");await refresh();renderTab()}
+  catch(e){toast(e.message)}
 }
 async function setTicket(id,status){
   try{await api("/api/admin/support/"+id,{method:"PATCH",body:JSON.stringify({status})});

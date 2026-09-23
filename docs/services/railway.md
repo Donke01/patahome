@@ -43,6 +43,7 @@ Set these under **Variables** in the Railway service:
 | `SMS_SENDER`            | Alphanumeric sender ID, defaults to `PataHome`       |
 | `SESSION_IDLE_HOURS`    | Sign users out after this much inactivity (default `4`) |
 | `SESSION_MAX_DAYS`      | Hard limit on any login, even if active (default `14`) |
+| `LISTING_TTL_DAYS`      | Listings pause if not confirmed for this many days (default `60`) |
 
 ## Persistent volume (critical)
 
