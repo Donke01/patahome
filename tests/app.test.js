@@ -203,3 +203,57 @@ test("SEO pages, share cards, legal pages and app files", async () => {
   for (const f of ["/privacy.html", "/terms.html", "/manifest.webmanifest", "/sw.js", "/offline.html", "/i18n.js", "/app.js"])
     assert.equal((await call("GET", f)).status, 200, f);
 });
+
+test("land: units, price per acre, lease, filters, pages and document checks", async () => {
+  const t = (await call("POST", "/api/auth/register", { name: "Farmer", identifier: "0711999000", password: "password123" })).body.token;
+  const L = (b) => call("POST", "/api/listings", { category: "land", ...b }, t);
+  assert.equal((await L({ title: "No size", areaId: areaId("Kitale Town CBD"), price: 1000000 })).status, 400);
+
+  let r = await L({ title: "4 plots town", areaId: areaId("Kitale Town CBD"), price: 2400000, landDeal: "sale", sizeValue: 4, sizeUnit: "plot_50x100",
+    priceBasis: "total", features: { title: "ready", use: "residential", road: "murram", roadKm: 0.5, beacons: true, bogus: 1 }, titleRef: "LR/123" });
+  assert.equal(r.status, 201, JSON.stringify(r.body));
+  assert.ok(Math.abs(r.body.sizeAcres - 0.459) < 0.001);
+  assert.equal(Math.round(r.body.pricePerAcre), 5227200);
+  assert.equal(r.body.titleRef, undefined, "title number stays private");
+  assert.equal(r.body.features.bogus, undefined);
+  const saleId = r.body.id;
+
+  r = await L({ title: "20 acres farm for lease", areaId: areaId("Endebess"), price: 12000, landDeal: "lease", sizeValue: 20, sizeUnit: "acre",
+    priceBasis: "acre_season", leaseMin: "1 year", pinLat: 1.07, pinLng: 34.84, features: { use: "agricultural", suits: ["crops", "grazing", "x"] } });
+  assert.equal(r.status, 201, JSON.stringify(r.body));
+  assert.equal(r.body.pricePerAcre, 24000, "2 seasons a year");
+  assert.equal(r.body.exactPin, true);
+  const leaseId = r.body.id;
+
+  assert.equal((await L({ title: "far pin", areaId: areaId("Endebess"), price: 5, landDeal: "sale", sizeValue: 1, sizeUnit: "acre", pinLat: -1.28, pinLng: 36.8 })).status, 400);
+  r = await L({ title: "Five points", areaId: areaId("Endebess"), price: 300000, landDeal: "sale", sizeValue: 5, sizeUnit: "point", priceBasis: "per_acre" });
+  assert.equal(r.body.sizeAcres, 0.5, "10 points = 1 acre");
+
+  r = await call("GET", "/api/search?cat=land&landDeal=lease");
+  assert.deepEqual(r.body.listings.map(x => x.title), ["20 acres farm for lease"]);
+  r = await call("GET", "/api/search?cat=land&minAcres=1");
+  assert.ok(r.body.listings.every(x => x.sizeAcres >= 1));
+  r = await call("GET", "/api/search?cat=land&titleReady=1");
+  assert.deepEqual(r.body.listings.map(x => x.title), ["4 plots town"]);
+  r = await call("GET", "/api/search?q=shamba%20lease");
+  assert.ok(r.body.listings.some(x => x.title === "20 acres farm for lease"));
+  assert.ok(!r.body.listings.some(x => x.title === "4 plots town"));
+
+  r = await call("GET", "/land-for-lease/endebess");
+  assert.equal(r.status, 200); assert.match(r.body.html, /20 acres farm/);
+  r = await call("GET", "/land-for-sale/kitale-town-cbd");
+  assert.equal(r.status, 200); assert.match(r.body.html, /plots \(50×100\)/);
+  assert.equal((await call("GET", "/land-for-sale/kitale-town-cbd/bedsitters")).status, 404);
+  assert.match((await call("GET", "/listing/" + saleId)).body.html, /Ardhisasa/);
+
+  r = await call("POST", `/api/listings/${saleId}/land-docs`, { titleRef: "LR/123", docs: ["patahome/verify/test-search"] }, t);
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  const admin = (await call("POST", "/api/auth/login", { phone: "0700000001", password: "adminpass123" })).body.token;
+  r = await call("GET", "/api/admin/land-docs", null, admin);
+  assert.equal(r.body[0].titleRef, "LR/123");
+  await call("POST", `/api/admin/land-docs/${saleId}`, { action: "approve" }, admin);
+  assert.equal((await call("GET", "/api/listings/" + saleId)).body.docsChecked, true);
+
+  assert.equal((await call("PATCH", "/api/listings/" + leaseId, { status: "rented" }, t)).status, 200, "lease land can be marked leased");
+  assert.match((await call("GET", "/sitemap.xml")).body.html, /land-for-sale\/kitale-town-cbd/);
+});

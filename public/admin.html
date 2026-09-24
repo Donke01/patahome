@@ -125,7 +125,7 @@
   .ph-item .btn{margin:0 8px 8px}
   .bk-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px;flex-wrap:wrap}
 </style>
-<link rel="stylesheet" href="/refresh.css?v=20260924-4">
+<link rel="stylesheet" href="/refresh.css?v=20260924-5">
 </head>
 <body>
 
@@ -225,9 +225,10 @@ async function refresh(){
     api("/api/admin/verifications").catch(()=>[]),
     api("/api/admin/support").catch(()=>[])]);
   const moderation=await api("/api/admin/moderation").catch(()=>[]);
-  cache={listings,users,verifs,tickets,moderation};
+  const landDocs=await api("/api/admin/land-docs").catch(()=>[]);
+  cache={listings,users,verifs,tickets,moderation,landDocs};
   const rc=$("rCount");rc.textContent=moderation.length;rc.style.display=moderation.length?"inline-block":"none";
-  const vc=$("vCount");vc.textContent=verifs.length;vc.style.display=verifs.length?"inline-block":"none";
+  const vn=verifs.length+landDocs.length;const vc=$("vCount");vc.textContent=vn;vc.style.display=vn?"inline-block":"none";
   const openTix=tickets.filter(t=>t.status==="open").length;
   const sc=$("sCount");sc.textContent=openTix;sc.style.display=openTix?"inline-block":"none";
   const t=stats?stats.trendPct:0;
@@ -299,7 +300,7 @@ function setTab(t){
   renderTab();
 }
 function renderTab(){
-  const CAT={rent:"Rent",sale:"Sale"};
+  const CAT={rent:"Rent",sale:"Sale",shortlet:"Airbnb",land:"Land"};
   if(tab==="listings"){
     $("panel").innerHTML=`<table><tr><th>Listing</th><th>Owner</th><th>Price</th><th>Leads</th><th>Status</th><th></th></tr>`+
       cache.listings.map(x=>`<tr>
@@ -311,8 +312,19 @@ function renderTab(){
         <td><button class="btn btn-danger btn-sm" onclick="removeListing(${x.id})">Remove</button></td>
       </tr>`).join("")+`</table>`;
   }else if(tab==="verifs"){
-    const v=cache.verifs||[];
-    $("panel").innerHTML=v.length?`<table><tr><th>Applicant</th><th>ID</th><th>Location</th><th>Documents</th><th></th></tr>`+
+    const v=cache.verifs||[], ld=cache.landDocs||[];
+    const landHtml=ld.length?`<h3 style="margin:22px 0 4px;font-size:1rem">Land documents to check</h3>
+      <div class="muted" style="margin:0 0 10px">Compare the title / LR number with the official search. Approve only if the registered owner matches the account and there are no cautions or charges you weren't told about.</div>
+      <table><tr><th>Land</th><th>Title / LR no.</th><th>Documents</th><th></th></tr>`+
+      ld.map(x=>`<tr>
+        <td><b>${esc(x.title)}</b><div class="muted">${esc(x.area)} · ${esc(x.size)} · ${esc(x.price)}</div><div class="muted">Owner: ${esc(x.owner)} · <a href="/browse.html?open=${x.id}" target="_blank" rel="noopener">#${x.id} ↗</a></div></td>
+        <td><b>${esc(x.titleRef||"—")}</b></td>
+        <td>${x.docs.length?x.docs.map((d,i)=>`<a href="${esc(d)}" target="_blank" rel="noopener" class="pill ok" style="margin-right:4px;text-decoration:none">Doc ${i+1} ↗</a>`).join(""):'<span class="muted">none</span>'}</td>
+        <td style="white-space:nowrap">
+          <button class="btn btn-primary btn-sm" onclick="reviewLand(${x.id},true)">Documents OK ✓</button>
+          <button class="btn btn-danger btn-sm" onclick="reviewLand(${x.id},false)">Reject</button>
+        </td></tr>`).join("")+`</table>`:"";
+    $("panel").innerHTML=(v.length?`<table><tr><th>Applicant</th><th>ID</th><th>Location</th><th>Documents</th><th></th></tr>`+
       v.map(x=>`<tr>
         <td><b>${esc(x.legalName||x.name)}</b><div class="muted">${esc(x.name)} · ${esc(x.phone||"")} ${x.email?"· "+esc(x.email):""}</div><div class="muted">${x.listings} listing${x.listings===1?"":"s"}${x.dob?" · DOB "+esc(x.dob):""}</div></td>
         <td>${esc(x.idType||"ID")}: <b>${esc(x.idNumber||"—")}</b>${x.kraPin?`<div class="muted">KRA ${esc(x.kraPin)}</div>`:""}</td>
@@ -323,7 +335,7 @@ function renderTab(){
           <button class="btn btn-danger btn-sm" onclick="reviewVerif(${x.id},false)">Reject</button>
         </td>
       </tr>`).join("")+`</table>`
-      :`<div style="padding:34px;text-align:center;color:var(--muted)">No pending verifications — new requests will appear here.</div>`;
+      :(ld.length?"":`<div style="padding:34px;text-align:center;color:var(--muted)">No pending verifications — new requests will appear here.</div>`))+landHtml;
   }else if(tab==="users"){
     $("panel").innerHTML=`<table><tr><th>User</th><th>Phone</th><th>Listings</th><th>Verified</th><th>Joined</th><th></th></tr>`+
       cache.users.map(u=>`<tr>
@@ -336,7 +348,7 @@ function renderTab(){
       </tr>`).join("")+`</table>`;
   }else if(tab==="reports"){
     const m=cache.moderation||[];
-    const FLAG={photo_reuse:"Photo reused from another account",price_outlier:"Suspiciously cheap",many_counties:"'Owner' in many counties",shared_contact:"WhatsApp shared with another account"};
+    const FLAG={photo_reuse:"Photo reused from another account",price_outlier:"Suspiciously cheap",duplicate_title:"Same title/LR number as another account",photo_moderation:"Photo flagged by moderation",many_counties:"'Owner' in many counties",shared_contact:"WhatsApp shared with another account"};
     $("panel").innerHTML=m.length?`<table><tr><th>Listing</th><th>Why it's here</th><th>Owner</th><th></th></tr>`+
       m.map(x=>`<tr>
         <td><b>${esc(x.title)}</b> ${x.status==="under_review"?'<span class="pill warn">paused for review</span>':`<span class="pill ok">${esc(x.status)}</span>`}
@@ -455,6 +467,15 @@ async function setVerified(id,v){
   catch(e){toast(e.message)}
 }
 
+async function reviewLand(id,approve){
+  let note=null;
+  if(!approve){note=prompt("Reason (sent to the owner):","The official search doesn't match the listing. Please upload a recent search in your name.");if(note===null)return}
+  try{
+    await api("/api/admin/land-docs/"+id,{method:"POST",body:JSON.stringify({action:approve?"approve":"reject",note})});
+    toast(approve?"Documents marked as checked ✓":"Documents rejected");
+    await refresh();setTab("verifs");
+  }catch(e){toast(e.message)}
+}
 async function reviewVerif(id,approve){
   let reason=null;
   if(!approve){reason=prompt("Reason for rejection (sent to the user):","We couldn't match your ID details. Please resubmit with a clearer photo.");if(reason===null)return}

@@ -452,7 +452,7 @@
     .foot-tag{margin-left:auto;margin-right:auto;text-align:center}
   }
 </style>
-  <link rel="stylesheet" href="/refresh.css?v=20260924-4">
+  <link rel="stylesheet" href="/refresh.css?v=20260924-5">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#0B5D3B">
 </head>
@@ -538,6 +538,18 @@
       <option value="200000-10000000">Buy: under KES 10M</option>
       <option value="10000000-999999999">Buy: above KES 10M</option>
     </select>
+    <select id="landDeal" onchange="render()" class="land-only">
+      <option value="">Sale or lease</option><option value="sale">For sale</option><option value="lease">For lease</option>
+    </select>
+    <select id="landSize" onchange="render()" class="land-only">
+      <option value="">Any size</option><option value="0-0.25">Up to ¼ acre (≈2 plots)</option><option value="0.25-1">¼ – 1 acre</option>
+      <option value="1-5">1 – 5 acres</option><option value="5-20">5 – 20 acres</option><option value="20-100">20 – 100 acres</option><option value="100-0">100+ acres</option>
+    </select>
+    <select id="landUse" onchange="render()" class="land-only">
+      <option value="">Any use</option><option value="agricultural">Agricultural</option><option value="residential">Residential</option>
+      <option value="commercial">Commercial</option><option value="mixed">Mixed use</option><option value="industrial">Industrial</option>
+    </select>
+    <label class="direct-toggle land-only"><input type="checkbox" id="titleReady" onchange="render()"> Title deed ready</label>
     <select id="bedFilter" onchange="render()">
       <option value="">Any bedrooms</option>
       <option value="0">Bedsitter / Studio</option>
@@ -550,6 +562,8 @@
       <option value="price-asc">Price: low → high</option>
       <option value="price-desc">Price: high → low</option>
       <option value="newest">Newest</option>
+      <option value="acre-asc" class="land-only">Price per acre: low → high</option>
+      <option value="size-desc" class="land-only">Largest first</option>
     </select>
     <label class="direct-toggle"><input type="checkbox" id="directOnly" onchange="render()"> Direct from owners only</label>
     <span class="sort-label" id="resultCount"></span>
@@ -812,6 +826,7 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="/land.js?v=1"></script>
 <script src="/lightbox.js?v=20260923-1" defer></script>
 <script>
 /* ================= CONFIG ================= */
@@ -825,12 +840,14 @@ const ICONS = {
 const CAT = {
   rent:    {label:"For Rent",   unit:"/month", grad:"linear-gradient(140deg,#0d6b50,#14735a)", gal:["home","sofa","shower"], badge:"rent"},
   sale:    {label:"For Sale",   unit:"",       grad:"linear-gradient(140deg,#20272e,#3d4b56)", gal:["home","tree","key"],    badge:"sale"},
-  shortlet:{label:"Airbnb", unit:"/night", grad:"linear-gradient(140deg,#8a4a1a,#c68a3a)", gal:["home","sofa","key"],    badge:"shortlet"}
+  shortlet:{label:"Airbnb", unit:"/night", grad:"linear-gradient(140deg,#8a4a1a,#c68a3a)", gal:["home","sofa","key"],    badge:"shortlet"},
+  land:    {label:"Land",   unit:"",       grad:"linear-gradient(140deg,#4d6b2a,#7f8f3a)", gal:["tree","key","home"],    badge:"land"}
 };
 const AMENITIES = {
   rent:["Secure compound","Water 24/7","Parking","Near matatu route"],
   sale:["Ready title","Gated community","Mains power","Borehole"],
-  shortlet:["Furnished","WiFi included","Kitchen","Instant check-in"]
+  shortlet:["Furnished","WiFi included","Kitchen","Instant check-in"],
+  land:[]
 };
 
 /* ================= STATE ================= */
@@ -879,8 +896,17 @@ const toItem=x=>({
   posted:timeAgo(x.createdAt),owner:x.ownerName,ownerId:x.ownerId,verified:x.ownerVerified,
   role:x.listerRole||"owner",fee:x.agentFee||"",
   features:x.features||{},video:x.video||null,nearby:x.nearby||null,featured:!!x.featured,
+  landDeal:x.landDeal,sizeValue:x.sizeValue,sizeUnit:x.sizeUnit,sizeAcres:x.sizeAcres,priceBasis:x.priceBasis,pricePerAcre:x.pricePerAcre,
+  leaseMin:x.leaseMin,exactPin:!!x.exactPin,docsChecked:!!x.docsChecked,
   photos:x.photoUrls||[]
 });
+// Land shows its deal type instead of the generic category label
+const priceTxt=x=>x.cat==="land"&&window.PH_LAND?PH_LAND.priceLabel(x).main:fmt(x.price)+CAT[x.cat].unit;
+const catLabel=x=>x.cat==="land"?(x.landDeal==="lease"?"Land for lease":"Land for sale"):CAT[x.cat].label;
+function priceHTML(x){
+  if(x.cat!=="land"||!window.PH_LAND)return `${fmt(x.price)} <small>${CAT[x.cat].unit}</small>`;
+  const p=PH_LAND.priceLabel(x);return `${esc(p.main)}${p.extra?` <small>${esc(p.extra)}</small>`:""}`;
+}
 // How a listing's poster is labelled everywhere (cards, popup).
 const ROLE_LABEL={owner:"Direct from owner",agent:"Listed by agent",caretaker:"Listed by caretaker"};
 function trustLine(x){
@@ -1225,9 +1251,21 @@ function searchQuery(page){
   const pr=document.getElementById("priceFilter").value;
   const bd=document.getElementById("bedFilter").value;
   let sort=document.getElementById("sortSelect").value;
+  const land=activeCat==="land";
+  document.querySelectorAll(".land-only").forEach(el=>el.style.display=land?"":"none");
+  document.getElementById("bedFilter").style.display=land?"none":"";
+  document.getElementById("priceFilter").style.display=land?"none":"";
+  if(!land&&(sort==="acre-asc"||sort==="size-desc")){sort="newest";document.getElementById("sortSelect").value="newest"}
+  if(land){
+    const g=id=>document.getElementById(id).value;
+    if(g("landDeal"))P.set("landDeal",g("landDeal"));
+    if(g("landSize")){const [lo,hi]=g("landSize").split("-").map(Number);if(lo)P.set("minAcres",lo);if(hi)P.set("maxAcres",hi)}
+    if(g("landUse"))P.set("landUse",g("landUse"));
+    if(document.getElementById("titleReady").checked)P.set("titleReady","1");
+  }
   if(q)P.set("q",q);
-  if(pr)P.set("price",pr);
-  if(bd!=="")P.set("beds",bd);
+  if(pr&&!land)P.set("price",pr);
+  if(bd!==""&&!land)P.set("beds",bd);
   if(userLoc){P.set("lat",userLoc[0]);P.set("lng",userLoc[1])}
   else if(sort==="distance")sort="newest"; // nothing to measure from yet
   P.set("sort",sort);
@@ -1247,17 +1285,17 @@ function cardHTML(x,i){
       <div class="card-img" style="background:${c.grad}">
         ${x.photos.length?`<img class="ph-bg" src="${x.photos[0].thumb}" alt="" aria-hidden="true" loading="lazy"><img class="ph" src="${x.photos[0].thumb}" alt="${esc(x.title)}" loading="lazy">`:`<span class="wm">${ICONS[c.gal[0]]}</span>`}
         ${x.photos.length?`<span class="photo-count">${CAM} View all ${x.photos.length} photo${x.photos.length===1?"":"s"}</span>`:""}
-        <span class="badge ${c.badge}">${c.label}</span>
+        <span class="badge ${c.badge}">${catLabel(x)}</span>
         ${x.featured?`<span class="feat-badge">★ Featured</span>`:isNew?`<span class="new-badge">NEW</span>`:""}
         <button class="heart ${favs.has(x.id)?"on":""}" onclick="event.stopPropagation();toggleFav(${x.id})">${favs.has(x.id)?"♥":"♡"}</button>
         ${d!==null?`<span class="dist-badge">${d<1?Math.round(d*1000)+" m":d.toFixed(1)+" km"} away</span>`:""}
       </div>
       <div class="card-body">
-        <div class="price">${fmt(x.price)} <small>${c.unit}</small></div>
+        <div class="price">${priceHTML(x)}</div>
         <div class="title">${esc(x.title)}</div>
         <div class="meta">
           <span>${PIN_SVG}${esc(x.area)}</span>
-          ${x.beds!==null?`<span>${BED_SVG}${x.beds===0?"Bedsitter":x.beds+" BR"}</span>`:""}
+          ${x.cat==="land"&&window.PH_LAND?`<span>📐 ${esc(PH_LAND.sizeLabel(x.sizeValue,x.sizeUnit,x.sizeAcres))}</span>`:x.beds!==null?`<span>${BED_SVG}${x.beds===0?"Bedsitter":x.beds+" BR"}</span>`:""}
           <span>${CLOCK_SVG}${x.posted}</span>
         </div>
         ${(()=>{const t=trustLine(x);return `<div class="listing-trust ${t.cls}">${esc(t.txt)}</div>`})()}
@@ -1340,7 +1378,7 @@ function renderMarkers(list){
   list.forEach(x=>{
     const c=CAT[x.cat];
     const m=L.marker([x.lat,x.lng]).addTo(map)
-      .bindPopup(`<b>${esc(x.title)}</b><br>${fmt(x.price)}${c.unit}<br>${esc(x.area)}<br><a href="#" onclick="openContact(${x.id});return false">Contact owner</a>`);
+      .bindPopup(`<b>${esc(x.title)}</b><br>${x.cat==="land"&&window.PH_LAND?esc(PH_LAND.priceLabel(x).main):fmt(x.price)+c.unit}<br>${esc(x.area)}<br><a href="#" onclick="openContact(${x.id});return false">Contact owner</a>`);
     markers.push(m);
   });
 }
@@ -1371,12 +1409,19 @@ function openDetail(id){
   document.getElementById("dTitle").textContent=x.title;
   const d=userLoc?dist(userLoc[0],userLoc[1],x.lat,x.lng):null;
   const dTxt=d!==null?(d<1?Math.round(d*1000)+" m":d.toFixed(1)+" km")+" from you":"";
-  document.getElementById("dSub").textContent=fmt(x.price)+c.unit+" · "+x.area+(dTxt?" · "+dTxt:"")+" · posted "+x.posted;
-  document.getElementById("dCat").textContent=c.label;
+  document.getElementById("dSub").textContent=priceTxt(x)+" · "+x.area+(dTxt?" · "+dTxt:"")+" · posted "+x.posted;
+  document.getElementById("dCat").textContent=catLabel(x);
   document.getElementById("dCat").className="dm-cat "+c.badge;
   document.getElementById("dPlace").textContent=x.area;
-  document.getElementById("dPrice").innerHTML=`${fmt(x.price)}${c.unit?` <small>${c.unit}</small>`:""}`;
+  document.getElementById("dPrice").innerHTML=priceHTML(x);
+  const isLand=x.cat==="land";
   const facts=[];
+  if(isLand&&window.PH_LAND){
+    facts.push(["📐 ",PH_LAND.sizeLabel(x.sizeValue,x.sizeUnit,x.sizeAcres)]);
+    if(x.landDeal==="lease"&&x.leaseMin)facts.push(["🗓 ","Minimum lease: "+x.leaseMin]);
+    if(x.docsChecked)facts.push(["✓ ","Documents checked"]);
+    if(x.exactPin)facts.push(["📍 ","Exact location on map"]);
+  }
   if(x.beds!==null&&x.beds!==undefined)facts.push([BED_SVG,x.beds===0?"Bedsitter":x.beds+" bedroom"+(x.beds===1?"":"s")]);
   if(dTxt)facts.push([PIN_SVG,dTxt]);
   facts.push([CLOCK_SVG,"Posted "+x.posted]);
@@ -1386,10 +1431,17 @@ function openDetail(id){
     ?`<button type="button" class="dm-vid" onclick="playVideo(${x.id})">${ic}${t}</button>`:`<span>${ic}${esc(t)}</span>`).join("");
   // Only what the owner actually told us — no made-up amenities.
   const F=x.features||{};
-  const KV=[["Deposit",F.deposit],["Service charge",F.serviceCharge],["Water",{included:"Included in rent",metered:"Metered",borehole:"Borehole",tank:"Tank / delivered"}[F.water]],
+  const LD=(window.PH_LAND&&PH_LAND.DETAILS)||{};
+  const KV=isLand?[
+    ["Title",F.title?(LD.title[F.title]+(F.title==="leasehold"&&F.leaseYears?` · ${F.leaseYears} yrs left`:"")):null],["Land use",LD.use&&LD.use[F.use]],
+    ["Road",F.road?(LD.road[F.road]+(F.roadKm!=null&&F.road!=="tarmac"?` · ${F.roadKm} km to tarmac`:"")):(F.roadKm!=null?F.roadKm+" km to tarmac":null)],
+    ["Water",LD.water&&LD.water[F.water]],["Electricity",LD.power&&LD.power[F.power]],["Terrain",LD.terrain&&LD.terrain[F.terrain]]].filter(k=>k[1])
+   :[["Deposit",F.deposit],["Service charge",F.serviceCharge],["Water",{included:"Included in rent",metered:"Metered",borehole:"Borehole",tank:"Tank / delivered"}[F.water]],
     ["Electricity",{token:"Prepaid tokens",postpaid:"Postpaid bill",included:"Included in rent",solar:"Solar"}[F.power]],["Floor",F.floor]].filter(k=>k[1]);
-  const TICK={parking:"Parking",security:"Security guard",gated:"Gated compound",borehole:"Borehole",backupPower:"Backup power",wifi:"Wi-Fi",furnished:"Furnished",pets:"Pets allowed"};
+  const TICK=isLand?{fenced:"Fenced",beacons:"Beacons in place",surveyed:"Surveyed",subdivisible:"Can be subdivided"}
+    :{parking:"Parking",security:"Security guard",gated:"Gated compound",borehole:"Borehole",backupPower:"Backup power",wifi:"Wi-Fi",furnished:"Furnished",pets:"Pets allowed"};
   const ticks=Object.keys(TICK).filter(k=>F[k]);
+  if(isLand&&Array.isArray(F.suits))F.suits.forEach(k=>{if(LD.suits&&LD.suits[k]){TICK["suit_"+k]="Suits "+LD.suits[k].toLowerCase();ticks.push("suit_"+k)}});
   document.getElementById("dKv").innerHTML=KV.map(([k,v])=>`<div><span>${k}</span><b>${esc(v)}</b></div>`).join("");
   document.getElementById("dChips").innerHTML=ticks.map(k=>`<span class="chip">✓ ${TICK[k]}</span>`).join("");
   document.getElementById("dDetailsWrap").style.display=(KV.length||ticks.length)?"":"none";
@@ -1416,6 +1468,11 @@ function openDetail(id){
   document.getElementById("dFollowBtn").onclick=()=>openFollow(id);
   document.getElementById("dReportBtn").onclick=()=>openReport(id);
   document.getElementById("dBookBtn").onclick=()=>openViewing(id);
+  document.getElementById("dBookBtn").lastChild.nodeValue=isLand?"Book a free site visit":"Book a free viewing";
+  const safe=document.querySelector("#detailModal .dm-safe span");
+  if(safe)safe.innerHTML=isLand
+    ?'<b>Before paying anything:</b> do an official search on <a href="https://ardhisasa.lands.go.ke" target="_blank" rel="noopener">Ardhisasa</a> and visit the land with the owner. <button type="button" class="dm-safe-rep" onclick="document.getElementById(\'dReportBtn\').click()">Report a scam</button>'
+    :'<b>Never pay before viewing.</b> PataHome never asks for money. <button type="button" class="dm-safe-rep" onclick="document.getElementById(\'dReportBtn\').click()">Report a scam</button>';
   document.getElementById("dShareBtn").onclick=()=>shareListing(id);
   track(id,"view");
   openModal("detailModal");
@@ -1427,7 +1484,7 @@ async function shareListing(id){
   const x=BYID.get(id);if(!x)return;
   const c=CAT[x.cat];
   const url=`${location.origin}/listing/${x.id}/${x.title.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")}`;
-  const text=`${x.title} — ${fmt(x.price)}${c.unit} in ${x.area}. On PataHome:`;
+  const text=`${x.title} — ${priceTxt(x)} in ${x.area}. On PataHome:`;
   track(id,"share");
   if(navigator.share){try{await navigator.share({title:x.title,text,url});return}catch(e){if(e&&e.name==="AbortError")return}}
   window.open("https://wa.me/?text="+encodeURIComponent(text+" "+url),"_blank","noopener");
@@ -1605,7 +1662,7 @@ async function openContact(id){
   const x=BYID.get(id),c=CAT[x.cat];
   contactId=id;
   document.getElementById("cTitle").textContent=x.title;
-  document.getElementById("cSub").textContent=fmt(x.price)+c.unit+" · "+x.area;
+  document.getElementById("cSub").textContent=priceTxt(x)+" · "+x.area;
   document.getElementById("cAvatar").textContent=x.owner[0]||"?";
   document.getElementById("cOwner").textContent=x.owner;
   document.getElementById("cPhone").textContent="Loading…";
@@ -1690,6 +1747,7 @@ async function paintAccount(){
   const P=new URLSearchParams(location.search);
   if(P.get("q"))document.getElementById("searchInput").value=P.get("q");
   if(P.get("cat")&&CAT[P.get("cat")])activeCat=P.get("cat");
+  if(P.get("landDeal"))document.getElementById("landDeal").value=P.get("landDeal");
   if(P.get("price"))document.getElementById("priceFilter").value=P.get("price");
   if(P.get("beds")!==null&&P.get("beds")!==undefined&&P.get("beds")!=="")document.getElementById("bedFilter").value=P.get("beds");
   render();

@@ -32,6 +32,8 @@ function cldSign(params) {
 // Incoming transformation: cap at 1280px, auto quality — keeps every stored image small
 const CLD_TRANSFORM = "c_limit,w_1280,h_1280,q_auto:good";
 const photoUrl = (id, t) => `https://res.cloudinary.com/${CLD.cloud}/image/upload/${t}/${id}`;
+require("./public/land.js"); // defines globalThis.PH_LAND (units, conversions, labels) — same file the browser uses
+const LAND = globalThis.PH_LAND;
 const parseJson = (s, dflt) => { try { const v = JSON.parse(s); return v && typeof v === "object" ? v : dflt; } catch { return dflt; } };
 const parsePhotos = (s) => { try { const a = JSON.parse(s || "[]"); return Array.isArray(a) ? a : []; } catch { return []; } };
 const validPhotoId = (id) => typeof id === "string" && id.startsWith(CLD.folder + "/") &&
@@ -81,6 +83,12 @@ const listingView = (row, userLat, userLng) => ({
   } : null,
   nearby: row.nearby ? parseJson(row.nearby, null) : null,
   videoId: row.video || "",
+  ...(row.category === "land" ? {
+    landDeal: row.land_deal || "sale", sizeValue: row.size_value, sizeUnit: row.size_unit, sizeAcres: row.size_acres,
+    priceBasis: row.price_basis, pricePerAcre: row.price_per_acre, leaseMin: row.lease_min || "",
+    exactPin: !!row.exact_pin, docsChecked: row.docs_status === "checked"
+    // title_ref and land_docs are private — never sent to the public
+  } : {}),
   ownerId: row.owner_id,
   ownerName: row.owner_name,
   ownerVerified: !!row.owner_verified,
@@ -679,14 +687,15 @@ router.add("GET", "/api/listings", (req, res) => {
    - counts: active listings per category (for the tabs), ignores other filters
    - pins:   lightweight {id,lat,lng,price,category,title,area} for EVERY match
              (page 1 only) so the map can show all results, not just the page. */
-const SEARCH_CAT_LABEL = { rent: "for rent", sale: "for sale", shortlet: "airbnb short stay" };
+const SEARCH_CAT_LABEL = { rent: "for rent", sale: "for sale", shortlet: "airbnb short stay", land: "land plot plots acre acres shamba farm" };
 const SEARCH_STOP = new Set(["in","near","at","the","a","an","for","and","with","to","of","under","below","max","na","ya","kwa","karibu","house","houses","home","homes","nyumba","property","kenya"]);
 const SEARCH_EXPAND = {
   keja:["for rent"],kejas:["for rent"],rent:["for rent"],rental:["for rent"],rentals:["for rent"],kukodi:["for rent"],
   sale:["for sale"],buy:["for sale"],buying:["for sale"],sell:["for sale"],selling:["for sale"],kununua:["for sale"],
   bedsitter:["bedsitter","studio"],bedsitters:["bedsitter","studio"],studio:["bedsitter","studio"],
   "1br":["1 bedroom"],one:["1 bedroom"],"2br":["2 bedroom"],two:["2 bedroom"],"3br":["3 bedroom"],three:["3 bedroom"],
-  flat:["apartment"],apt:["apartment"],airbnb:["airbnb"],bnb:["airbnb"]
+  flat:["apartment"],apt:["apartment"],airbnb:["airbnb"],bnb:["airbnb"],
+  shamba:["land","farm"],ardhi:["land"],plots:["plot"],acres:["acre"],lease:["lease"],leasing:["lease"],kukodisha:["lease"],farm:["farm","land"]
 };
 function parseSearch(q) {
   const tokens = [], caps = [];
@@ -702,7 +711,7 @@ function parseSearch(q) {
 // every keyword must match somewhere; title > area > bedrooms > description > category
 function searchScore(r, tokens) {
   const title = (r.title || "").toLowerCase(), area = `${r.area_name}, ${r.county}`.toLowerCase();
-  const desc = (r.description || "").toLowerCase(), cat = SEARCH_CAT_LABEL[r.category] || "";
+  const desc = (r.description || "").toLowerCase(), cat = (SEARCH_CAT_LABEL[r.category] || "") + (r.category === "land" ? (r.land_deal === "lease" ? " lease for lease" : " for sale") : "");
   const b = r.bedrooms;
   const beds = b === 0 ? "bedsitter studio 0 bedroom" : b != null ? `${b} bedroom ${b} br ${b}br` : "";
   let score = 0;
@@ -734,6 +743,13 @@ router.add("GET", "/api/search", (req, res) => {
     else { where.push("l.bedrooms = ?"); params.push(+q.beds); }
   }
   if (q.direct === "1") where.push("COALESCE(l.lister_role,'owner') = 'owner'");
+  // land-only filters
+  if (q.landDeal === "sale" || q.landDeal === "lease") { where.push("l.land_deal = ?"); params.push(q.landDeal); }
+  if (+q.minAcres > 0) { where.push("l.size_acres >= ?"); params.push(+q.minAcres); }
+  if (+q.maxAcres > 0) { where.push("l.size_acres <= ?"); params.push(+q.maxAcres); }
+  if (+q.maxPerAcre > 0) { where.push("l.price_per_acre <= ?"); params.push(+q.maxPerAcre); }
+  if (q.landUse && LAND.DETAILS.use[q.landUse]) { where.push("json_extract(l.features,'$.use') = ?"); params.push(q.landUse); }
+  if (q.titleReady === "1") where.push("json_extract(l.features,'$.title') = 'ready'");
   if (q.ids !== undefined) { // favourites view
     const ids = String(q.ids).split(",").map(Number).filter(n => Number.isInteger(n) && n > 0).slice(0, 200);
     where.push(ids.length ? `l.id IN (${ids.map(() => "?").join(",")})` : "0");
@@ -754,6 +770,8 @@ router.add("GET", "/api/search", (req, res) => {
     distance: (a, b) => hasLoc ? d.get(a.id) - d.get(b.id) : b.id - a.id,
     "price-asc": (a, b) => a.price - b.price,
     "price-desc": (a, b) => b.price - a.price,
+    "acre-asc": (a, b) => (a.price_per_acre ?? 1e15) - (b.price_per_acre ?? 1e15),
+    "size-desc": (a, b) => (b.size_acres ?? 0) - (a.size_acres ?? 0),
     newest: (a, b) => b.id - a.id
   }[sort] || ((a, b) => b.id - a.id);
   const now = new Date().toISOString();
@@ -810,13 +828,20 @@ router.add("POST", "/api/listings", (req, res) => {
   if (mailConfigured() && me.email && !me.email_verified)
     return send(res, 400, { error: "Verify your email first (account menu → Verify email) before posting" });
   const { category, title, description, areaId, price, bedrooms } = req.body || {};
-  if (!["rent", "sale", "shortlet"].includes(category)) return send(res, 400, { error: "Invalid category" });
+  if (!["rent", "sale", "shortlet", "land"].includes(category)) return send(res, 400, { error: "Invalid category" });
+  const land = category === "land" ? landFields(req.body) : null;
+  if (land && land.error) return send(res, 400, { error: land.error });
   const lister = listerFields(req.body || {});
   if (lister.error) return send(res, 400, { error: lister.error });
   if (!title || !areaId || !price) return send(res, 400, { error: "title, areaId and price are required" });
   const area = db.prepare("SELECT * FROM areas WHERE id=?").get(areaId);
   if (!area) return send(res, 400, { error: "Unknown areaId — see GET /api/areas" });
-  const lat = area.lat + (Math.random() - 0.5) * 0.01, lng = area.lng + (Math.random() - 0.5) * 0.01;
+  let lat = area.lat + (Math.random() - 0.5) * 0.01, lng = area.lng + (Math.random() - 0.5) * 0.01, pinned = 0;
+  if (land) {
+    const pin = exactPin(req.body, area);
+    if (pin && pin.error) return send(res, 400, { error: pin.error });
+    if (pin) { lat = pin.lat; lng = pin.lng; pinned = 1; }
+  }
   const photos = req.body.photos;
   if (photos !== undefined) {
     if (!Array.isArray(photos) || photos.length > CLD.maxPhotos || !photos.every(validPhotoId))
@@ -828,7 +853,13 @@ router.add("POST", "/api/listings", (req, res) => {
     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
     .run(u.id, category, title.trim(), description || "", areaId, +price,
          bedrooms == null || bedrooms === "" ? null : +bedrooms, lat, lng,
-         JSON.stringify(photos || []), lister.role, lister.fee, JSON.stringify(cleanFeatures(req.body.features)), video);
+         JSON.stringify(photos || []), lister.role, lister.fee,
+         JSON.stringify(land ? cleanLandFeatures(req.body.features) : cleanFeatures(req.body.features)), video);
+  if (land) {
+    db.prepare(`UPDATE listings SET bedrooms=NULL, land_deal=?, size_value=?, size_unit=?, size_acres=?, price_basis=?, price_per_acre=?, lease_min=?, exact_pin=?, title_ref=? WHERE id=?`)
+      .run(land.deal, land.sizeValue, land.sizeUnit, land.sizeAcres, land.basis, land.perAcre, land.leaseMin, pinned,
+           String(req.body.titleRef || "").trim().slice(0, 60) || null, info.lastInsertRowid);
+  }
   const row = db.prepare(`${LISTING_SQL} WHERE l.id=?`).get(info.lastInsertRowid);
   notifyFollowers(u.id, "New listing from an owner you follow", `${row.title} is now live in ${row.area_name}.`).catch(e=>console.error("follower notification failed:",e.message));
   runScamChecks(row.id);
@@ -999,6 +1030,19 @@ async function scamChecks(listingId) {
       if (l.price < median * 0.4) addFlag(l.id, "price_outlier", `KES ${l.price} vs typical KES ${median} for similar homes in ${l.county}`);
     }
   }
+  // 2b) land: price per acre far below similar land in the county; same title number from another account
+  if (l.category === "land" && l.price_per_acre) {
+    const comps = db.prepare(`SELECT l.price_per_acre p FROM listings l JOIN areas a ON a.id=l.area_id
+      WHERE l.status='active' AND l.category='land' AND l.land_deal=? AND a.county=? AND l.id!=? AND l.price_per_acre > 0 ORDER BY p`).all(l.land_deal, l.county, l.id).map(r => r.p);
+    if (comps.length >= 5) {
+      const median = comps[Math.floor(comps.length / 2)];
+      if (l.price_per_acre < median * 0.35) addFlag(l.id, "price_outlier", `KES ${Math.round(l.price_per_acre)}/acre vs typical KES ${Math.round(median)}/acre for land in ${l.county}`);
+    }
+    if (l.title_ref) {
+      const dup = db.prepare("SELECT id FROM listings WHERE title_ref=? AND owner_id!=? AND status IN ('active','under_review','expired') LIMIT 1").get(l.title_ref, l.owner_id);
+      if (dup) addFlag(l.id, "duplicate_title", `Same title/LR number as listing #${dup.id} posted by another account`);
+    }
+  }
   // 3) a self-described owner with live listings in many counties
   if ((l.lister_role || "owner") === "owner") {
     const counties = db.prepare(`SELECT COUNT(DISTINCT a.county) n FROM listings x JOIN areas a ON a.id=x.area_id WHERE x.owner_id=? AND x.status='active'`).get(l.owner_id).n;
@@ -1013,6 +1057,85 @@ async function scamChecks(listingId) {
   }
 }
 const runScamChecks = (id) => scamChecks(id).catch(e => console.error("scam checks failed:", e.message));
+
+/* ================= land =================
+   Size is stored as typed (value + unit) and converted to acres. Price is
+   stored exactly as the owner typed it, with its basis; price_per_acre is a
+   normalised figure (sale: KES per acre; lease: KES per acre per year) used
+   for filtering, sorting and scam checks. Two farming seasons per year. */
+const LAND_DETAIL_KEYS = ["title", "use", "road", "water", "power", "terrain"];
+function landFields(b, existing) {
+  const e = existing || {};
+  const deal = b.landDeal !== undefined ? String(b.landDeal) : (e.land_deal || "sale");
+  if (!["sale", "lease"].includes(deal)) return { error: "Choose whether the land is for sale or for lease" };
+  const sizeValue = b.sizeValue !== undefined ? +b.sizeValue : e.size_value;
+  const sizeUnit = b.sizeUnit !== undefined ? String(b.sizeUnit) : e.size_unit;
+  if (!(sizeValue > 0) || !LAND.UNITS[sizeUnit]) return { error: "Enter the land size and pick a unit (acres, plots, hectares…)" };
+  const sizeAcres = LAND.acres(sizeValue, sizeUnit);
+  if (sizeAcres > 1e6) return { error: "That land size looks too large — check the unit" };
+  const basis = b.priceBasis !== undefined ? String(b.priceBasis) : (e.price_basis || (deal === "lease" ? "acre_year" : "total"));
+  if (!LAND.BASIS[deal][basis]) return { error: "Choose how the price is quoted (total, per acre, per year…)" };
+  const price = b.price !== undefined ? +b.price : e.price;
+  if (!(price > 0)) return { error: "Enter a price" };
+  const plotAcres = (LAND.UNITS[sizeUnit].acres < 0.5 && /^plot/.test(sizeUnit)) ? LAND.UNITS[sizeUnit].acres : LAND.UNITS.plot_50x100.acres;
+  const perAcre = {
+    total: price / sizeAcres, per_acre: price, per_plot: price / plotAcres,
+    acre_year: price, acre_season: price * 2, month: price * 12 / sizeAcres, year: price / sizeAcres
+  }[basis];
+  const leaseMin = deal === "lease" ? String(b.leaseMin ?? e.lease_min ?? "").trim().slice(0, 40) : "";
+  return { deal, sizeValue, sizeUnit, sizeAcres, basis, perAcre: Math.round(perAcre), leaseMin };
+}
+function cleanLandFeatures(f) {
+  const out = {};
+  if (!f || typeof f !== "object") return out;
+  for (const k of LAND_DETAIL_KEYS) if (LAND.DETAILS[k][f[k]]) out[k] = f[k];
+  if (f.leaseYears && out.title === "leasehold") out.leaseYears = Math.max(0, Math.min(999, parseInt(f.leaseYears, 10) || 0));
+  if (f.roadKm !== undefined && f.roadKm !== "") out.roadKm = Math.max(0, Math.min(200, Math.round(+f.roadKm * 10) / 10 || 0));
+  for (const k of ["fenced", "beacons", "surveyed", "subdivisible", "controlledDev"]) if (f[k] === true || f[k] === "true") out[k] = true;
+  if (Array.isArray(f.suits)) out.suits = f.suits.filter(x => LAND.DETAILS.suits[x]).slice(0, 5);
+  return out;
+}
+// An exact pin must fall within ~40 km of the chosen area (stops obvious mistakes).
+function exactPin(b, area) {
+  const lat = +b.pinLat, lng = +b.pinLng;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || !b.pinLat) return null;
+  if (km(area.lat, area.lng, lat, lng) > 40) return { error: "That map pin is far from the area you chose — check the area or move the pin" };
+  return { lat, lng };
+}
+
+/* ---- land documents: owner submits privately; admin checks; badge shows "Documents checked" ---- */
+router.add("POST", "/api/listings/:id/land-docs", (req, res, p) => {
+  const u = requireAuth(req, res); if (!u) return;
+  const l = db.prepare("SELECT * FROM listings WHERE id=?").get(p.id);
+  if (!l || l.category !== "land") return send(res, 404, { error: "Land listing not found" });
+  if (l.owner_id !== u.id && u.role !== "admin") return send(res, 403, { error: "Not your listing" });
+  const b = req.body || {};
+  const ref = String(b.titleRef || l.title_ref || "").trim().slice(0, 60);
+  if (!ref) return send(res, 400, { error: "Enter the title deed / LR number" });
+  const docs = Array.isArray(b.docs) ? b.docs.filter(d => typeof d === "string" && d.startsWith("patahome/verify/") && /^[\w\-/]{1,200}$/.test(d)).slice(0, 4) : [];
+  if (cldEnabled() && !docs.length) return send(res, 400, { error: "Upload a photo of the official search or title deed" });
+  db.prepare("UPDATE listings SET title_ref=?, land_docs=?, docs_status='pending', docs_note=NULL WHERE id=?").run(ref, JSON.stringify(docs), l.id);
+  setTimeout(() => runScamChecks(l.id), 0);
+  send(res, 200, { ok: true, docsStatus: "pending" });
+});
+router.add("GET", "/api/admin/land-docs", (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const rows = db.prepare(`${LISTING_SQL} WHERE l.category='land' AND l.docs_status='pending' ORDER BY l.id`).all();
+  send(res, 200, rows.map(r => ({ id: r.id, title: r.title, area: `${r.area_name}, ${r.county}`, owner: r.owner_name, titleRef: r.title_ref,
+    size: LAND.sizeLabel(r.size_value, r.size_unit, r.size_acres), price: priceText(r),
+    docs: parsePhotos(r.land_docs).map(d => cldEnabled() ? photoUrl(d, "c_limit,w_1600") : d) })));
+});
+router.add("POST", "/api/admin/land-docs/:id", (req, res, p) => {
+  if (!requireAdmin(req, res)) return;
+  const l = db.prepare("SELECT * FROM listings WHERE id=? AND category='land'").get(p.id);
+  if (!l) return send(res, 404, { error: "Land listing not found" });
+  const ok = (req.body || {}).action === "approve", note = String((req.body || {}).note || "").slice(0, 200);
+  db.prepare("UPDATE listings SET docs_status=?, docs_note=? WHERE id=?").run(ok ? "checked" : "rejected", note || null, l.id);
+  db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)").run(l.owner_id, "verify",
+    ok ? "Land documents checked ✓" : "Land documents not accepted",
+    ok ? `"${l.title}" now shows a "Documents checked" badge.` : `We couldn't confirm the documents for "${l.title}"${note ? `: ${note}` : ""}. You can upload clearer copies from your dashboard.`);
+  send(res, 200, { ok: true });
+});
 
 /* Agents and caretakers may post for owners, but tenants must always see who
    they're dealing with — and an agent must state their fee up front. */
@@ -1034,7 +1157,23 @@ router.add("PATCH", "/api/listings/:id", (req, res, p) => {
   const allowed = ["title", "description", "price", "bedrooms"];
   const sets = [], params = [];
   for (const k of allowed) if (body[k] !== undefined) { sets.push(`${k}=?`); params.push(body[k]); }
-  if (body.features !== undefined) { sets.push("features=?"); params.push(JSON.stringify(cleanFeatures(body.features))); }
+  if (body.features !== undefined) { sets.push("features=?"); params.push(JSON.stringify(row.category === "land" ? cleanLandFeatures(body.features) : cleanFeatures(body.features))); }
+  if (row.category === "land" && ["landDeal", "sizeValue", "sizeUnit", "priceBasis", "price", "leaseMin", "pinLat", "titleRef"].some(k => body[k] !== undefined)) {
+    const land = landFields(body, row);
+    if (land.error) return send(res, 400, { error: land.error });
+    sets.push("land_deal=?", "size_value=?", "size_unit=?", "size_acres=?", "price_basis=?", "price_per_acre=?", "lease_min=?");
+    params.push(land.deal, land.sizeValue, land.sizeUnit, land.sizeAcres, land.basis, land.perAcre, land.leaseMin);
+    if (body.pinLat !== undefined) {
+      const area = db.prepare("SELECT * FROM areas WHERE id=?").get(row.area_id);
+      const pin = body.pinLat === "" || body.pinLat === null ? null : exactPin(body, area);
+      if (pin && pin.error) return send(res, 400, { error: pin.error });
+      if (pin) { sets.push("lat=?", "lng=?", "exact_pin=1"); params.push(pin.lat, pin.lng); }
+    }
+    if (body.titleRef !== undefined) {
+      const ref = String(body.titleRef || "").trim().slice(0, 60) || null;
+      if (ref !== row.title_ref) { sets.push("title_ref=?"); params.push(ref); if (row.docs_status === "checked") { sets.push("docs_status='none'"); } }
+    }
+  }
   if (body.video !== undefined) {
     const v = String(body.video || "");
     if (v && !validVideoId(v)) return send(res, 400, { error: "Invalid video" });
@@ -1056,7 +1195,7 @@ router.add("PATCH", "/api/listings/:id", (req, res, p) => {
     if (row.status === "removed")
       return send(res, 409, { error: "Removed listings cannot be relisted. Create a new listing instead." });
     const status = String(body.status);
-    const rentable = row.category === "rent" || row.category === "shortlet";
+    const rentable = row.category === "rent" || row.category === "shortlet" || (row.category === "land" && row.land_deal === "lease");
     const permitted = rentable ? ["active", "rented"] : ["active", "sold"];
     if (!permitted.includes(status))
       return send(res, 400, { error: rentable ? "Rental listings can be marked rented or relisted" : "Sale listings can be marked sold or relisted" });
@@ -1352,7 +1491,8 @@ router.add("GET", "/api/my/listings", (req, res) => {
   const leadCount = {};
   for (const r of db.prepare("SELECT listing_id, COUNT(*) n FROM leads GROUP BY listing_id").all())
     leadCount[r.listing_id] = r.n;
-  send(res, 200, rows.map(r => ({ ...listingView(r), leads: leadCount[r.id] || 0 })));
+  send(res, 200, rows.map(r => ({ ...listingView(r), leads: leadCount[r.id] || 0,
+    ...(r.category === "land" ? { titleRef: r.title_ref || "", docsStatus: r.docs_status, docsNote: r.docs_note || "" } : {}) })));
 });
 
 /* -------- owner stats: daily leads/inquiries for the live dashboard -------- */
@@ -1665,7 +1805,7 @@ router.add("POST", "/api/alerts", async (req, res) => {
   if (useEmail && !mailConfigured()) return send(res, 400, { error: "Email alerts aren't available yet" });
   if (!useEmail && !smsConfigured()) return send(res, 400, { error: "SMS alerts aren't available yet — use your email" });
   const c = b.criteria || {};
-  const criteria = { cat: ["rent", "sale", "shortlet"].includes(c.cat) ? c.cat : "all", q: String(c.q || "").trim().slice(0, 80),
+  const criteria = { cat: ["rent", "sale", "shortlet", "land"].includes(c.cat) ? c.cat : "all", q: String(c.q || "").trim().slice(0, 80),
     price: /^\d+-\d+$/.test(c.price || "") ? c.price : "", beds: ["0", "1", "2", "3"].includes(String(c.beds)) ? String(c.beds) : "", direct: !!c.direct };
   const who = useEmail ? email : phone;
   if (db.prepare(`SELECT COUNT(*) n FROM saved_searches WHERE ${useEmail ? "email" : "phone"}=?`).get(who).n >= 10)
@@ -2196,9 +2336,17 @@ const BASE_URL = (process.env.BASE_URL || "http://localhost:3000").replace(/\/$/
 const CATS = {
   rentals:      { db: "rent",     label: "Houses & Rooms for Rent",   unit: "/month" },
   "for-sale":   { db: "sale",     label: "Houses for Sale",           unit: "" },
-  "short-stays":{ db: "shortlet", label: "Airbnb Rentals in Kenya", unit: "/night" }
+  "short-stays":{ db: "shortlet", label: "Airbnb Rentals in Kenya", unit: "/night" },
+  "land-for-sale":  { db: "land", deal: "sale",  label: "Land for Sale",  unit: "" },
+  "land-for-lease": { db: "land", deal: "lease", label: "Land for Lease", unit: "" }
 };
-const CAT_SLUG = { rent: "rentals", sale: "for-sale", shortlet: "short-stays" };
+const CAT_SLUG = { rent: "rentals", sale: "for-sale", shortlet: "short-stays", land: "land-for-sale" };
+const catSlugOf = (row) => row.category === "land" ? (row.land_deal === "lease" ? "land-for-lease" : "land-for-sale") : CAT_SLUG[row.category];
+const priceText = (row) => {
+  if (row.category !== "land") return fmtKes(row.price) + (row.category === "rent" ? "/month" : row.category === "shortlet" ? "/night" : "");
+  const p = LAND.priceLabel({ landDeal: row.land_deal, priceBasis: row.price_basis, price: row.price, pricePerAcre: row.price_per_acre, sizeAcres: row.size_acres });
+  return p.main + (p.extra ? ` (${p.extra})` : "");
+};
 const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const escapeHtml = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const fmtKes = (n) => "KES " + Number(n).toLocaleString("en-KE");
@@ -2270,7 +2418,7 @@ ${jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script
 function areaLinksHtml() {
   const areas = db.prepare("SELECT * FROM areas ORDER BY county, name").all();
   return `<div class="links"><strong>Browse by area:</strong><br>` +
-    Object.keys(CATS).map((cs) =>
+    Object.keys(CATS).filter(cs => CATS[cs].db !== "land").map((cs) =>
       areas.map((a) => `<a href="/${cs}/${slugify(a.name)}">${escapeHtml(CATS[cs].label.split(" ")[0])} ${escapeHtml(a.name)}</a>`).join(" ")
     ).join("<br>") + `</div>`;
 }
@@ -2286,10 +2434,12 @@ function listingPage(req, res, p) {
   if (!row) return sendHtml(res, 404, pageShell({
     title: "Listing not found — PataHome", description: "This listing is no longer available.",
     canonical: `${BASE_URL}/`, bodyHtml: `<h1>Listing not found</h1><p>It may have been rented or sold. <a href="/">Browse current listings</a>.</p>` }));
-  const catSlug = CAT_SLUG[row.category];
+  const catSlug = catSlugOf(row);
   const unit = row.category === "rent" ? "/month" : row.category === "shortlet" ? "/night" : "";
+  const isLand = row.category === "land";
+  const landSize = isLand ? LAND.sizeLabel(row.size_value, row.size_unit, row.size_acres) : "";
   const canonical = `${BASE_URL}/listing/${row.id}/${slugify(row.title)}`;
-  const desc = `${row.title} in ${row.area_name}, ${row.county} County — ${fmtKes(row.price)}${unit}. ${(row.lister_role || "owner") === "owner" ? "Contact the owner directly on PataHome — no agent, no viewing fees." : row.lister_role === "agent" ? `Listed by an agent${row.agent_fee ? ` (fee: ${row.agent_fee})` : ""} — every fee shown upfront on PataHome.` : "Listed by the caretaker — every fee shown upfront on PataHome."}`;
+  const desc = `${row.title} in ${row.area_name}, ${row.county} County — ${isLand ? landSize + ", " + priceText(row) : fmtKes(row.price) + unit}. ${(row.lister_role || "owner") === "owner" ? "Contact the owner directly on PataHome — no agent, no viewing fees." : row.lister_role === "agent" ? `Listed by an agent${row.agent_fee ? ` (fee: ${row.agent_fee})` : ""} — every fee shown upfront on PataHome.` : "Listed by the caretaker — every fee shown upfront on PataHome."}`;
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -2300,12 +2450,15 @@ function listingPage(req, res, p) {
   };
   const photos = parsePhotos(row.photos);
   const image = photos.length && cldEnabled() ? photoUrl(photos[0], "c_fill,g_auto,w_1200,h_630,q_auto:good,f_jpg") : null;
-  const shareTitle = `${fmtKes(row.price)}${unit} · ${row.bedrooms != null ? (row.bedrooms === 0 ? "Bedsitter" : row.bedrooms + " bedroom") + " · " : ""}${row.area_name}`;
+  const shareTitle = isLand
+    ? `${row.land_deal === "lease" ? "Land for lease" : "Land for sale"} · ${landSize.split(" · ")[0]} · ${priceText(row)} · ${row.area_name}`
+    : `${fmtKes(row.price)}${unit} · ${row.bedrooms != null ? (row.bedrooms === 0 ? "Bedsitter" : row.bedrooms + " bedroom") + " · " : ""}${row.area_name}`;
   const bodyHtml = `
     ${image ? `<img src="${image}" alt="${escapeHtml(row.title)}" style="width:100%;border-radius:14px;aspect-ratio:1200/630;object-fit:cover">` : ""}
     <h1>${escapeHtml(row.title)}</h1>
     <div class="card">
-      <div class="price">${fmtKes(row.price)}${unit}</div>
+      <div class="price">${escapeHtml(priceText(row))}</div>
+      ${isLand ? `<div class="meta">📐 ${escapeHtml(landSize)}</div><p style="background:#fff8ec;border:1px solid #f3dfb8;border-radius:10px;padding:10px 12px;color:#6b4712;font-size:.9rem"><b>Before paying anything:</b> do an official search on Ardhisasa and visit the land with the owner.</p>` : ""}
       <div class="meta">📍 ${escapeHtml(row.area_name)}, ${escapeHtml(row.county)} County
         ${row.bedrooms != null ? ` · 🛏 ${row.bedrooms === 0 ? "Bedsitter" : row.bedrooms + " bedroom(s)"}` : ""}
         · Listed by ${escapeHtml(row.owner_name)}${row.owner_verified ? " ✓ verified owner" : ""}</div>
@@ -2328,10 +2481,11 @@ function landingPage(req, res, p) {
   const cat = CATS[p.catSlug];
   const area = cat ? areaBySlug(p.areaSlug) : null;
   const bedSlug = p.beds || null;
-  if (!cat || !area || (bedSlug && (cat.db === "sale" || !(bedSlug in BED_SLUGS)))) return send(res, 404, { error: "Not found" });
+  if (!cat || !area || (bedSlug && (cat.db === "sale" || cat.db === "land" || !(bedSlug in BED_SLUGS)))) return send(res, 404, { error: "Not found" });
   const beds = bedSlug ? BED_SLUGS[bedSlug] : null;
   const bedSql = beds === null ? "" : beds === 3 ? " AND l.bedrooms >= 3" : ` AND l.bedrooms = ${beds}`;
-  const rows = db.prepare(`${LISTING_SQL} WHERE l.status='active' AND l.category=? AND l.area_id=?${bedSql} ORDER BY l.featured_until DESC, l.id DESC`).all(cat.db, area.id);
+  const dealSql = cat.deal ? ` AND l.land_deal='${cat.deal}'` : "";
+  const rows = db.prepare(`${LISTING_SQL} WHERE l.status='active' AND l.category=? AND l.area_id=?${bedSql}${dealSql} ORDER BY l.featured_until DESC, l.id DESC`).all(cat.db, area.id);
   const canonical = `${BASE_URL}/${p.catSlug}/${p.areaSlug}${bedSlug ? "/" + bedSlug : ""}`;
   const what = bedSlug ? `${BED_LABEL[bedSlug]} ${cat.db === "shortlet" ? "Airbnbs" : "houses for rent"}` : cat.label;
   const minPrice = rows.length ? Math.min(...rows.map((r) => r.price)) : null;
@@ -2343,18 +2497,19 @@ function landingPage(req, res, p) {
     itemListElement: rows.map((r, i) => ({ "@type": "ListItem", position: i + 1, url: `${BASE_URL}/listing/${r.id}/${slugify(r.title)}` })) };
   const chip = (slug, label) => `<a class="${(bedSlug || "") === slug ? "on" : ""}" href="/${p.catSlug}/${p.areaSlug}${slug ? "/" + slug : ""}">${label}</a>`;
   const nearby = db.prepare("SELECT * FROM areas WHERE county=? AND id!=? LIMIT 12").all(area.county, area.id);
-  const browseQ = `/browse.html?q=${encodeURIComponent(area.name)}&cat=${cat.db}${beds !== null ? "&beds=" + beds : ""}`;
+  const browseQ = `/browse.html?q=${encodeURIComponent(area.name)}&cat=${cat.db}${beds !== null ? "&beds=" + beds : ""}${cat.deal ? "&landDeal=" + cat.deal : ""}`;
   const bodyHtml = `
     <h1>${escapeHtml(what)} in ${escapeHtml(area.name)}, ${escapeHtml(area.county)} County</h1>
     <p class="meta">${rows.length} listing${rows.length === 1 ? "" : "s"}${minPrice ? ` · from ${fmtKes(minPrice)}${cat.unit}` : ""} · direct from owners · updated daily</p>
-    ${cat.db !== "sale" ? `<div class="chips">${chip("", "All")}${Object.keys(BED_SLUGS).map(k => chip(k, BED_LABEL[k])).join("")}</div>` : ""}
+    ${cat.db !== "sale" && cat.db !== "land" ? `<div class="chips">${chip("", "All")}${Object.keys(BED_SLUGS).map(k => chip(k, BED_LABEL[k])).join("")}</div>` : ""}
     ${rows.length ? `<div class="grid">${rows.map((r) => {
       const ph = parsePhotos(r.photos)[0];
       const img = ph && cldEnabled() ? photoUrl(ph, "c_fill,w_500,h_375,q_auto:eco") : "";
       return `<a class="lcard" href="/listing/${r.id}/${slugify(r.title)}">
         <div class="ph" ${img ? `style="background-image:url('${img}')"` : ""}></div>
         <div class="bd"><div class="t">${escapeHtml(r.title)}</div>
-        <div class="price">${fmtKes(r.price)}${cat.unit}</div>
+        <div class="price">${escapeHtml(priceText(r))}</div>
+        ${r.category === "land" ? `<div class="meta">📐 ${escapeHtml(LAND.sizeLabel(r.size_value, r.size_unit, r.size_acres))}</div>` : ""}
         <div class="meta">📍 ${escapeHtml(r.area_name)}${r.bedrooms != null ? ` · 🛏 ${r.bedrooms === 0 ? "Bedsitter" : r.bedrooms + " BR"}` : ""}${(r.lister_role || "owner") === "owner" ? " · Direct owner" : " · Agent"}</div></div></a>`;
     }).join("")}</div>` : `<div class="card">No ${escapeHtml(what.toLowerCase())} listed here right now. <a href="${browseQ}">Search nearby areas</a> or set an alert on the browse page to hear about new ones first.</div>`}
     <a class="cta" href="${browseQ}">Search, filter &amp; see these on the map</a>
@@ -2387,7 +2542,9 @@ router.add("GET", "/sitemap.xml", (req, res) => {
   const areas = db.prepare("SELECT * FROM areas").all();
   const listings = db.prepare("SELECT id, title FROM listings WHERE status='active'").all();
   const urls = [`${BASE_URL}/`, `${BASE_URL}/browse`, `${BASE_URL}/areas`]
-    .concat(Object.keys(CATS).flatMap((cs) => areas.map((a) => `${BASE_URL}/${cs}/${slugify(a.name)}`)))
+    .concat(Object.keys(CATS).filter(cs => CATS[cs].db !== "land").flatMap((cs) => areas.map((a) => `${BASE_URL}/${cs}/${slugify(a.name)}`)))
+    .concat(db.prepare("SELECT DISTINCT l.land_deal, a.name FROM listings l JOIN areas a ON a.id=l.area_id WHERE l.status='active' AND l.category='land'").all()
+      .map(r => `${BASE_URL}/${r.land_deal === "lease" ? "land-for-lease" : "land-for-sale"}/${slugify(r.name)}`))
     .concat(db.prepare(`SELECT DISTINCT l.category, l.bedrooms, a.name FROM listings l JOIN areas a ON a.id=l.area_id
       WHERE l.status='active' AND l.category!='sale' AND l.bedrooms IS NOT NULL`).all()
       .map(r => `${BASE_URL}/${CAT_SLUG[r.category]}/${slugify(r.name)}/${Object.keys(BED_SLUGS).find(k => BED_SLUGS[k] === Math.min(r.bedrooms, 3))}`))

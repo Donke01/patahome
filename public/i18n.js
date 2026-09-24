@@ -65,6 +65,16 @@
     "Get the PataHome app": "Pata programu ya PataHome", "Faster on your phone — free, no Play Store needed.": "Haraka kwenye simu yako — bure, bila Play Store.",
     "Install": "Sakinisha",
     // messages / viewing pages
+    // land
+    "Land": "Ardhi", "Buy or lease": "Nunua au kodisha", "Land for sale": "Ardhi inauzwa", "Land for lease": "Ardhi ya kukodisha",
+    "Land for sale & lease": "Ardhi ya kuuza na kukodisha", "Sale or lease": "Kuuza au kukodisha", "For sale": "Inauzwa", "For lease": "Ya kukodisha",
+    "Any size": "Ukubwa wowote", "Any use": "Matumizi yoyote", "Title deed ready": "Hati miliki iko tayari",
+    "Agricultural": "Kilimo", "Residential": "Makazi", "Commercial": "Biashara", "Mixed use": "Matumizi mchanganyiko",
+    "Largest first": "Kubwa zaidi kwanza", "Price per acre: low → high": "Bei kwa ekari: chini → juu",
+    "Book a free site visit": "Panga kutembelea shamba bure", "Documents checked": "Hati zimekaguliwa",
+    "Land details": "Maelezo ya ardhi", "Title": "Hati", "Land use": "Matumizi ya ardhi", "Road": "Barabara", "Terrain": "Hali ya ardhi",
+    "Fenced": "Imezungushiwa ua", "Beacons in place": "Mawe ya mipaka yapo", "Surveyed": "Imepimwa", "Can be subdivided": "Inaweza kugawanywa",
+    "Before paying anything:": "Kabla ya kulipa chochote:",
     "My messages & viewings ": "Jumbe na ziara zangu", "Viewings": "Ziara", "Conversations": "Mazungumzo", "View listing →": "Tazama tangazo →"
   };
   var HEADS_SW = [

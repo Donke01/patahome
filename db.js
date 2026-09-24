@@ -334,6 +334,15 @@ CREATE TABLE IF NOT EXISTS pv_uniques (day TEXT NOT NULL, h TEXT NOT NULL, PRIMA
 CREATE TABLE IF NOT EXISTS search_log (day TEXT NOT NULL, q TEXT NOT NULL, results INTEGER NOT NULL DEFAULT 0, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, q));
 `);
 
+/* ---- Land listings: deal type, size (owner's unit + acres), pricing basis,
+   exact pin, and private title documents for the "Documents checked" badge ---- */
+for (const col of [
+  "land_deal TEXT", "size_value REAL", "size_unit TEXT", "size_acres REAL", "price_basis TEXT",
+  "price_per_acre REAL", "lease_min TEXT", "exact_pin INTEGER NOT NULL DEFAULT 0",
+  "title_ref TEXT", "land_docs TEXT NOT NULL DEFAULT '[]'", "docs_status TEXT NOT NULL DEFAULT 'none'", "docs_note TEXT"
+]) { try { db.exec("ALTER TABLE listings ADD COLUMN " + col); } catch (e) { /* exists */ } }
+try { db.exec("CREATE INDEX IF NOT EXISTS idx_listings_land ON listings(category, land_deal, size_acres)"); } catch (e) { /* ignore */ }
+
 /* Login sessions — one row per signed-in device. Tokens carry the session id,
    so a session can be expired for inactivity, capped in length, or revoked
    (logout, "sign out everywhere", password/phone/email change). */

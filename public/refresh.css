@@ -1049,3 +1049,11 @@ footer.pf .pf-mail:hover{background:rgba(95,211,160,.14)}
 .inv-stats b{display:block;font-size:1.3rem}
 .inv-stats span{font-size:.72rem;color:var(--muted)}
 .page-browse .feat-badge{position:absolute;top:44px;left:12px;z-index:3;padding:4px 10px;border-radius:99px;background:#f5b400;color:#3b2a00;font-size:.64rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;box-shadow:0 4px 10px rgba(0,0,0,.15)}
+/* land form */
+.land-hint{font-size:.78rem;color:var(--muted);margin-top:4px}
+#lPriceHint{color:var(--green-dark,#073d2e);font-weight:600}
+.pin-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pin-row input{flex:1;min-width:180px}
+/* Land badge + filters */
+.badge.land{background:rgba(236,244,222,.95);color:#3d5a1c;border:1px solid rgba(92,128,48,.35)}
+.land-only{display:none}

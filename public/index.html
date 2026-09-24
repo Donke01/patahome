@@ -280,7 +280,7 @@
 
   /* ---------- Category tiles ---------- */
   .cats{max-width:1100px;margin:0 auto;padding:26px 24px 0}
-  .cat-row{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}
+  .cat-row{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:14px}
   .cat-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:26px 10px;border-radius:var(--radius);background:#fff;border:1px solid var(--line);color:var(--brand);text-decoration:none;box-shadow:var(--shadow);transition:transform .2s,box-shadow .2s,border-color .2s}
   .cat-tile:hover{transform:translateY(-4px);box-shadow:var(--shadow-lift);border-color:var(--brand)}
   .cat-tile .ct-l{color:var(--ink);font-weight:600}
@@ -359,7 +359,7 @@
     .bn svg{width:21px;height:21px}
     .bn.on{color:var(--brand)}
     .cats{padding:18px 16px 0}
-    .cat-row{grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+    .cat-row{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
     .cat-tile{padding:14px 4px;gap:8px;border-radius:14px}
     .ct-ic{width:40px;height:40px;border-radius:11px}
     .ct-ic svg{width:22px;height:22px}
@@ -556,7 +556,7 @@
     .foot-tag{margin-left:auto;margin-right:auto;text-align:center}
   }
 </style>
-  <link rel="stylesheet" href="/refresh.css?v=20260924-4">
+  <link rel="stylesheet" href="/refresh.css?v=20260924-5">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#0B5D3B">
 </head>
@@ -590,6 +590,7 @@
     <a class="np-item" href="/browse.html?cat=rent&beds=1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg>1 Bedroom</a>
     <a class="np-item" href="/browse.html?cat=rent&beds=2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3"/><path d="M2 13a2 2 0 0 1 4 0v2h12v-2a2 2 0 0 1 4 0v3a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z"/></svg>2 Bedroom and more</a>
     <a class="np-item" href="/browse.html?cat=sale"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m11 12 9-9M15 5l3 3"/></svg>Homes for sale</a>
+    <a class="np-item" href="/browse.html?cat=land"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20"/><path d="M4 20 9 10l4 6 3-4 4 8"/></svg>Land for sale &amp; lease</a>
     <a class="np-item" href="/browse.html?cat=shortlet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4V2M16 4V2"/></svg>Airbnb</a>
     <a class="np-item" href="/areas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m9 20-6-3V4l6 3 6-3 6 3v13l-6-3-6 3z"/><path d="M9 7v13M15 4v13"/></svg>Browse by area</a>
     <div class="np-sep"></div>
@@ -718,6 +719,7 @@
     <a class="cat-tile reveal d1" href="/browse.html?cat=rent&beds=1"><span class="ct-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10.6 13.2 12.4 12v6"/><path d="M10.6 18h3.6"/></svg></span><span class="ct-l">1 Bedroom</span><span class="ct-s">Starter homes</span></a>
     <a class="cat-tile reveal d2" href="/browse.html?cat=rent&beds=2"><span class="ct-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="10" height="18" rx="1.2"/><path d="M14 9h4.8a1.2 1.2 0 0 1 1.2 1.2V21"/><path d="M7 7h1M10 7h1M7 11h1M10 11h1M7 15h1M10 15h1M17 13h.5M17 17h.5"/><path d="M8 21v-3h2v3"/><path d="M2 21h20"/></svg></span><span class="ct-l">2 Bedroom+</span><span class="ct-s">Family homes</span></a>
     <a class="cat-tile reveal d2" href="/browse.html?cat=sale"><span class="ct-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.6"/></svg></span><span class="ct-l">For Sale</span><span class="ct-s">Buy a home</span></a>
+    <a class="cat-tile reveal d2" href="/browse.html?cat=land"><span class="ct-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 20h20"/><path d="M4 20 9 10l4 6 3-4 4 8"/><path d="M15 4v5"/><path d="M15 4h4l-1 1.5 1 1.5h-4"/></svg></span><span class="ct-l">Land</span><span class="ct-s">Buy or lease</span></a>
   </div>
 </section>
 
@@ -780,7 +782,7 @@
     </div>
   </div>
   <nav class="pf-links" aria-label="Footer">
-    <div class="pf-col"><h4>Explore</h4><p><a href="/browse.html?cat=rent"><b>Rent</b></a><a href="/browse.html?cat=sale"><b>Buy</b></a><a href="/browse.html?cat=shortlet"><b>Airbnb</b></a><a href="/browse.html?nearby=1">Near me</a><a href="/messages.html">My messages</a></p></div>
+    <div class="pf-col"><h4>Explore</h4><p><a href="/browse.html?cat=rent"><b>Rent</b></a><a href="/browse.html?cat=sale"><b>Buy</b></a><a href="/browse.html?cat=shortlet"><b>Airbnb</b></a><a href="/browse.html?cat=land"><b>Land</b></a><a href="/browse.html?nearby=1">Near me</a><a href="/messages.html">My messages</a></p></div>
     <div class="pf-col"><h4>Owners</h4><p><a href="/dashboard.html"><b>List a property</b></a><a href="/dashboard.html">Dashboard</a></p></div>
     <div class="pf-col"><h4>Contact</h4><p><a class="pf-call" href="tel:+254748181876" aria-label="Call PataHome on 0748 181 876"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z"/></svg><b>Call us</b></a><a class="pf-call pf-mail" href="mailto:info@patahome.co.ke" aria-label="Email PataHome at info@patahome.co.ke"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h15A1.5 1.5 0 0 1 21 6.5v11a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5zm2 .9v.2l7 4.6 7-4.6v-.2zm14 2.6-6.45 4.25a1 1 0 0 1-1.1 0L5 10v7h14z"/></svg><b>Email us</b></a></p></div>
     <div class="pf-col"><h4>Follow</h4><div class="pf-social">
@@ -824,6 +826,7 @@
 <div class="toast" id="toast"></div>
 
 <script src="/lightbox.js?v=20260923-1" defer></script>
+<script src="/land.js?v=1"></script>
 <script>
 /* ================= CONFIG ================= */
 const ICONS = {
@@ -836,12 +839,21 @@ const ICONS = {
 const CAT = {
   rent:{label:"For Rent",unit:"/month",grad:"linear-gradient(140deg,#0d6b50,#14735a)",gal:["home","sofa","shower"],badge:"rent"},
   sale:{label:"For Sale",unit:"",grad:"linear-gradient(140deg,#20272e,#3d4b56)",gal:["home","tree","key"],badge:"sale"},
-  shortlet:{label:"Short Stay",unit:"/night",grad:"linear-gradient(140deg,#815021,#b87530)",gal:["home","sofa","key"],badge:"shortlet"}
+  shortlet:{label:"Short Stay",unit:"/night",grad:"linear-gradient(140deg,#815021,#b87530)",gal:["home","sofa","key"],badge:"shortlet"},
+  land:{label:"Land",unit:"",grad:"linear-gradient(140deg,#4d6b2a,#7f8f3a)",gal:["tree","key","home"],badge:"land"}
 };
+const catLabel=x=>x.cat==="land"?(x.landDeal==="lease"?"Land for lease":"Land for sale"):CAT[x.cat].label;
+function priceHTML(x){
+  if(x.cat!=="land"||!window.PH_LAND)return `${fmt(x.price)} <small>${CAT[x.cat].unit}</small>`;
+  const p=PH_LAND.priceLabel(x);return `${esc(p.main)}${p.extra?` <small>${esc(p.extra)}</small>`:""}`;
+}
+const priceTxt=x=>x.cat==="land"&&window.PH_LAND?PH_LAND.priceLabel(x).main:fmt(x.price)+CAT[x.cat].unit;
+const sizeOrBeds=x=>x.cat==="land"&&window.PH_LAND?PH_LAND.sizeLabel(x.sizeValue,x.sizeUnit,x.sizeAcres):x.beds!==null&&x.beds!==undefined?(x.beds===0?"Bedsitter":x.beds+" BR"):"";
 const AMENITIES = {
   rent:["Secure compound","Water 24/7","Parking","Near matatu route"],
   sale:["Ready title","Gated community","Mains power","Borehole"],
-  shortlet:["Furnished","WiFi included","Kitchen","Flexible check-in"]
+  shortlet:["Furnished","WiFi included","Kitchen","Flexible check-in"],
+  land:[]
 };
 
 /* ================= STATE ================= */
@@ -892,7 +904,8 @@ async function loadData(){
     id:x.id,cat:x.category,title:x.title,desc:x.description,area:x.area+", "+x.county,
     price:x.price,beds:x.bedrooms,lat:x.lat,lng:x.lng,
     posted:timeAgo(x.createdAt),owner:x.ownerName,ownerId:x.ownerId,verified:x.ownerVerified,role:x.listerRole||"owner",
-    photos:x.photoUrls||[]
+    photos:x.photoUrls||[],
+    landDeal:x.landDeal,sizeValue:x.sizeValue,sizeUnit:x.sizeUnit,sizeAcres:x.sizeAcres,priceBasis:x.priceBasis,pricePerAcre:x.pricePerAcre
   }));
 }
 
@@ -1031,7 +1044,7 @@ async function renderSugg(){
   let r;
   try{r=await api("/api/search?"+new URLSearchParams({q,cat:activeCat,perPage:5}))}catch(e){return}
   if(seq!==suggSeq||document.getElementById("searchInput").value.trim()!==q)return;
-  const matches=r.listings.filter(x=>CAT[x.category]).map(x=>({id:x.id,cat:x.category,title:x.title,area:x.area+", "+x.county,price:x.price,photos:x.photoUrls||[]}));
+  const matches=r.listings.filter(x=>CAT[x.category]).map(x=>({id:x.id,cat:x.category,title:x.title,area:x.area+", "+x.county,price:x.price,photos:x.photoUrls||[],landDeal:x.landDeal,priceBasis:x.priceBasis,pricePerAcre:x.pricePerAcre,sizeAcres:x.sizeAcres}));
   if(!matches.length){
     box.innerHTML=`<div class="sg-none">No matches yet — try other keywords, e.g. “bedsitter Kasarani” or “2br under 20k”</div>`;
     box.classList.add("show");return;
@@ -1041,8 +1054,8 @@ async function renderSugg(){
     const th=x.photos.length?`<img src="${x.photos[0].thumb}" alt="">`:ICONS[c.gal[0]];
     return `<div class="sg" onmousedown="event.preventDefault()" onclick="pickSugg(${x.id})">
       <span class="sg-th" style="background:${c.grad}">${th}</span>
-      <span class="sg-main"><span class="sg-t">${esc(x.title)}</span><span class="sg-s">${esc(x.area)} · ${c.label}</span></span>
-      <span class="sg-p">${fmt(x.price)}${c.unit?`<small>${c.unit}</small>`:""}</span>
+      <span class="sg-main"><span class="sg-t">${esc(x.title)}</span><span class="sg-s">${esc(x.area)} · ${catLabel(x)}</span></span>
+      <span class="sg-p">${x.cat==="land"?esc(priceTxt(x)):fmt(x.price)+(c.unit?`<small>${c.unit}</small>`:"")}</span>
     </div>`;
   }).join("")+
   `<div class="sg all" onmousedown="event.preventDefault()" onclick="closeSugg();doSearch()">See all ${r.total} result${r.total===1?"":"s"} →</div>`;
@@ -1152,13 +1165,13 @@ function renderLatest(){
     return `<a class="lcard" style="animation-delay:${i*70}ms" href="/browse.html?open=${x.id}">
       <div class="lc-img" style="background:${c.grad}">
         ${x.photos.length?`<img class="ph-bg" src="${x.photos[0].thumb}" alt="" aria-hidden="true" loading="lazy"><img class="ph" src="${x.photos[0].thumb}" loading="lazy" alt="${esc(x.title)}">`:`<span class="wm">${ICONS[c.gal[0]]}</span>`}
-        <span class="badge ${c.badge}">${c.label}</span>
+        <span class="badge ${c.badge}">${catLabel(x)}</span>
       </div>
       <div class="lc-body">
-        <div class="lc-price">${fmt(x.price)} <small>${c.unit}</small></div>
+        <div class="lc-price">${priceHTML(x)}</div>
         <div class="lc-t">${esc(x.title)}</div>
         <div class="lc-a">${PIN_SVG}${esc(x.area)}</div>
-        <div class="lc-signal"><span>${x.role==="agent"?"Agent listing":x.role==="caretaker"?"Caretaker":x.verified?"✓ Verified owner":"Direct owner"}</span>${x.beds!==null?`<span>${x.beds===0?"Bedsitter":x.beds+" BR"}</span>`:""}</div>
+        <div class="lc-signal"><span>${x.role==="agent"?"Agent listing":x.role==="caretaker"?"Caretaker":x.verified?"✓ Verified owner":"Direct owner"}</span>${sizeOrBeds(x)?`<span>${esc(sizeOrBeds(x))}</span>`:""}</div>
       </div>
     </a>`;
   }).join("");
@@ -1416,17 +1429,17 @@ function render(){
       <div class="card-img" style="background:${c.grad}">
         ${x.photos.length?`<img class="ph-bg" src="${x.photos[0].thumb}" alt="" aria-hidden="true" loading="lazy"><img class="ph" src="${x.photos[0].thumb}" alt="${esc(x.title)}" loading="lazy">`:`<span class="wm">${ICONS[c.gal[0]]}</span>`}
         ${x.photos.length?`<span class="photo-count">${CAM}${x.photos.length}</span>`:""}
-        <span class="badge ${c.badge}">${c.label}</span>
+        <span class="badge ${c.badge}">${catLabel(x)}</span>
         ${isNew?`<span class="new-badge">NEW</span>`:""}
         <button class="heart ${favs.has(x.id)?"on":""}" onclick="event.stopPropagation();toggleFav(${x.id})">${favs.has(x.id)?"♥":"♡"}</button>
         ${d!==null?`<span class="dist-badge">${d<1?Math.round(d*1000)+" m":d.toFixed(1)+" km"} away</span>`:""}
       </div>
       <div class="card-body">
-        <div class="price">${fmt(x.price)} <small>${c.unit}</small></div>
+        <div class="price">${priceHTML(x)}</div>
         <div class="title">${esc(x.title)}</div>
         <div class="meta">
           <span>${PIN_SVG}${esc(x.area)}</span>
-          ${x.beds!==null?`<span>${BED_SVG}${x.beds===0?"Bedsitter":x.beds+" BR"}</span>`:""}
+          ${x.cat==="land"?`<span>📐 ${esc(sizeOrBeds(x))}</span>`:x.beds!==null?`<span>${BED_SVG}${x.beds===0?"Bedsitter":x.beds+" BR"}</span>`:""}
           <span>${CLOCK_SVG}${x.posted}</span>
         </div>
         <div class="card-actions">
@@ -1451,7 +1464,7 @@ function renderMarkers(list){
   list.forEach(x=>{
     const c=CAT[x.cat];
     const m=L.marker([x.lat,x.lng]).addTo(map)
-      .bindPopup(`<b>${esc(x.title)}</b><br>${fmt(x.price)}${c.unit}<br>${esc(x.area)}<br><a href="#" onclick="openContact(${x.id});return false">Contact owner</a>`);
+      .bindPopup(`<b>${esc(x.title)}</b><br>${esc(priceTxt(x))}<br>${esc(x.area)}<br><a href="#" onclick="openContact(${x.id});return false">Contact owner</a>`);
     markers.push(m);
   });
 }
@@ -1479,7 +1492,7 @@ function openDetail(id){
   renderGallery();
   document.getElementById("dTitle").textContent=x.title;
   const d=userLoc?dist(userLoc[0],userLoc[1],x.lat,x.lng):null;
-  document.getElementById("dSub").textContent=fmt(x.price)+c.unit+" · "+x.area+(d!==null?" · "+(d<1?Math.round(d*1000)+" m":d.toFixed(1)+" km")+" from you":"")+" · posted "+x.posted;
+  document.getElementById("dSub").textContent=priceTxt(x)+" · "+x.area+(d!==null?" · "+(d<1?Math.round(d*1000)+" m":d.toFixed(1)+" km")+" from you":"")+" · posted "+x.posted;
   document.getElementById("dChips").innerHTML=AMENITIES[x.cat].map(a=>`<span class="chip">✓ ${a}</span>`).join("")+(x.desc?`<div style="width:100%;font-size:.85rem;margin-top:6px">${esc(x.desc)}</div>`:"");
   document.getElementById("dOwner").textContent=x.owner;
   document.getElementById("dPhone").textContent="Tap Contact Owner to reveal";
@@ -1532,7 +1545,7 @@ async function openContact(id){
   const x=LISTINGS.find(y=>y.id===id),c=CAT[x.cat];
   contactId=id;
   document.getElementById("cTitle").textContent=x.title;
-  document.getElementById("cSub").textContent=fmt(x.price)+c.unit+" · "+x.area;
+  document.getElementById("cSub").textContent=priceTxt(x)+" · "+x.area;
   document.getElementById("cAvatar").textContent=x.owner[0]||"?";
   document.getElementById("cOwner").textContent=x.owner;
   document.getElementById("cPhone").textContent="Loading…";

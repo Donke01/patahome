@@ -298,7 +298,7 @@
   .reply-box input{flex:1}
   .badge-new{background:var(--amber);color:#fff;font-size:.68rem;font-weight:800;border-radius:999px;padding:2px 9px}
 </style>
-  <link rel="stylesheet" href="/refresh.css?v=20260924-4">
+  <link rel="stylesheet" href="/refresh.css?v=20260924-5">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#0B5D3B">
 </head>
@@ -526,7 +526,7 @@
     <div class="sub">Your listing goes live immediately.</div>
     <div id="emCatWrap">
       <label>Category</label>
-      <select id="eCat"><option value="rent">House — For Rent (monthly)</option><option value="sale">House — For Sale</option><option value="shortlet">Airbnb (per night)</option></select>
+      <select id="eCat" onchange="syncCat()"><option value="rent">House — For Rent (monthly)</option><option value="sale">House — For Sale</option><option value="shortlet">Airbnb (per night)</option><option value="land">Land — for sale or lease</option></select>
       <label>Area</label>
       <select id="eArea"></select>
     </div>
@@ -541,10 +541,64 @@
       <div class="photo-note">JPG, PNG or WebP, max 8&nbsp;MB each. Photos are compressed automatically — listings with photos get far more leads.</div>
       <input type="file" id="photoFile" accept="image/jpeg,image/png,image/webp" multiple style="display:none" onchange="uploadPhotos(this.files);this.value=''">
     </div>
-    <label>Price (KES)</label>
-    <input id="ePrice" type="number" placeholder="e.g. 15000">
+    <div id="landWrap" style="display:none">
+      <label>Land is</label>
+      <div class="seg" id="lDealSeg">
+        <button type="button" data-d="sale" onclick="pickDeal('sale')">For sale</button>
+        <button type="button" data-d="lease" onclick="pickDeal('lease')">For lease</button>
+      </div>
+      <label>Size</label>
+      <div style="display:flex;gap:8px">
+        <input id="lSize" type="number" min="0" step="any" placeholder="e.g. 4" style="flex:1" oninput="landPreview()">
+        <select id="lUnit" style="flex:1.4" onchange="landPreview()"></select>
+      </div>
+      <div class="land-hint" id="lSizeHint"></div>
+      <label>How is the price quoted?</label>
+      <select id="lBasis" onchange="landPreview()"></select>
+      <div id="lLeaseWrap" style="display:none">
+        <label>Minimum lease period</label>
+        <input id="lLeaseMin" maxlength="40" placeholder="e.g. 1 year, 2 seasons">
+      </div>
+      <details class="em-more" id="lMore">
+        <summary>Land details <small>— title, use, road, water, power</small></summary>
+        <div class="em-grid">
+          <div><label>Title status</label><select id="lTitle" onchange="$('lLeaseYearsWrap').style.display=this.value==='leasehold'?'':'none'"></select></div>
+          <div id="lLeaseYearsWrap" style="display:none"><label>Leasehold years left</label><input id="lLeaseYears" type="number" min="0" placeholder="e.g. 85"></div>
+          <div><label>Land use</label><select id="lUse"></select></div>
+          <div><label>Road access</label><select id="lRoad"></select></div>
+          <div><label>Distance to tarmac (km)</label><input id="lRoadKm" type="number" min="0" step="0.1" placeholder="e.g. 0.5"></div>
+          <div><label>Water</label><select id="lWater"></select></div>
+          <div><label>Electricity</label><select id="lPower"></select></div>
+          <div><label>Terrain</label><select id="lTerrain"></select></div>
+        </div>
+        <div class="em-ticks" id="lTicks">
+          <label><input type="checkbox" value="fenced"> Fenced</label>
+          <label><input type="checkbox" value="beacons"> Beacons in place</label>
+          <label><input type="checkbox" value="surveyed"> Surveyed</label>
+          <label><input type="checkbox" value="subdivisible"> Can be subdivided</label>
+        </div>
+        <div id="lSuitsWrap" style="display:none">
+          <label>Suitable for</label>
+          <div class="em-ticks" id="lSuits"></div>
+        </div>
+      </details>
+      <label>Exact location on the map <small style="text-transform:none;letter-spacing:0;font-weight:500">(optional — buyers love it)</small></label>
+      <div class="pin-row">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="pinHere()">📍 I'm on the land — use my location</button>
+        <input id="lPin" placeholder="or paste lat, lng e.g. 1.0157, 35.0062">
+      </div>
+      <div class="land-hint" id="lPinHint">Without a pin, the listing shows the area's approximate location.</div>
+      <label>Title deed / LR number <small style="text-transform:none;letter-spacing:0;font-weight:500">(private — only our team sees it)</small></label>
+      <input id="lTitleRef" maxlength="60" placeholder="e.g. KITALE MUNICIPALITY/BLOCK 3/123">
+      <div class="land-hint">After publishing, tap <b>Get documents checked</b> on the listing to upload the official search and earn a “Documents checked” badge.</div>
+    </div>
+    <label id="ePriceLbl">Price (KES)</label>
+    <input id="ePrice" type="number" placeholder="e.g. 15000" oninput="landPreview()">
+    <div class="land-hint" id="lPriceHint"></div>
+    <div id="eBedsWrap">
     <label>Bedrooms (houses only)</label>
     <select id="eBeds"><option value="">N/A</option><option value="0">Bedsitter</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+    </div>
     <label>Who is posting this listing?</label>
     <div class="seg" id="eRoleSeg">
       <button type="button" data-r="owner" onclick="pickListerRole('owner')">I'm the owner</button>
@@ -628,6 +682,7 @@
 
 <div class="toast" id="toast"></div>
 
+<script src="/land.js?v=1"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
@@ -1150,14 +1205,14 @@ async function sendReply(id){
   }catch(e){toast(e.message)}
 }
 function renderTable(){
-  const CAT={rent:"Rent",sale:"Sale",shortlet:"Airbnb"};
+  const CAT={rent:"Rent",sale:"Sale",shortlet:"Airbnb",land:"Land"};
   if(!myListings.length){$("table").innerHTML=`<div class="empty">No listings yet — publish your first one to start receiving leads.</div>`;return}
   $("table").innerHTML=`
     <div class="row head"><div>Listing</div><div>Category</div><div>Price</div><div>Leads</div><div>Status</div><div style="text-align:right">Actions</div></div>`+
     myListings.map(x=>{
-      const rentable=x.category==="rent"||x.category==="shortlet";
+      const rentable=x.category==="rent"||x.category==="shortlet"||(x.category==="land"&&x.landDeal==="lease");
       const nextStatus=rentable?"rented":"sold";
-      const closeLabel=rentable?"Mark rented":"Mark sold";
+      const closeLabel=x.category==="land"?(rentable?"Mark leased":"Mark sold"):rentable?"Mark rented":"Mark sold";
       const daysLeft=x.expiresAt?Math.ceil((new Date(x.expiresAt)-Date.now())/864e5):null;
       const expiringSoon=x.status==="active"&&daysLeft!==null&&daysLeft<=7;
       const lifecycle=x.status==="under_review"?""
@@ -1174,12 +1229,13 @@ function renderTable(){
       return `
     <div class="row">
       <div><div class="title">${esc(x.title)}</div><div class="area">${esc(x.area)}, ${esc(x.county)}</div></div>
-      <div>${CAT[x.category]||x.category}</div>
-      <div>${fmt(x.price)}${x.category==="rent"?"<span style='color:var(--muted);font-size:.75rem'>/mo</span>":x.category==="shortlet"?"<span style='color:var(--muted);font-size:.75rem'>/night</span>":""}</div>
+      <div>${x.category==="land"?(x.landDeal==="lease"?"Land · lease":"Land · sale"):(CAT[x.category]||x.category)}</div>
+      <div>${x.category==="land"&&window.PH_LAND?(()=>{const p=PH_LAND.priceLabel(x);return `${esc(p.main)}<div class="area">${esc(PH_LAND.sizeLabel(x.sizeValue,x.sizeUnit,x.sizeAcres))}</div>${x.docsStatus==="checked"?'<div class="area" style="color:var(--green)">✓ Documents checked</div>':x.docsStatus==="pending"?'<div class="area">Documents being checked…</div>':""}`})():`${fmt(x.price)}${x.category==="rent"?"<span style='color:var(--muted);font-size:.75rem'>/mo</span>":x.category==="shortlet"?"<span style='color:var(--muted);font-size:.75rem'>/night</span>":""}`}</div>
       <div class="leads-badge">${x.leads}</div>
       <div><span class="pill ${x.status}">${x.status==="under_review"?"under review":x.status==="expired"?"paused":x.status}</span><div class="status-note">${statusNote}</div></div>
       <div class="actions">
         ${lifecycle}
+        ${x.category==="land"&&x.docsStatus!=="checked"&&x.docsStatus!=="pending"?`<button class="btn btn-ghost btn-sm" onclick="openLandDocs(${x.id})">Get documents checked</button>`:""}
         <button class="btn btn-ghost btn-sm" onclick="openEdit(${x.id})">Edit</button>
         <button class="btn btn-danger btn-sm" onclick="removeListing(${x.id})">Remove</button>
       </div>
@@ -1340,6 +1396,7 @@ function openAdd(){
   $("emCatWrap").style.display="block";$("emStatusWrap").style.display="none";
   $("eTitle").value="";$("eDesc").value="";$("ePrice").value="";$("eBeds").value="";$("emErr").textContent="";
   pickListerRole(defaultListerRole());setFeeFields("");setFeatureFields({});videoId="";videoUp=null;
+  editCat=null;setLandFields({});syncCat();
   preparePhotoSection();
   show("editModal");
 }
@@ -1350,15 +1407,132 @@ function openEdit(id){
   $("emCatWrap").style.display="none";$("emStatusWrap").style.display="block";
   $("eTitle").value=x.title;$("eDesc").value=x.description||"";$("ePrice").value=x.price;
   $("eBeds").value=x.bedrooms==null?"":x.bedrooms;
-  const rentable=x.category==="rent"||x.category==="shortlet";
+  const rentable=x.category==="rent"||x.category==="shortlet"||(x.category==="land"&&x.landDeal==="lease");
   $("eStatus").innerHTML=rentable
     ?'<option value="active">Active</option><option value="rented">Rented out</option>'
     :'<option value="active">Active</option><option value="sold">Sold</option>';
   $("eStatus").value=x.status;$("emErr").textContent="";
-  pickListerRole(x.listerRole||"owner");setFeeFields(x.agentFee||"");setFeatureFields(x.features);videoId=x.videoId||"";videoUp=null;
+  pickListerRole(x.listerRole||"owner");setFeeFields(x.agentFee||"");videoId=x.videoId||"";videoUp=null;
+  editCat=x.category;
+  if(x.category==="land"){setFeatureFields({});setLandFields(x)}else{setFeatureFields(x.features)}
+  syncCat();
   preparePhotoSection();
   show("editModal");
 }
+/* ---------- land ---------- */
+let landDeal="sale", editCat=null;
+const opt=(obj,blank)=>(blank?`<option value="">${blank}</option>`:"")+Object.entries(obj).map(([k,v])=>`<option value="${k}">${v}</option>`).join("");
+(function initLandForm(){
+  if(!window.PH_LAND)return;
+  const L=PH_LAND;
+  $("lUnit").innerHTML=Object.entries(L.UNITS).map(([k,u])=>`<option value="${k}">${u.many}</option>`).join("");
+  $("lTitle").innerHTML=opt(L.DETAILS.title,"Not stated");$("lUse").innerHTML=opt(L.DETAILS.use,"Not stated");
+  $("lRoad").innerHTML=opt(L.DETAILS.road,"Not stated");$("lWater").innerHTML=opt(L.DETAILS.water,"Not stated");
+  $("lPower").innerHTML=opt(L.DETAILS.power,"Not stated");$("lTerrain").innerHTML=opt(L.DETAILS.terrain,"Not stated");
+  $("lSuits").innerHTML=Object.entries(L.DETAILS.suits).map(([k,v])=>`<label><input type="checkbox" value="${k}"> ${v}</label>`).join("");
+})();
+function curCat(){return editCat||$("eCat").value}
+function syncCat(){
+  const land=curCat()==="land";
+  $("landWrap").style.display=land?"":"none";
+  $("eBedsWrap").style.display=land?"none":"";
+  $("eMore").style.display=land?"none":"";
+  $("ePriceLbl").textContent=land?"Price (KES)":"Price (KES)";
+  $("eTitle").placeholder=land?"e.g. 2 acres with title deed near Kitale town":"e.g. Spacious 2BR with balcony";
+  if(land)pickDeal(landDeal);else $("lPriceHint").textContent="";
+}
+function pickDeal(d){
+  landDeal=d;
+  document.querySelectorAll("#lDealSeg button").forEach(b=>b.classList.toggle("on",b.dataset.d===d));
+  const cur=$("lBasis").value;
+  $("lBasis").innerHTML=Object.entries(PH_LAND.BASIS[d]).map(([k,v])=>`<option value="${k}">${v[0].toUpperCase()+v.slice(1)}</option>`).join("");
+  if(PH_LAND.BASIS[d][cur])$("lBasis").value=cur;
+  $("lLeaseWrap").style.display=d==="lease"?"":"none";
+  $("lSuitsWrap").style.display=d==="lease"?"":"none";
+  landPreview();
+}
+function landPreview(){
+  if(curCat()!=="land"){$("lPriceHint").textContent="";return}
+  const v=+$("lSize").value,u=$("lUnit").value,a=v>0?PH_LAND.acres(v,u):null;
+  $("lSizeHint").textContent=a?(u==="acre"?"":"≈ "+(a>=10?a.toFixed(1):a.toFixed(a<0.1?3:2))+" acres"+(u==="point"?" (10 points = 1 acre)":"")):"";
+  const price=+$("ePrice").value;
+  if(!(price>0)||!a){$("lPriceHint").textContent="";return}
+  const basis=$("lBasis").value;
+  const plotA=(/^plot/.test(u)?PH_LAND.UNITS[u].acres:PH_LAND.UNITS.plot_50x100.acres);
+  const perAcre={total:price/a,per_acre:price,per_plot:price/plotA,acre_year:price,acre_season:price*2,month:price*12/a,year:price/a}[basis];
+  const x={landDeal,priceBasis:basis,price,pricePerAcre:perAcre,sizeAcres:a};
+  const p=PH_LAND.priceLabel(x);
+  $("lPriceHint").textContent="Buyers will see: "+p.main+(p.extra?"  ·  "+p.extra:"");
+}
+function pinHere(){
+  if(!navigator.geolocation){toast("Location isn't available on this device");return}
+  $("lPinHint").textContent="Getting your location…";
+  navigator.geolocation.getCurrentPosition(p=>{$("lPin").value=p.coords.latitude.toFixed(6)+", "+p.coords.longitude.toFixed(6);$("lPinHint").textContent="✓ Pin set to where you're standing (±"+Math.round(p.coords.accuracy)+" m)."},
+    ()=>{$("lPinHint").textContent="Couldn't get your location — paste the coordinates instead (Google Maps → long-press → copy)."},{enableHighAccuracy:true,timeout:15000});
+}
+function landValues(){
+  const pin=($("lPin").value||"").split(/[,\s]+/).filter(Boolean).map(Number);
+  const f={title:$("lTitle").value,use:$("lUse").value,road:$("lRoad").value,water:$("lWater").value,power:$("lPower").value,terrain:$("lTerrain").value,
+    roadKm:$("lRoadKm").value,leaseYears:$("lLeaseYears").value};
+  document.querySelectorAll("#lTicks input").forEach(c=>{if(c.checked)f[c.value]=true});
+  f.suits=[...document.querySelectorAll("#lSuits input:checked")].map(c=>c.value);
+  Object.keys(f).forEach(k=>{if(f[k]===""||(Array.isArray(f[k])&&!f[k].length))delete f[k]});
+  return {landDeal,sizeValue:+$("lSize").value,sizeUnit:$("lUnit").value,priceBasis:$("lBasis").value,leaseMin:$("lLeaseMin").value.trim(),
+    titleRef:$("lTitleRef").value.trim(),features:f,...(pin.length===2&&pin.every(Number.isFinite)?{pinLat:pin[0],pinLng:pin[1]}:{})};
+}
+function setLandFields(x){
+  x=x||{};const f=x.features||{};
+  landDeal=x.landDeal||"sale";
+  $("lSize").value=x.sizeValue||"";$("lUnit").value=x.sizeUnit||"acre";$("lLeaseMin").value=x.leaseMin||"";$("lTitleRef").value=x.titleRef||"";
+  ["title","use","road","water","power","terrain"].forEach(k=>{const el=$("l"+k[0].toUpperCase()+k.slice(1));if(el)el.value=f[k]||""});
+  $("lRoadKm").value=f.roadKm??"";$("lLeaseYears").value=f.leaseYears??"";$("lLeaseYearsWrap").style.display=f.title==="leasehold"?"":"none";
+  document.querySelectorAll("#lTicks input").forEach(c=>c.checked=!!f[c.value]);
+  document.querySelectorAll("#lSuits input").forEach(c=>c.checked=(f.suits||[]).includes(c.value));
+  $("lPin").value=x.exactPin?`${(+x.lat).toFixed(6)}, ${(+x.lng).toFixed(6)}`:"";
+  $("lPinHint").textContent=x.exactPin?"✓ Exact pin set.":"Without a pin, the listing shows the area's approximate location.";
+  $("lMore").open=Object.keys(f).length>0;
+  pickDeal(landDeal);
+  if(x.priceBasis)$("lBasis").value=x.priceBasis;
+  landPreview();
+}
+/* land documents → "Documents checked" badge */
+let ldDocs=[],ldUploading=0,ldListing=null;
+function openLandDocs(id){
+  const x=myListings.find(y=>y.id===id);if(!x)return;ldListing=id;ldDocs=[];ldUploading=0;
+  $("setErr").textContent="";$("setTitle").textContent="Get documents checked";
+  $("setSub").textContent="Upload the official land search (from Ardhisasa) or the title deed. Only our review team sees these — they're never shown publicly.";
+  $("setBody").innerHTML=`<label>Title deed / LR number</label><input id="ldRef" value="${esc(x.titleRef||"")}" placeholder="e.g. KITALE MUNICIPALITY/BLOCK 3/123">
+    <label>Official search or title photo</label><div id="ldList" class="photo-grid"></div>
+    <input type="file" id="ldFile" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="uploadLandDoc(this.files[0]);this.value=''">
+    ${x.docsStatus==="rejected"&&x.docsNote?`<p class="photo-note" style="color:var(--red)">Last review: ${esc(x.docsNote)}</p>`:""}`;
+  $("setActions").innerHTML=`<button class="btn btn-ghost" onclick="hide('setModal')">Cancel</button><button class="btn btn-primary" onclick="sendLandDocs()">Submit for checking</button>`;
+  renderLandDocs();show("setModal");
+}
+function renderLandDocs(){
+  $("ldList").innerHTML=ldDocs.map((d,i)=>`<div class="photo-th"><img src="${signCfg&&signCfg.cloudName?`https://res.cloudinary.com/${signCfg.cloudName}/image/upload/c_fill,w_200,h_150/${d}`:""}" alt="doc ${i+1}"><button type="button" class="rm" onclick="ldDocs.splice(${i},1);renderLandDocs()">✕</button></div>`).join("")+
+    (ldUploading?'<div class="photo-th uploading"><div class="spin">Uploading…</div></div>':"")+
+    (ldDocs.length<4?`<button type="button" class="photo-add" onclick="$('ldFile').click()"><span>+</span>Add document</button>`:"");
+}
+async function uploadLandDoc(f){
+  if(!f)return;
+  if(!/^image\/(jpeg|png|webp)$/.test(f.type)){toast("Use a JPG, PNG or WebP photo");return}
+  let cfg;try{cfg=await api("/api/uploads/sign?kind=verify");signCfg=signCfg||cfg}catch(e){$("setErr").textContent=e.message;return}
+  ldUploading++;renderLandDocs();
+  try{
+    const fd=new FormData();fd.append("file",f);fd.append("api_key",cfg.apiKey);fd.append("timestamp",cfg.timestamp);
+    fd.append("signature",cfg.signature);fd.append("folder",cfg.folder);fd.append("transformation",cfg.transformation);
+    const r=await fetch(`https://api.cloudinary.com/v1_1/${cfg.cloudName}/image/upload`,{method:"POST",body:fd});const d=await r.json();
+    if(!r.ok)throw new Error((d.error&&d.error.message)||"Upload failed");ldDocs.push(d.public_id);
+  }catch(e){$("setErr").textContent="Upload failed: "+e.message}
+  finally{ldUploading--;renderLandDocs()}
+}
+async function sendLandDocs(){
+  if(ldUploading){$("setErr").textContent="Wait for the upload to finish";return}
+  try{await api(`/api/listings/${ldListing}/land-docs`,{method:"POST",body:JSON.stringify({titleRef:$("ldRef").value.trim(),docs:ldDocs})});
+    hide("setModal");toast("Submitted — we'll check the documents and notify you");await refresh()}
+  catch(e){$("setErr").textContent=e.message}
+}
+
 /* ---------- home details ---------- */
 function setFeatureFields(f){
   f=f||{};
@@ -1436,7 +1610,9 @@ async function saveListing(){
   $("emErr").textContent="";
   if(uploads.length){$("emErr").textContent="Wait for photos to finish uploading…";return}
   const photos=signCfg?{photos:photoIds}:{};
-  const lister={listerRole,agentFee:feeText(),features:featureValues(),...(signCfg?{video:videoId}:{})};
+  const isLand=curCat()==="land";
+  const lister={listerRole,agentFee:feeText(),features:featureValues(),...(signCfg?{video:videoId}:{}),...(isLand?landValues():{})};
+  if(isLand&&!(lister.sizeValue>0)){$("emErr").textContent="Enter the land size";return}
   if(videoUp){$("emErr").textContent="Wait for the video to finish uploading…";return}
   if(listerRole==="agent"&&!lister.agentFee){$("emErr").textContent="State your fee to the tenant, or choose “No fee to tenant”";return}
   setSaveBusy(editId==null?"Publishing…":"Saving…");
