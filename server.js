@@ -2647,6 +2647,8 @@ const server = http.createServer((req, res) => {
       // static files from ./public (put patahome.html there as index.html)
       if (req.method === "GET") {
         let file = path.join(__dirname, "public", url.pathname === "/" ? "index.html" : url.pathname);
+        // clean URLs: /admin serves admin.html, /browse serves browse.html, …
+        if (!path.extname(file) && fs.existsSync(file + ".html")) file += ".html";
         if (file.startsWith(path.join(__dirname, "public")) && fs.existsSync(file) && fs.statSync(file).isFile()) {
           const ext = path.extname(file);
           res.writeHead(200, {

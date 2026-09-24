@@ -202,6 +202,7 @@ test("SEO pages, share cards, legal pages and app files", async () => {
   assert.match(sm.body.html, /rentals\/ruaka\/bedsitters/);
   for (const f of ["/privacy.html", "/terms.html", "/manifest.webmanifest", "/sw.js", "/offline.html", "/i18n.js", "/app.js"])
     assert.equal((await call("GET", f)).status, 200, f);
+  for (const f of ["/admin", "/browse", "/dashboard"]) assert.match((await call("GET", f)).body.html, /<html/i, f);
 });
 
 test("land: units, price per acre, lease, filters, pages and document checks", async () => {
