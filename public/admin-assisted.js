@@ -126,7 +126,7 @@
     await Promise.all(list.map(async f => {
       const fd = new FormData();
       fd.append("file", f); fd.append("api_key", signCfg.apiKey); fd.append("timestamp", signCfg.timestamp); fd.append("signature", signCfg.signature);
-      fd.append("folder", signCfg.folder); fd.append("transformation", signCfg.transformation); if (signCfg.moderation) fd.append("moderation", signCfg.moderation);
+      fd.append("folder", signCfg.folder); fd.append("transformation", signCfg.transformation); if (signCfg.moderation) fd.append("moderation", signCfg.moderation); if (signCfg.tags) fd.append("tags", signCfg.tags);
       try { const r = await fetch(`https://api.cloudinary.com/v1_1/${signCfg.cloudName}/image/upload`, { method: "POST", body: fd }); const d = await r.json(); if (d.public_id) photos.push(d.public_id); else toast("A photo failed to upload"); }
       catch (e) { toast("A photo failed to upload"); }
       finally { uploading--; asPaint(); }
@@ -167,6 +167,31 @@
   };
   window.assistStatus = async function (id, st) {
     try { await api("/api/admin/assisted/" + id, { method: "PATCH", body: JSON.stringify(st === "renew" ? { renew: true } : { status: st }) }); toast(st === "renew" ? "Renewed" : "Updated"); NEW_LOADERS.assisted(); }
+    catch (e) { toast(e.message); }
+  };
+})();
+
+/* ---------- Site tab: watermark card (super admin) ---------- */
+(function () {
+  const origSite = NEW_LOADERS.site;
+  NEW_LOADERS.site = async function () {
+    await origSite();
+    if (!hasCap("super")) return;
+    let w; try { w = await api("/api/admin/watermark"); } catch (e) { return; }
+    const grid = document.querySelector("#panel .site-grid"); if (!grid) return;
+    const j = w.job || {};
+    grid.insertAdjacentHTML("afterbegin", `<div class="site-card"><h3>🖼 Watermark</h3>
+      <div class="muted">The PataHome logo is stamped on the bottom-right of every new photo the moment it's uploaded, and on every video.</div>
+      <div style="display:flex;gap:10px;align-items:center;margin:8px 0"><img src="/watermark.png" alt="" style="height:44px;background:#5b6b64;border-radius:8px;padding:4px">
+        <span class="muted">${!w.cloudinary ? "Cloudinary isn't set up" : w.ready ? "✓ Logo stored in Cloudinary" : "Storing the logo in Cloudinary…"}</span></div>
+      <label class="chk"><input type="checkbox" id="s_watermark_on" ${w.enabled ? "checked" : ""} onchange="saveSettings(['watermark_on'])"> Watermark new photos and videos</label>
+      <div class="actions"><button class="btn btn-ghost btn-sm" ${j.running ? "disabled" : ""} onclick="wmExisting()">${j.running ? "Stamping older photos…" : "Watermark older photos"}</button></div>
+      <div class="muted" id="wmStatus">${j.total || j.finishedAt ? `${j.done} of ${j.total} done${j.failed ? `, ${j.failed} failed` : ""}${j.finishedAt && !j.running ? " · finished" : ""}` : ""}</div></div>`);
+    if (j.running) setTimeout(() => { if (tab === "site") NEW_LOADERS.site(); }, 4000);
+  };
+  window.wmExisting = async function () {
+    if (!confirm("Stamp the PataHome logo on all photos uploaded before watermarking was switched on? This permanently changes those photos.")) return;
+    try { await api("/api/admin/watermark/existing", { method: "POST" }); toast("Started — this can take a few minutes"); NEW_LOADERS.site(); }
     catch (e) { toast(e.message); }
   };
 })();

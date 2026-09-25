@@ -22,7 +22,9 @@ const SETTINGS_DEFAULTS = {
   sms_enabled: () => "1",             // master switch for all outgoing SMS
   announce_on: () => "0", announce_text: () => "", announce_level: () => "info", announce_link: () => "",
   pause_listings: () => "0", pause_signups: () => "0",
-  maintenance_message: () => "We're doing some quick maintenance — please try again in a little while."
+  maintenance_message: () => "We're doing some quick maintenance — please try again in a little while.",
+  watermark_on: () => "1",            // stamp the PataHome logo on new photos and videos
+  watermark_asset: () => ""           // set once the logo is stored in Cloudinary
 };
 const SETTING_RULES = {
   listing_ttl_days: v => Math.min(365, Math.max(7, Math.round(+v))), max_photos: v => Math.min(20, Math.max(1, Math.round(+v))),
@@ -31,7 +33,8 @@ const SETTING_RULES = {
   announce_on: v => (v === true || v === "1" || v === 1) ? "1" : "0", announce_text: v => String(v || "").trim().slice(0, 240),
   announce_level: v => ["info", "warn", "success"].includes(v) ? v : "info", announce_link: v => /^(https?:\/\/|\/)[^\s"<>]{0,300}$/.test(String(v || "")) ? String(v) : "",
   pause_listings: v => (v === true || v === "1" || v === 1) ? "1" : "0", pause_signups: v => (v === true || v === "1" || v === 1) ? "1" : "0",
-  maintenance_message: v => String(v || "").trim().slice(0, 240)
+  maintenance_message: v => String(v || "").trim().slice(0, 240),
+  watermark_on: v => (v === true || v === "1" || v === 1) ? "1" : "0"
 };
 const settingsCache = new Map();
 function setting(key) {
@@ -65,6 +68,15 @@ function cldSign(params) {
 }
 // Incoming transformation: cap at 1280px, auto quality — keeps every stored image small
 const CLD_TRANSFORM = "c_limit,w_1280,h_1280,q_auto:good";
+/* Watermark: our white logo (public/watermark.png, stored in Cloudinary as
+   patahome/brand/watermark) in the bottom-right corner, 18% of the width, 70% opacity.
+   Photos get it baked in the moment they're uploaded; videos get a watermarked
+   copy made right after upload and only that copy is ever shown. */
+const WM_ID = "patahome:brand:watermark";
+const WM_LAYER = (w) => `l_${WM_ID}/c_scale,fl_relative,w_${w}/o_70/fl_layer_apply,g_south_east,x_24,y_24`;
+const CLD_TRANSFORM_WM = `c_limit,w_1280,h_1280/${WM_LAYER(0.18)}/q_auto:good`;
+const VIDEO_WM_T = `c_limit,w_1280/${WM_LAYER(0.2)}/q_auto,vc_auto`;
+const watermarkOn = () => cldEnabled() && setting("watermark_on") === "1" && setting("watermark_asset") !== "";
 const photoUrl = (id, t) => `https://res.cloudinary.com/${CLD.cloud}/image/upload/${t}/${id}`;
 require("./public/land.js"); // defines globalThis.PH_LAND (units, conversions, labels) — same file the browser uses
 const LAND = globalThis.PH_LAND;
@@ -114,8 +126,8 @@ const listingView = (row, userLat, userLng) => ({
   featured: !!(row.featured_until && row.featured_until > new Date().toISOString()),
   features: parseJson(row.features, {}),
   video: row.video && cldEnabled() ? {
-    url: `https://res.cloudinary.com/${CLD.cloud}/video/upload/q_auto,vc_auto,c_limit,w_1280/${row.video}.mp4`,
-    poster: `https://res.cloudinary.com/${CLD.cloud}/video/upload/so_1,c_limit,w_720/${row.video}.jpg`
+    url: `https://res.cloudinary.com/${CLD.cloud}/video/upload/${setting("watermark_asset") ? VIDEO_WM_T : "q_auto,vc_auto,c_limit,w_1280"}/${row.video}.mp4`,
+    poster: `https://res.cloudinary.com/${CLD.cloud}/video/upload/so_1,c_limit,w_720${setting("watermark_asset") ? "/" + WM_LAYER(0.2) : ""}/${row.video}.jpg`
   } : null,
   nearby: row.nearby ? parseJson(row.nearby, null) : null,
   videoId: row.video || "",
@@ -1501,17 +1513,21 @@ router.add("GET", "/api/uploads/sign", (req, res) => {
   if (req.query.kind === "video") {
     // Videos: no image transformation; Cloudinary transcodes on delivery.
     const timestamp = Math.floor(Date.now() / 1000), folder = VIDEO_FOLDER;
-    return send(res, 200, { cloudName: CLD.cloud, apiKey: CLD.key, timestamp, folder,
-      signature: cldSign({ folder, timestamp }), maxBytes: 80 * 1024 * 1024, maxSeconds: 90 });
+    // make the watermarked copy straight away (in the background) so it's ready when people watch
+    const extra = watermarkOn() ? { eager: `${VIDEO_WM_T}/mp4`, eager_async: "true" } : {};
+    return send(res, 200, { cloudName: CLD.cloud, apiKey: CLD.key, timestamp, folder, ...extra,
+      signature: cldSign({ folder, timestamp, ...extra }), maxBytes: 80 * 1024 * 1024, maxSeconds: 90 });
   }
   const folder = req.query.kind === "verify" ? "patahome/verify" : CLD.folder;
   const timestamp = Math.floor(Date.now() / 1000);
-  const params = { folder, timestamp, transformation: CLD_TRANSFORM };
+  const wm = folder === CLD.folder && watermarkOn();
+  const transformation = wm ? CLD_TRANSFORM_WM : CLD_TRANSFORM;
+  const params = { folder, timestamp, transformation, ...(wm ? { tags: "wm" } : {}) };
   const moderation = folder === CLD.folder && CLD_MODERATION() ? CLD_MODERATION() : "";
   if (moderation) params.moderation = moderation;
   send(res, 200, {
     cloudName: CLD.cloud, apiKey: CLD.key, moderation,
-    timestamp, folder, transformation: CLD_TRANSFORM,
+    timestamp, folder, transformation, ...(wm ? { tags: "wm" } : {}),
     signature: cldSign(params),
     maxPhotos: CLD.maxPhotos, maxBytes: 8 * 1024 * 1024
   });
@@ -3237,6 +3253,70 @@ router.add("PATCH", "/api/admin/assisted/:id", (req, res, p) => {
   db.prepare(`UPDATE listings SET ${sets.join(",")} WHERE id=?`).run(...params, l.id);
   audit(req, a, "assisted_edit", "listing", l.id, b);
   send(res, 200, { ok: true });
+});
+
+/* ---------- watermark: store the logo in Cloudinary, and stamp older photos ---------- */
+const WM_VERSION = "v1";   // bump when public/watermark.png changes
+function saveSetting(key, value) {
+  db.prepare("INSERT INTO settings (key,value,updated_at) VALUES (?,?,datetime('now')) ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at").run(key, value);
+  settingsCache.delete(key);
+}
+async function ensureWatermark() {
+  if (!cldEnabled() || setting("watermark_asset") === WM_VERSION) return;
+  try {
+    const bytes = fs.readFileSync(path.join(__dirname, "public", "watermark.png"));
+    const params = { public_id: "patahome/brand/watermark", overwrite: "true", invalidate: "true", timestamp: Math.floor(Date.now() / 1000) };
+    const fd = new FormData();
+    fd.append("file", new Blob([bytes], { type: "image/png" }), "watermark.png");
+    for (const [k, v] of Object.entries(params)) fd.append(k, String(v));
+    fd.append("api_key", CLD.key); fd.append("signature", cldSign(params));
+    const r = await fetch(`https://api.cloudinary.com/v1_1/${CLD.cloud}/image/upload`, { method: "POST", body: fd, signal: AbortSignal.timeout(20000) });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok && d.public_id) { saveSetting("watermark_asset", WM_VERSION); console.log("✓ watermark stored in Cloudinary"); }
+    else console.error("watermark upload failed:", JSON.stringify(d).slice(0, 200));
+  } catch (e) { console.error("watermark upload failed:", e.message); }
+}
+setTimeout(() => ensureWatermark(), process.env.NODE_ENV === "test" ? 0 : 3000);
+
+// Re-stamp photos uploaded before watermarking existed (anything without the "wm" tag).
+const wmJob = { running: false, done: 0, failed: 0, total: 0, finishedAt: null };
+async function watermarkExisting() {
+  const auth = { Authorization: "Basic " + Buffer.from(`${CLD.key}:${CLD.secret}`).toString("base64") };
+  const todo = [];
+  let cursor = "";
+  do {
+    const r = await fetch(`https://api.cloudinary.com/v1_1/${CLD.cloud}/resources/image/upload?prefix=${encodeURIComponent(CLD.folder + "/")}&max_results=500&tags=true${cursor ? "&next_cursor=" + cursor : ""}`, { headers: auth });
+    const d = await r.json();
+    for (const x of d.resources || []) if (!(x.tags || []).includes("wm")) todo.push(x.public_id);
+    cursor = d.next_cursor || "";
+  } while (cursor);
+  wmJob.total = todo.length;
+  for (const id of todo) {
+    try {
+      const params = { public_id: id, overwrite: "true", invalidate: "true", tags: "wm", timestamp: Math.floor(Date.now() / 1000) };
+      const fd = new FormData();
+      fd.append("file", `https://res.cloudinary.com/${CLD.cloud}/image/upload/${WM_LAYER(0.18)}/${id}`);
+      for (const [k, v] of Object.entries(params)) fd.append(k, String(v));
+      fd.append("api_key", CLD.key); fd.append("signature", cldSign(params));
+      const r = await fetch(`https://api.cloudinary.com/v1_1/${CLD.cloud}/image/upload`, { method: "POST", body: fd, signal: AbortSignal.timeout(30000) });
+      if (r.ok) wmJob.done++; else wmJob.failed++;
+    } catch (e) { wmJob.failed++; }
+  }
+}
+router.add("GET", "/api/admin/watermark", (req, res) => {
+  if (!requireAdmin(req, res, "super")) return;
+  send(res, 200, { enabled: setting("watermark_on") === "1", ready: setting("watermark_asset") !== "", cloudinary: cldEnabled(), job: wmJob });
+});
+router.add("POST", "/api/admin/watermark/existing", async (req, res) => {
+  const a = requireAdmin(req, res, "super"); if (!a) return;
+  if (!cldEnabled()) return send(res, 400, { error: "Cloudinary isn't configured" });
+  if (setting("watermark_asset") === "") { await ensureWatermark(); if (setting("watermark_asset") === "") return send(res, 400, { error: "Couldn't store the watermark in Cloudinary yet — try again shortly" }); }
+  if (wmJob.running) return send(res, 200, { started: false, job: wmJob });
+  Object.assign(wmJob, { running: true, done: 0, failed: 0, total: 0, finishedAt: null });
+  audit(req, a, "watermark_existing", "photos", null, null);
+  watermarkExisting().catch(e => console.error("watermark backfill:", e.message))
+    .finally(() => { wmJob.running = false; wmJob.finishedAt = new Date().toISOString(); });
+  send(res, 202, { started: true, job: wmJob });
 });
 
 applySettings();

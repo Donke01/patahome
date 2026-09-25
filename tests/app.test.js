@@ -458,3 +458,19 @@ test("assisted listings: PataHome lists for an owner, nothing public mentions ad
   assert.equal((await call("PATCH", `/api/admin/assisted/${id}`, { status: "rented" }, sup)).status, 200);
   assert.ok((await call("GET", "/api/admin/audit?action=assisted_create", null, sup)).body.length >= 2);
 });
+
+test("watermark: new photos and videos get the PataHome logo", async () => {
+  const t = (await call("POST", "/api/auth/login", { phone: "0700000001", password: "adminpass123" })).body.token;
+  const w = await call("GET", "/api/admin/watermark", null, t);
+  assert.equal(w.body.ready, true, "logo stored in Cloudinary at start-up");
+  const img = (await call("GET", "/api/uploads/sign", null, t)).body;
+  assert.match(img.transformation, /l_patahome:brand:watermark/); assert.equal(img.tags, "wm");
+  const vid = (await call("GET", "/api/uploads/sign?kind=video", null, t)).body;
+  assert.match(vid.eager, /l_patahome:brand:watermark.*\/mp4$/); assert.equal(vid.eager_async, "true");
+  const doc = (await call("GET", "/api/uploads/sign?kind=verify", null, t)).body;
+  assert.doesNotMatch(doc.transformation, /watermark/, "ID documents aren't stamped");
+  // switching it off
+  await call("PATCH", "/api/admin/settings", { watermark_on: "0" }, t);
+  assert.doesNotMatch((await call("GET", "/api/uploads/sign", null, t)).body.transformation, /watermark/);
+  await call("PATCH", "/api/admin/settings", { watermark_on: "1" }, t);
+});

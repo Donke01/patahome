@@ -1430,6 +1430,7 @@ function sendToCloudinary(cfg,f,u){
     fd.append("folder",cfg.folder);
     fd.append("transformation",cfg.transformation);
     if(cfg.moderation)fd.append("moderation",cfg.moderation);
+    if(cfg.tags)fd.append("tags",cfg.tags);
     const x=new XMLHttpRequest();u.xhr=x;
     x.open("POST",`https://api.cloudinary.com/v1_1/${cfg.cloudName}/image/upload`);
     x.upload.onprogress=e=>{if(e.lengthComputable){u.loaded=e.loaded;u.total=e.total;paintUpload(u)}};
@@ -1719,6 +1720,7 @@ async function uploadVideo(file){
   const secs=await new Promise(r=>{const v=document.createElement("video");v.preload="metadata";v.onloadedmetadata=()=>{r(v.duration);URL.revokeObjectURL(v.src)};v.onerror=()=>r(0);v.src=URL.createObjectURL(file)});
   if(secs>cfg.maxSeconds+1){toast(`Keep it under ${cfg.maxSeconds} seconds — this one is ${Math.round(secs)}s`);return}
   const fd=new FormData();fd.append("file",file);fd.append("api_key",cfg.apiKey);fd.append("timestamp",cfg.timestamp);fd.append("signature",cfg.signature);fd.append("folder",cfg.folder);
+  if(cfg.eager){fd.append("eager",cfg.eager);fd.append("eager_async",cfg.eager_async)}
   const x=new XMLHttpRequest();videoUp={pct:0,xhr:x};renderVideo();setSaveBusy("Uploading video… 0%");
   x.open("POST",`https://api.cloudinary.com/v1_1/${cfg.cloudName}/video/upload`);
   x.upload.onprogress=e=>{if(e.lengthComputable){videoUp.pct=Math.round(e.loaded/e.total*100);renderVideo();setSaveBusy(`Uploading video… ${videoUp.pct}%`)}};
