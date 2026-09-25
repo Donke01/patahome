@@ -981,7 +981,8 @@ router.add("GET", "/api/stats/listings", (req, res) => {
   const t = db.prepare("SELECT COUNT(*) n, COUNT(DISTINCT owner_id) owners FROM listings WHERE status='active'").get();
   const byArea = db.prepare(`SELECT a.name area, a.county, COUNT(*) n FROM listings l JOIN areas a ON a.id=l.area_id
     WHERE l.status='active' GROUP BY a.id ORDER BY n DESC`).all();
-  send(res, 200, { total: t.n, owners: t.owners, byArea });
+  const byCat = Object.fromEntries(db.prepare("SELECT category, COUNT(*) n FROM listings WHERE status='active' GROUP BY category").all().map(r => [r.category, r.n]));
+  send(res, 200, { total: t.n, owners: t.owners, byArea, byCat });
 });
 
 router.add("GET", "/api/listings/:id", (req, res, p) => {
