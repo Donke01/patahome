@@ -321,3 +321,89 @@ test("commercial: shops, offices and buildings for sale or to let", async () => 
   assert.equal((await call("GET", "/api/listings/" + shopId)).body.pricePerSqft, 120);
   assert.equal((await call("PATCH", "/api/listings/" + shopId, { status: "rented" }, t)).status, 200);
 });
+
+test("admin powers: roles, bans, sign-out, view-as, listing controls, blocklist, settings, audit", async () => {
+  const sup = (await call("POST", "/api/auth/login", { phone: "0700000001", password: "adminpass123" })).body.token;
+  assert.equal((await call("GET", "/api/admin/me", null, sup)).body.role, "super");
+
+  // a moderator can moderate but not change site settings
+  const modTok = await owner("mod@example.com", "Mo Derator");
+  const modId = db.prepare("SELECT id FROM users WHERE email='mod@example.com'").get().id;
+  assert.equal((await call("POST", `/api/admin/users/${modId}/role`, { role: "moderator" }, sup)).status, 200);
+  assert.equal((await call("GET", "/api/admin/me", null, modTok)).status, 401, "role change signs them out");
+  const mod = (await call("POST", "/api/auth/login/verify", { challenge: (await call("POST", "/api/auth/login", { email: "mod@example.com", password: "password123" })).body.twoFactor.challenge, code: lastCode("mod@example.com") })).body.token;
+  assert.ok(mod, "moderator logs in with an emailed code");
+  assert.equal((await call("GET", "/api/admin/me", null, mod)).body.role, "moderator");
+  assert.equal((await call("GET", "/api/admin/settings", null, mod)).status, 403);
+  assert.equal((await call("GET", "/api/admin/moderation", null, mod)).status, 200);
+
+  // an owner with a live listing
+  const t = await owner("scammer@example.com", "Scam Owner");
+  await call("POST", "/api/account/change-phone", { phone: "0712999111" }, t);
+  const uid = db.prepare("SELECT id FROM users WHERE email='scammer@example.com'").get().id;
+  const l = (await call("POST", "/api/listings", { category: "rent", title: "Cheap bedsitter", areaId: areaId("Ruaka"), price: 3000, bedrooms: 0 }, t)).body;
+
+  // edit, banner, feature
+  let r = await call("PATCH", `/api/admin/listings/${l.id}`, { price: 3500, adminBanner: "Under investigation — do not pay" }, mod);
+  assert.equal(r.status, 200); assert.equal(r.body.adminBanner, "Under investigation — do not pay"); assert.equal(r.body.price, 3500);
+  assert.equal((await call("POST", `/api/admin/listings/${l.id}/feature`, { days: 3 }, mod)).status, 200);
+  assert.equal((await call("GET", "/api/listings/" + l.id)).body.featured, true);
+
+  // view as user: can read, can't change anything
+  assert.equal((await call("POST", `/api/admin/users/${uid}/view-as`, null, mod)).status, 403, "only the super admin can view as");
+  const ro = (await call("POST", `/api/admin/users/${uid}/view-as`, null, sup)).body.token;
+  assert.equal((await call("GET", "/api/auth/me", null, ro)).body.id, uid);
+  assert.equal((await call("PATCH", "/api/listings/" + l.id, { price: 1 }, ro)).body.code, "READ_ONLY");
+
+  // suspend: listings hidden, can't log in, identifiers blocked; unban restores
+  r = await call("POST", `/api/admin/users/${uid}/ban`, { days: 7, reason: "Asked for viewing fees", blockIdentifiers: true }, mod);
+  assert.equal(r.status, 200, JSON.stringify(r.body)); assert.equal(r.body.listingsHidden, 1);
+  assert.equal((await call("GET", "/api/auth/me", null, t)).status, 401, "signed out everywhere");
+  assert.equal((await call("POST", "/api/auth/login", { email: "scammer@example.com", password: "password123" })).body.code, "BANNED");
+  assert.equal((await call("POST", "/api/auth/register", { name: "Again", identifier: "0712999111", password: "password123" })).status, 403);
+  assert.ok(!(await call("GET", "/api/search?q=cheap%20bedsitter")).body.listings.some(x => x.id === l.id));
+  assert.equal((await call("POST", `/api/admin/users/${uid}/ban`, { forever: true, reason: "x" }, mod)).status, 403, "permanent bans are super-only");
+  r = await call("POST", `/api/admin/users/${uid}/unban`, null, mod);
+  assert.equal(r.body.listingsShown, 1);
+  const t2 = (await call("POST", "/api/auth/login", { email: "scammer@example.com", password: "password123" })).body.token;
+  assert.ok(t2);
+  assert.equal((await call("POST", `/api/admin/users/${uid}/signout`, null, mod)).body.signedOut >= 1, true);
+  assert.equal((await call("GET", "/api/auth/me", null, t2)).status, 401);
+
+  // blocklist holds matching listings
+  assert.equal((await call("POST", "/api/admin/blocklist", { term: "pay viewing fee" }, mod)).status, 201);
+  const t3 = (await call("POST", "/api/auth/login", { email: "scammer@example.com", password: "password123" })).body.token;
+  const bad = (await call("POST", "/api/listings", { category: "rent", title: "Nice 1BR", description: "Please pay viewing fee to 0711 222 333 first", areaId: areaId("Ruaka"), price: 9000, bedrooms: 1 }, t3)).body;
+  assert.equal((await call("GET", "/api/listings/" + bad.id)).body.status, "under_review", "held for review, not public");
+  assert.ok((await call("GET", "/api/admin/moderation", null, mod)).body.some(x => x.id === bad.id && x.flags.some(f => f.kind === "blocked_term")));
+
+  // bulk actions
+  r = await call("POST", "/api/admin/listings/bulk", { ids: [l.id, bad.id], action: "remove", reason: "Scam" }, mod);
+  assert.equal(r.body.changed, 2);
+
+  // settings: pause new listings + announcement
+  assert.equal((await call("PATCH", "/api/admin/settings", { pause_listings: "1", announce_on: "1", announce_text: "We never ask for M-Pesa before viewing" }, sup)).status, 200);
+  const cfg = (await call("GET", "/api/config")).body;
+  assert.equal(cfg.announcement.text, "We never ask for M-Pesa before viewing"); assert.equal(cfg.pauseListings, true);
+  assert.equal((await call("POST", "/api/listings", { category: "rent", title: "x", areaId: areaId("Ruaka"), price: 5000 }, t3)).status, 400);
+  await call("PATCH", "/api/admin/settings", { pause_listings: "0", announce_on: "0" }, sup);
+
+  // areas, growth, export, broadcast
+  r = await call("POST", "/api/admin/areas", { name: "Kahawa Sukari", county: "Nairobi", lat: -1.19, lng: 36.93 }, sup);
+  assert.equal(r.status, 201);
+  assert.equal((await call("POST", "/api/admin/areas", { name: "Nowhere", county: "X", lat: 40, lng: 1 }, sup)).status, 400);
+  assert.equal((await call("POST", `/api/admin/areas/${r.body.id}/merge`, { into: areaId("Ruaka") }, sup)).status, 200);
+  assert.equal((await call("GET", "/api/admin/growth", null, mod)).body.weeks.length, 12);
+  assert.equal((await call("GET", "/api/admin/export?kind=users", null, mod)).status, 403);
+  const csv = await fetch(base + "/api/admin/export?kind=listings", { headers: { Authorization: "Bearer " + sup } });
+  assert.equal(csv.status, 200); assert.match(await csv.text(), /^\ufeff?id,category,title/);
+  r = await call("POST", "/api/admin/broadcast", { audience: { type: "user", id: uid }, channels: ["notification"], title: "Hello", body: "Test message", dryRun: true }, sup);
+  assert.equal(r.body.reach.total, 1);
+
+  // the audit log saw it all and can't be rewritten
+  const log = (await call("GET", "/api/admin/audit", null, sup)).body.map(x => x.action);
+  for (const a of ["set_role", "edit_listing", "feature", "view_as", "suspend", "unban", "force_signout", "blocklist_add", "bulk_remove", "settings", "area_add", "area_merge", "export"])
+    assert.ok(log.includes(a), "audit has " + a);
+  assert.equal((await call("GET", "/api/admin/audit", null, mod)).status, 403);
+  assert.throws(() => db.prepare("DELETE FROM admin_audit").run());
+});

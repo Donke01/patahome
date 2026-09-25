@@ -745,7 +745,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
 const API = ""; // same origin
-let token = localStorage.getItem("pb_token") || null;
+// Admin "view as user": a read-only token arrives in the URL hash and lives only in this tab.
+(function(){const m=location.hash.match(/viewas=([^&]+)/);if(m){try{sessionStorage.setItem("pb_viewas",decodeURIComponent(m[1]))}catch(e){}history.replaceState(null,"",location.pathname)}})();
+const VIEW_AS=(()=>{try{return sessionStorage.getItem("pb_viewas")}catch(e){return null}})();
+let token = VIEW_AS || localStorage.getItem("pb_token") || null;
 let userName = localStorage.getItem("pb_name") || "";
 let mode = "login", areas = [], myListings = [], myInquiries = [], editId = null, myViewings = [], myListingStats = null;
 let ME = null, CONFIG = null, pendingStatusAction = null;
@@ -824,7 +827,7 @@ function stepUpPrompt(info, path, opts){
    unattended screen locks itself even if no request is made. */
 let idleTimer=null, lastActivity=Date.now();
 function sessionEnded(msg){
-  token=null;ME=null;localStorage.removeItem("pb_token");localStorage.removeItem("pb_name");
+  token=null;ME=null;(VIEW_AS?sessionStorage.removeItem("pb_viewas"):localStorage.removeItem("pb_token"));localStorage.removeItem("pb_name");
   clearTimeout(idleTimer);
   try{closeMenu();hide("setModal")}catch(e){}
   $("headerRight").style.display="none";
@@ -883,7 +886,12 @@ async function submitAuth(){
       body={name:$("aName").value.trim(),identifier:idField,password:$("aPass").value,ref:inviteRef()};
       path="/api/auth/register";
     }
-    const r=await api(path,{method:"POST",body:JSON.stringify(body)});
+    let r=await api(path,{method:"POST",body:JSON.stringify(body)});
+    if(r.twoFactor){
+      const code=prompt(`Admin login: enter the 6-digit code sent to ${r.twoFactor.target||"you"}`);
+      if(!code){$("authErr").textContent="Login cancelled";return}
+      r=await api("/api/auth/login/verify",{method:"POST",body:JSON.stringify({challenge:r.twoFactor.challenge,code:code.trim()})});
+    }
     saveSession(r);enterDash();
     // Verify whichever identifier they signed up with.
     if(r.verifyKind==="email")setTimeout(()=>openEmailVerify(r.verifyTarget),500);
@@ -912,6 +920,13 @@ async function openInvite(){
     $("setActions").innerHTML=`<button class="btn btn-ghost" onclick="hide('setModal')">Close</button><a class="btn btn-primary" style="text-align:center;text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(msg)}">Share on WhatsApp</a>`;
   }catch(e){$("setBody").innerHTML="";$("setErr").textContent=e.message}
 }
+if(VIEW_AS)document.addEventListener("DOMContentLoaded",()=>{
+  const b=document.createElement("div");b.setAttribute("role","status");
+  b.style.cssText="position:sticky;top:0;z-index:5000;background:#b3261e;color:#fff;font:700 .88rem/1.4 Inter,system-ui,sans-serif;padding:9px 14px;text-align:center";
+  b.innerHTML='👁 Read-only view as this user — nothing can be changed. <button type="button" style="margin-left:10px;border:0;border-radius:8px;padding:5px 12px;font-weight:700;cursor:pointer">Exit</button>';
+  b.querySelector("button").onclick=()=>{try{sessionStorage.removeItem("pb_viewas")}catch(e){}window.close();location.href="/admin"};
+  document.body.insertBefore(b,document.body.firstChild);
+});
 function saveSession(r){
   token=r.token;ME=r.user;userName=r.user.name;
   localStorage.setItem("pb_token",token);localStorage.setItem("pb_name",userName);
@@ -941,7 +956,7 @@ async function onGoogleCredential(resp){
 function logout(){
   if(token)fetch("/api/auth/logout",{method:"POST",headers:{Authorization:"Bearer "+token}}).catch(()=>{});
   clearTimeout(idleTimer);
-  token=null;ME=null;localStorage.removeItem("pb_token");localStorage.removeItem("pb_name");
+  token=null;ME=null;(VIEW_AS?sessionStorage.removeItem("pb_viewas"):localStorage.removeItem("pb_token"));localStorage.removeItem("pb_name");
   closeMenu();
   $("headerRight").style.display="none";
   showAuth();setMode("login");
@@ -2088,7 +2103,7 @@ async function doDelete(){
     try{ME=await api("/api/auth/me");userName=ME.name;await enterDash();armIdleTimer();return}
     catch(e){
       const msg=/signed out|session/i.test(e.message)?e.message:"";
-      token=null;localStorage.removeItem("pb_token");
+      token=null;(VIEW_AS?sessionStorage.removeItem("pb_viewas"):localStorage.removeItem("pb_token"));
       showAuth();if(msg)$("authErr").textContent=msg;return;
     }
   }
@@ -2098,6 +2113,6 @@ async function doDelete(){
 // Messages passed back from one-tap email links (e.g. "Still available")
 (function(){const n=new URLSearchParams(location.search).get("notice");if(n){setTimeout(()=>toast(n),900);history.replaceState(null,"",location.pathname)}})();
 </script>
-<script src="/app.js?v=1" defer></script>
+<script src="/app.js?v=2" defer></script>
 </body>
 </html>

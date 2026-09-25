@@ -46,3 +46,29 @@
   });
   window.PH_INSTALL = function () { if (deferred) { deferred.prompt(); } else alert("To install: open your browser menu and tap “Add to Home screen”."); };
 })();
+
+/* Site-wide announcement bar (set by the admin under Site → Announcement). */
+(function () {
+  function show(a) {
+    if (!a || !a.text || document.getElementById("phAnnounce")) return;
+    var key = "ph_ann_" + a.text.length + "_" + a.text.slice(0, 24);
+    try { if (sessionStorage.getItem(key)) return; } catch (e) {}
+    var colors = { info: ["#014B6A", "#fff"], warn: ["#FCB805", "#1d1a0c"], success: ["#028467", "#fff"] }[a.level] || ["#014B6A", "#fff"];
+    var bar = document.createElement("div");
+    bar.id = "phAnnounce"; bar.setAttribute("role", "status");
+    bar.style.cssText = "position:relative;z-index:1400;background:" + colors[0] + ";color:" + colors[1] + ";font:600 .86rem/1.4 Inter,system-ui,sans-serif;padding:9px 44px 9px 16px;text-align:center";
+    var t = document.createElement(a.link ? "a" : "span");
+    t.textContent = a.text;
+    if (a.link) { t.href = a.link; t.style.cssText = "color:inherit;text-decoration:underline"; }
+    var x = document.createElement("button");
+    x.type = "button"; x.setAttribute("aria-label", "Dismiss"); x.textContent = "✕";
+    x.style.cssText = "position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:none;color:inherit;font-size:1rem;cursor:pointer;padding:6px";
+    x.onclick = function () { try { sessionStorage.setItem(key, "1"); } catch (e) {} bar.remove(); };
+    bar.appendChild(t); bar.appendChild(x);
+    document.body.insertBefore(bar, document.body.firstChild);
+  }
+  function load() {
+    fetch("/api/config").then(function (r) { return r.json(); }).then(function (c) { show(c.announcement); }).catch(function () {});
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", load); else load();
+})();

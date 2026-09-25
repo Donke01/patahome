@@ -124,6 +124,34 @@
   .ph-cap{padding:6px 8px;font-size:.75rem;flex:1}.ph-cap a{font-weight:700;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ph-cap span{color:var(--muted,#5f6b66)}
   .ph-item .btn{margin:0 8px 8px}
   .bk-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+  .role-pill{font-size:.68rem;font-weight:800;background:var(--orange);color:#fff;border-radius:999px;padding:2px 9px}
+  .pill.bad{background:#fdecea;color:#8a2319}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line);background:#fcfdfc}
+  .toolbar input,.toolbar select{width:auto;flex:1;min-width:160px;border:1.5px solid var(--line);border-radius:10px;padding:8px 10px;font-size:.85rem}
+  .toolbar select{flex:0 0 auto}
+  .bulkbar{display:none;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 14px;background:#fff8e8;border-bottom:1px solid #f0dfb4;font-size:.84rem}
+  .bulkbar.on{display:flex}
+  td input[type=checkbox],th input[type=checkbox]{width:16px;height:16px}
+  .mdl{position:fixed;inset:0;background:rgba(10,20,16,.55);z-index:2000;display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:4vh 12px}
+  .mdl.on{display:flex}
+  .mdl-card{background:#fff;border-radius:16px;max-width:860px;width:100%;padding:22px 22px 18px;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.25);animation:fadeUp .3s both}
+  .mdl-card h2{font-family:var(--serif);font-size:1.2rem;margin-bottom:4px;padding-right:30px}
+  .mdl-x{position:absolute;top:12px;right:12px;border:0;background:#f0f3f1;border-radius:50%;width:32px;height:32px;font-size:1rem}
+  .mdl-card textarea,.mdl-card select,.site-card textarea,.site-card select{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:9px 11px;font:inherit;font-size:.88rem}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+  .sec{margin-top:18px}
+  .sec h3{font-size:.92rem;margin-bottom:6px}
+  .kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px 16px;font-size:.84rem;margin-top:8px}
+  .kv span{color:var(--muted);display:block;font-size:.72rem;text-transform:uppercase;letter-spacing:.4px}
+  .site-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;padding:14px}
+  .site-card{border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+  .site-card h3{font-size:.95rem;margin-bottom:2px}
+  .site-card .muted{margin-bottom:6px}
+  .chk{display:flex;align-items:center;gap:8px;font-size:.86rem;margin:8px 0;font-weight:600;color:var(--ink)}
+  .chk input{width:18px;height:18px}
+  .mini{max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+  .mini table{font-size:.8rem}.mini td,.mini th{padding:7px 10px}
+  .code-step{display:none}
 </style>
 <link rel="stylesheet" href="/refresh.css?v=20260925-1">
 </head>
@@ -132,7 +160,7 @@
 <header>
   <span class="logo">Pata<b>Home</b><span class="tag">ADMIN</span></span>
   <div class="header-right" id="hdr" style="display:none">
-    <span id="who"></span>
+    <span id="who"></span> <span class="role-pill" id="roleTag"></span>
     <a class="btn btn-white" href="/" style="text-decoration:none">View Site</a>
     <button class="btn btn-primary" onclick="logout()">Log Out</button>
   </div>
@@ -142,12 +170,19 @@
   <div class="auth-card">
     <h1>Admin Access</h1>
     <div class="sub">This area is for the PataHome administrator only.</div>
-    <label>Phone</label>
-    <input id="aPhone" placeholder="07XXXXXXXX">
-    <label>Password</label>
-    <input id="aPass" type="password">
+    <div id="passStep">
+      <label>Phone or email</label>
+      <input id="aPhone" placeholder="07XXXXXXXX or you@email.com" autocomplete="username">
+      <label>Password</label>
+      <input id="aPass" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')login()">
+    </div>
+    <div class="code-step" id="codeStep">
+      <div class="muted" id="codeHint" style="margin-top:8px"></div>
+      <label>Login code</label>
+      <input id="aCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6-digit code" onkeydown="if(event.key==='Enter')login()">
+    </div>
     <div class="err" id="authErr"></div>
-    <button class="btn btn-primary" style="width:100%;padding:11px" onclick="login()">Log In</button>
+    <button class="btn btn-primary" id="loginBtn" style="width:100%;padding:11px" onclick="login()">Log In</button>
   </div>
 </div>
 
@@ -171,23 +206,28 @@
     </div>
   </div>
   <div class="tabs">
-    <button class="tab on" id="tabL" onclick="setTab('listings')">Listings</button>
-    <button class="tab" id="tabU" onclick="setTab('users')">Users</button>
-    <button class="tab" id="tabV" onclick="setTab('verifs')">Verifications <span id="vCount" style="background:var(--red);color:#fff;border-radius:999px;padding:1px 8px;font-size:.7rem;display:none"></span></button>
-    <button class="tab" id="tabR" onclick="setTab('reports')">Reports &amp; flags <span id="rCount" style="background:var(--red);color:#fff;border-radius:999px;padding:1px 8px;font-size:.7rem;display:none"></span></button>
-    <button class="tab" id="tabT" onclick="setTab('traffic')">Traffic</button>
-    <button class="tab" id="tabP" onclick="setTab('photos')">Photos</button>
-    <button class="tab" id="tabB" onclick="setTab('backups')">Backups</button>
-    <button class="tab" id="tabS" onclick="setTab('support')">Support <span id="sCount" style="background:var(--red);color:#fff;border-radius:999px;padding:1px 8px;font-size:.7rem;display:none"></span></button>
+    <button class="tab on" data-tab="listings" data-cap="view" onclick="setTab('listings')">Listings</button>
+    <button class="tab" data-tab="users" data-cap="view" onclick="setTab('users')">People</button>
+    <button class="tab" data-tab="verifs" data-cap="moderate" onclick="setTab('verifs')">Verifications <span id="vCount" style="background:var(--red);color:#fff;border-radius:999px;padding:1px 8px;font-size:.7rem;display:none"></span></button>
+    <button class="tab" data-tab="reports" data-cap="moderate" onclick="setTab('reports')">Reports &amp; flags <span id="rCount" style="background:var(--red);color:#fff;border-radius:999px;padding:1px 8px;font-size:.7rem;display:none"></span></button>
+    <button class="tab" data-tab="support" data-cap="support" onclick="setTab('support')">Support <span id="sCount" style="background:var(--red);color:#fff;border-radius:999px;padding:1px 8px;font-size:.7rem;display:none"></span></button>
+    <button class="tab" data-tab="growth" data-cap="view" onclick="setTab('growth')">Growth</button>
+    <button class="tab" data-tab="traffic" data-cap="view" onclick="setTab('traffic')">Traffic</button>
+    <button class="tab" data-tab="photos" data-cap="moderate" onclick="setTab('photos')">Photos</button>
+    <button class="tab" data-tab="site" data-cap="moderate" onclick="setTab('site')">Site</button>
+    <button class="tab" data-tab="message" data-cap="super" onclick="setTab('message')">Message users</button>
+    <button class="tab" data-tab="audit" data-cap="super" onclick="setTab('audit')">Audit log</button>
+    <button class="tab" data-tab="backups" data-cap="super" onclick="setTab('backups')">Backups</button>
   </div>
   <div class="panel table-scroll" id="panel"></div>
 </div>
 
 <div class="toast" id="toast"></div>
+<div class="mdl" id="mdl" onclick="if(event.target===this)closeModal()"><div class="mdl-card"><button class="mdl-x" aria-label="Close" onclick="closeModal()">✕</button><div id="mdlBody"></div></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
-let token=localStorage.getItem("ph_admin")||null, tab="listings", cache={};
+let token=localStorage.getItem("ph_admin")||null, tab="listings", cache={}, listStatus="";
 const $=id=>document.getElementById(id);
 const fmt=n=>"KES "+Number(n).toLocaleString("en-KE");
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -200,32 +240,52 @@ async function api(path,opts={}){
   if(!r.ok)throw new Error(d.error||"Request failed");
   return d;
 }
+let challenge=null, ADMIN=null;
 async function login(){
   $("authErr").textContent="";
   try{
-    const r=await api("/api/auth/login",{method:"POST",body:JSON.stringify({phone:$("aPhone").value.trim(),password:$("aPass").value})});
+    let r;
+    if(challenge){
+      r=await api("/api/auth/login/verify",{method:"POST",body:JSON.stringify({challenge,code:$("aCode").value.trim()})});
+    }else{
+      const id=$("aPhone").value.trim();
+      r=await api("/api/auth/login",{method:"POST",body:JSON.stringify(/@/.test(id)?{email:id,password:$("aPass").value}:{phone:id,password:$("aPass").value})});
+      if(r.twoFactor){
+        challenge=r.twoFactor.challenge;
+        $("passStep").style.display="none";$("codeStep").style.display="block";
+        $("codeHint").textContent=`We sent a 6-digit code by ${r.twoFactor.channel==="sms"?"SMS":"email"} to ${r.twoFactor.target}. It expires in 10 minutes.`;
+        $("loginBtn").textContent="Verify & enter";setTimeout(()=>$("aCode").focus(),50);return;
+      }
+    }
     token=r.token;
-    await api("/api/admin/overview"); // verifies admin role
+    ADMIN=await api("/api/admin/me"); // verifies admin role
     localStorage.setItem("ph_admin",token);
     enter(r.user.name);
-  }catch(e){token=null;$("authErr").textContent=e.message==="Admin access only"?"This account is not an admin.":e.message}
+  }catch(e){
+    if(!challenge)token=null;
+    $("authErr").textContent=e.message==="Admin access only"?"This account is not an admin.":e.message;
+    if(/log in again/.test(e.message)){challenge=null;$("passStep").style.display="block";$("codeStep").style.display="none";$("loginBtn").textContent="Log In"}
+  }
 }
 function logout(){if(token)fetch("/api/auth/logout",{method:"POST",headers:{Authorization:"Bearer "+token}}).catch(()=>{});token=null;localStorage.removeItem("ph_admin");setTimeout(()=>location.reload(),150)}
 
+const hasCap=c=>!!(ADMIN&&ADMIN.caps.includes(c));
 async function enter(name){
+  if(!ADMIN)ADMIN=await api("/api/admin/me");
   $("authView").style.display="none";$("dash").style.display="block";$("hdr").style.display="flex";
-  $("who").textContent=name||"Admin";
+  $("who").textContent=name||"Admin";$("roleTag").textContent=ADMIN.roleLabel;
+  document.querySelectorAll(".tab[data-cap]").forEach(b=>b.style.display=hasCap(b.dataset.cap)?"":"none");
   await refresh();
 }
 let chart=null, lastUpdated=null;
 async function refresh(){
   const [o,listings,users,stats,verifs,tickets]=await Promise.all([
-    api("/api/admin/overview"),api("/api/admin/listings"),api("/api/admin/users"),
+    api("/api/admin/overview"),api("/api/admin/listings"+(listStatus?"?status="+listStatus:"")).catch(()=>[]),api("/api/admin/users").catch(()=>[]),
     api("/api/admin/stats").catch(()=>null),
-    api("/api/admin/verifications").catch(()=>[]),
-    api("/api/admin/support").catch(()=>[])]);
-  const moderation=await api("/api/admin/moderation").catch(()=>[]);
-  const landDocs=await api("/api/admin/land-docs").catch(()=>[]);
+    hasCap("moderate")?api("/api/admin/verifications").catch(()=>[]):[],
+    hasCap("support")?api("/api/admin/support").catch(()=>[]):[]]);
+  const moderation=hasCap("moderate")?await api("/api/admin/moderation").catch(()=>[]):[];
+  const landDocs=hasCap("moderate")?await api("/api/admin/land-docs").catch(()=>[]):[];
   cache={listings,users,verifs,tickets,moderation,landDocs};
   const rc=$("rCount");rc.textContent=moderation.length;rc.style.display=moderation.length?"inline-block":"none";
   const vn=verifs.length+landDocs.length;const vc=$("vCount");vc.textContent=vn;vc.style.display=vn?"inline-block":"none";
@@ -288,29 +348,16 @@ function tickUpdated(){
 setInterval(tickUpdated,5000);
 setInterval(()=>{if(token&&$("dash").style.display!=="none"&&!document.hidden)refresh().catch(()=>{})},30000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&token&&$("dash").style.display!=="none")refresh().catch(()=>{})});
+const EXTRA_TABS=["traffic","photos","backups","growth","site","audit","message"];
 function setTab(t){
   tab=t;
-  $("tabL").classList.toggle("on",t==="listings");
-  $("tabU").classList.toggle("on",t==="users");
-  $("tabV").classList.toggle("on",t==="verifs");
-  $("tabS").classList.toggle("on",t==="support");
-  $("tabR").classList.toggle("on",t==="reports");
-  ["T:traffic","P:photos","B:backups"].forEach(x=>{const [k,n]=x.split(":");$("tab"+k).classList.toggle("on",t===n)});
-  if(["traffic","photos","backups"].includes(t)){$("panel").innerHTML='<div style="padding:34px;text-align:center;color:var(--muted)">Loading…</div>';loadExtra(t);return}
+  document.querySelectorAll(".tab[data-tab]").forEach(b=>b.classList.toggle("on",b.dataset.tab===t));
+  if(EXTRA_TABS.includes(t)){$("panel").innerHTML='<div style="padding:34px;text-align:center;color:var(--muted)">Loading…</div>';loadExtra(t);return}
   renderTab();
 }
 function renderTab(){
   const CAT={rent:"Rent",sale:"Sale",shortlet:"Airbnb",land:"Land",commercial:"Commercial"};
-  if(tab==="listings"){
-    $("panel").innerHTML=`<table><tr><th>Listing</th><th>Owner</th><th>Price</th><th>Leads</th><th>Status</th><th></th></tr>`+
-      cache.listings.map(x=>`<tr>
-        <td><b>${esc(x.title)}</b> <span class="pill ok">${CAT[x.category]||x.category}</span><div class="muted">${esc(x.area)}, ${esc(x.county)} · #${x.id}</div></td>
-        <td>${esc(x.ownerName)}<div class="muted">${esc(x.ownerPhone)}</div></td>
-        <td>${fmt(x.price)}</td>
-        <td><b>${x.leads}</b></td>
-        <td><span class="pill ok">${x.status}</span></td>
-        <td><button class="btn btn-danger btn-sm" onclick="removeListing(${x.id})">Remove</button></td>
-      </tr>`).join("")+`</table>`;
+  if(tab==="listings"){ renderListings(); return;
   }else if(tab==="verifs"){
     const v=cache.verifs||[], ld=cache.landDocs||[];
     const landHtml=ld.length?`<h3 style="margin:22px 0 4px;font-size:1rem">Land &amp; commercial documents to check</h3>
@@ -336,19 +383,10 @@ function renderTab(){
         </td>
       </tr>`).join("")+`</table>`
       :(ld.length?"":`<div style="padding:34px;text-align:center;color:var(--muted)">No pending verifications — new requests will appear here.</div>`))+landHtml;
-  }else if(tab==="users"){
-    $("panel").innerHTML=`<table><tr><th>User</th><th>Phone</th><th>Listings</th><th>Verified</th><th>Joined</th><th></th></tr>`+
-      cache.users.map(u=>`<tr>
-        <td><b>${esc(u.name)}</b>${u.role==="admin"?' <span class="pill feat">ADMIN</span>':""}</td>
-        <td>${esc(u.phone)}</td>
-        <td>${u.listings}</td>
-        <td>${u.verified?`<span class="pill ok">✓ verified</span>`:`<span class="pill warn">unverified</span>`}</td>
-        <td class="muted">${esc(u.created_at)}</td>
-        <td>${u.role!=="admin"?`<button class="btn btn-ghost btn-sm" onclick="setVerified(${u.id},${u.verified?0:1})">${u.verified?"Unverify":"Verify ✓"}</button>`:""}</td>
-      </tr>`).join("")+`</table>`;
+  }else if(tab==="users"){ renderUsers(); return;
   }else if(tab==="reports"){
     const m=cache.moderation||[];
-    const FLAG={photo_reuse:"Photo reused from another account",price_outlier:"Suspiciously cheap",duplicate_title:"Same title/LR number as another account",photo_moderation:"Photo flagged by moderation",many_counties:"'Owner' in many counties",shared_contact:"WhatsApp shared with another account"};
+    const FLAG={blocked_term:"Contains a blocked word or number",photo_reuse:"Photo reused from another account",price_outlier:"Suspiciously cheap",duplicate_title:"Same title/LR number as another account",photo_moderation:"Photo flagged by moderation",many_counties:"'Owner' in many counties",shared_contact:"WhatsApp shared with another account"};
     $("panel").innerHTML=m.length?`<table><tr><th>Listing</th><th>Why it's here</th><th>Owner</th><th></th></tr>`+
       m.map(x=>`<tr>
         <td><b>${esc(x.title)}</b> ${x.status==="under_review"?'<span class="pill warn">paused for review</span>':`<span class="pill ok">${esc(x.status)}</span>`}
@@ -362,6 +400,7 @@ function renderTab(){
         <td style="white-space:nowrap">
           <button class="btn btn-primary btn-sm" onclick="moderate(${x.id},'clear')">${x.status==="under_review"?"Restore ✓":"Looks fine ✓"}</button>
           <button class="btn btn-danger btn-sm" onclick="moderate(${x.id},'remove')">Remove</button>
+          <button class="btn btn-ghost btn-sm" onclick="openUser(${x.ownerId})">Owner ›</button>
         </td>
       </tr>`).join("")+`</table>`
       :`<div style="padding:34px;text-align:center;color:var(--muted)">Nothing to review — visitor reports and automatic scam flags will appear here.</div>`;
@@ -400,6 +439,7 @@ function renderTab(){
 }
 /* ---------- Traffic / Photos / Backups ---------- */
 async function loadExtra(t){
+  if(window.NEW_LOADERS&&NEW_LOADERS[t])return NEW_LOADERS[t]().catch(e=>{$("panel").innerHTML=`<div style="padding:34px;text-align:center;color:var(--red)">${esc(e.message)}</div>`});
   try{
     if(t==="traffic"){
       const a=await api("/api/admin/analytics?days=30");
@@ -488,11 +528,12 @@ async function reviewVerif(id,approve){
 
 (async function(){
   if(token){
-    try{const me=await api("/api/auth/me");await api("/api/admin/overview");return enter(me.name)}
+    try{const me=await api("/api/auth/me");ADMIN=await api("/api/admin/me");return enter(me.name)}
     catch{token=null;localStorage.removeItem("ph_admin")}
   }
   $("authView").style.display="block";
 })();
 </script>
+<script src="/admin-powers.js?v=1"></script>
 </body>
 </html>

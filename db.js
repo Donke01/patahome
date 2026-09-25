@@ -395,4 +395,39 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 `);
 
+/* ---- Admin powers: team roles, bans, read-only "view as", listing banners,
+   append-only audit log, word blocklist and editable site settings ---- */
+for (const [table, col] of [
+  ["users", "admin_role TEXT"],            // super | moderator | support (only when role='admin')
+  ["users", "banned_until TEXT"],          // ISO time, or 'forever'
+  ["users", "ban_reason TEXT"], ["users", "banned_at TEXT"], ["users", "banned_by INTEGER"],
+  ["listings", "admin_banner TEXT"],       // e.g. "Under investigation — do not pay"
+  ["sessions", "readonly INTEGER NOT NULL DEFAULT 0"], ["sessions", "viewer_id INTEGER"]
+]) { try { db.exec(`ALTER TABLE ${table} ADD COLUMN ${col}`); } catch (e) { /* exists */ } }
+db.exec("UPDATE users SET admin_role='super' WHERE role='admin' AND admin_role IS NULL");
+db.exec(`
+CREATE TABLE IF NOT EXISTS admin_audit (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  at TEXT NOT NULL DEFAULT (datetime('now')),
+  admin_id INTEGER, admin_name TEXT,
+  action TEXT NOT NULL, target_type TEXT, target_id TEXT, detail TEXT,
+  ip TEXT, ua TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_audit_at ON admin_audit(at);
+CREATE INDEX IF NOT EXISTS idx_audit_target ON admin_audit(target_type, target_id);
+CREATE TRIGGER IF NOT EXISTS audit_no_update BEFORE UPDATE ON admin_audit BEGIN SELECT RAISE(ABORT, 'audit log is append-only'); END;
+CREATE TRIGGER IF NOT EXISTS audit_no_delete BEFORE DELETE ON admin_audit BEGIN SELECT RAISE(ABORT, 'audit log is append-only'); END;
+CREATE TABLE IF NOT EXISTS banned_identifiers (
+  kind TEXT NOT NULL, value TEXT NOT NULL, user_id INTEGER, created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (kind, value)
+);
+CREATE TABLE IF NOT EXISTS blocklist (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  term TEXT NOT NULL UNIQUE, created_by INTEGER, created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY, value TEXT, updated_at TEXT NOT NULL DEFAULT (datetime('now')), updated_by INTEGER
+);
+`);
+
 module.exports = db;

@@ -5,10 +5,44 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { URL } = require("node:url");
 const db = require("./db");
-const { hashPassword, verifyPassword, signToken, verifyToken, km, makeRouter, sendMail, mailConfigured, sendSms, smsConfigured } = require("./lib");
+const { hashPassword, verifyPassword, signToken, verifyToken, km, makeRouter, sendMail, mailConfigured, sendSms, smsConfigured: smsConfiguredRaw } = require("./lib");
 
 const PORT = process.env.PORT || 3000;
 const router = makeRouter();
+
+/* ================= site settings (editable by the super admin) =================
+   Stored in the settings table; anything not set falls back to the default
+   (which itself usually comes from an environment variable). */
+const SETTINGS_DEFAULTS = {
+  listing_ttl_days: () => Math.max(7, +process.env.LISTING_TTL_DAYS || 60),
+  max_photos: () => 5,
+  session_idle_hours: () => Math.max(0.25, +process.env.SESSION_IDLE_HOURS || 4),
+  session_max_days: () => Math.max(1, +process.env.SESSION_MAX_DAYS || 14),
+  alerts_enabled: () => "1",          // new-listing alerts (email/SMS) to saved searches
+  sms_enabled: () => "1",             // master switch for all outgoing SMS
+  announce_on: () => "0", announce_text: () => "", announce_level: () => "info", announce_link: () => "",
+  pause_listings: () => "0", pause_signups: () => "0",
+  maintenance_message: () => "We're doing some quick maintenance — please try again in a little while."
+};
+const SETTING_RULES = {
+  listing_ttl_days: v => Math.min(365, Math.max(7, Math.round(+v))), max_photos: v => Math.min(20, Math.max(1, Math.round(+v))),
+  session_idle_hours: v => Math.min(72, Math.max(0.25, +v)), session_max_days: v => Math.min(90, Math.max(1, +v)),
+  alerts_enabled: v => (v === true || v === "1" || v === 1) ? "1" : "0", sms_enabled: v => (v === true || v === "1" || v === 1) ? "1" : "0",
+  announce_on: v => (v === true || v === "1" || v === 1) ? "1" : "0", announce_text: v => String(v || "").trim().slice(0, 240),
+  announce_level: v => ["info", "warn", "success"].includes(v) ? v : "info", announce_link: v => /^(https?:\/\/|\/)[^\s"<>]{0,300}$/.test(String(v || "")) ? String(v) : "",
+  pause_listings: v => (v === true || v === "1" || v === 1) ? "1" : "0", pause_signups: v => (v === true || v === "1" || v === 1) ? "1" : "0",
+  maintenance_message: v => String(v || "").trim().slice(0, 240)
+};
+const settingsCache = new Map();
+function setting(key) {
+  if (!settingsCache.has(key)) {
+    let row = null; try { row = db.prepare("SELECT value FROM settings WHERE key=?").get(key); } catch (e) {}
+    settingsCache.set(key, row && row.value != null ? row.value : String(SETTINGS_DEFAULTS[key] ? SETTINGS_DEFAULTS[key]() : ""));
+  }
+  return settingsCache.get(key);
+}
+const settingOn = (key) => setting(key) === "1";
+const smsConfigured = () => smsConfiguredRaw() && settingOn("sms_enabled");
 
 // Never let a stray rejection kill the server (Railway would answer 502 while it restarts)
 process.on("unhandledRejection", (e) => console.error("unhandledRejection:", e));
@@ -96,6 +130,7 @@ const listingView = (row, userLat, userLng) => ({
     priceBasis: row.price_basis, pricePerSqft: row.price_per_sqft, leaseMin: row.lease_min || "", incomeMonth: row.income_month || null,
     exactPin: !!row.exact_pin, docsChecked: row.docs_status === "checked"
   } : {}),
+  adminBanner: row.admin_banner || "",
   ownerId: row.owner_id,
   ownerName: row.owner_name,
   ownerVerified: !!row.owner_verified,
@@ -115,13 +150,17 @@ const listingView = (row, userLat, userLng) => ({
    - it is older than SESSION_MAX_DAYS (default 14), or
    - it is revoked (logout, sign-out-everywhere, password/phone/email change).
    Tokens issued before sessions existed have no sid and are no longer accepted. */
-const SESSION_IDLE_MS = Math.max(0.25, +process.env.SESSION_IDLE_HOURS || 4) * 3600e3;
-const SESSION_MAX_MS = Math.max(1, +process.env.SESSION_MAX_DAYS || 14) * 86400e3;
+let SESSION_IDLE_MS = Math.max(0.25, +process.env.SESSION_IDLE_HOURS || 4) * 3600e3;
+let SESSION_MAX_MS = Math.max(1, +process.env.SESSION_MAX_DAYS || 14) * 86400e3;
+const ADMIN_IDLE_MS = 30 * 60e3;          // admins are signed out after 30 min idle
+const VIEW_AS_MS = 30 * 60e3;             // read-only "view as user" sessions last 30 min
 const clientIp = (req) => String(req.headers["cf-connecting-ip"] || req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "").split(",")[0].trim().slice(0, 64);
-function createSession(u, req) {
+function createSession(u, req, viewer) {
   const sid = crypto.randomBytes(24).toString("base64url"), now = Date.now();
-  db.prepare("INSERT INTO sessions (id,user_id,created_at,last_seen,expires_at,ua,ip) VALUES (?,?,?,?,?,?,?)")
-    .run(sid, u.id, now, now, now + SESSION_MAX_MS, String(req?.headers?.["user-agent"] || "").slice(0, 200), req ? clientIp(req) : "");
+  db.prepare("INSERT INTO sessions (id,user_id,created_at,last_seen,expires_at,ua,ip,readonly,viewer_id) VALUES (?,?,?,?,?,?,?,?,?)")
+    .run(sid, u.id, now, now, now + (viewer ? VIEW_AS_MS : SESSION_MAX_MS), String(req?.headers?.["user-agent"] || "").slice(0, 200), req ? clientIp(req) : "",
+         viewer ? 1 : 0, viewer ? viewer.id : null);
+  if (viewer) return signToken({ id: u.id, name: u.name, role: "user", sid, ro: 1, viewer: viewer.id }, 1);
   // housekeeping: drop this user's dead sessions
   db.prepare("DELETE FROM sessions WHERE user_id=? AND (expires_at<? OR last_seen<?)").run(u.id, now, now - SESSION_IDLE_MS);
   return signToken({ id: u.id, name: u.name, role: u.role, sid }, Math.ceil(SESSION_MAX_MS / 86400e3));
@@ -139,9 +178,11 @@ function getUser(req) {
   const row = db.prepare("SELECT * FROM sessions WHERE id=? AND user_id=?").get(p.sid, p.id);
   const now = Date.now();
   if (!row) { req._authFail = "expired"; return null; }
-  if (now - row.last_seen > SESSION_IDLE_MS) { db.prepare("DELETE FROM sessions WHERE id=?").run(row.id); req._authFail = "idle"; return null; }
+  const idle = p.role === "admin" ? Math.min(ADMIN_IDLE_MS, SESSION_IDLE_MS) : SESSION_IDLE_MS;
+  if (now - row.last_seen > idle) { db.prepare("DELETE FROM sessions WHERE id=?").run(row.id); req._authFail = p.role === "admin" ? "admin_idle" : "idle"; return null; }
   if (now > row.expires_at) { db.prepare("DELETE FROM sessions WHERE id=?").run(row.id); req._authFail = "expired"; return null; }
   if (now - row.last_seen > 60e3) db.prepare("UPDATE sessions SET last_seen=? WHERE id=?").run(now, row.id);
+  if (row.readonly) p.ro = 1;
   return p;
 }
 const requireAuth = (req, res) => {
@@ -149,10 +190,13 @@ const requireAuth = (req, res) => {
   if (!u) {
     const idleH = Math.round(SESSION_IDLE_MS / 3600e3 * 10) / 10;
     const msg = req._authFail === "idle" ? `You were signed out after ${idleH} hour${idleH === 1 ? "" : "s"} of inactivity — please log in again`
+      : req._authFail === "admin_idle" ? "Admin sessions end after 30 minutes of inactivity — please log in again"
       : req._authFail ? "Your session has ended — please log in again" : "Login required";
     send(res, 401, { error: msg, code: req._authFail ? "SESSION_EXPIRED" : "LOGIN_REQUIRED" });
     return null;
   }
+  // "View as user" sessions can look but never change anything
+  if (u.ro && req.method !== "GET") { send(res, 403, { error: "Read-only view — changes are disabled", code: "READ_ONLY" }); return null; }
   return u;
 };
 function send(res, code, obj) {
@@ -317,6 +361,7 @@ router.add("POST", "/api/auth/register", async (req, res) => {
   if (!name || !identifier || !password)
     return send(res, 400, { error: "Name, phone or email, and password are required" });
   if (password.length < 8) return send(res, 400, { error: "Password must be at least 8 characters" });
+  if (settingOn("pause_signups")) return send(res, 400, { error: "New sign-ups are paused for a short while. " + setting("maintenance_message") });
 
   const isEmail = identifier.includes("@");
   let phone = null, email = null;
@@ -334,6 +379,8 @@ router.add("POST", "/api/auth/register", async (req, res) => {
       return send(res, 400, { error: "Enter a valid Kenyan phone e.g. 0712345678, or an email address" });
     phone = identifier;
   }
+  if (isBlockedIdentifier(isEmail ? "email" : "phone", isEmail ? email : phone))
+    return send(res, 403, { error: "This " + (isEmail ? "email" : "phone number") + " can't be used to create an account. Contact info@patahome.co.ke if you think this is a mistake." });
   // Only ask for an SMS code when phone verification is actually switched on.
   const verifyPhone = !isEmail && phoneVerifyEnabled();
 
@@ -438,7 +485,48 @@ router.add("POST", "/api/auth/login", (req, res) => {
   const user = db.prepare("SELECT * FROM users WHERE phone=? OR (email IS NOT NULL AND email=?)").get(id, id.toLowerCase());
   if (!user || !user.password_hash || !verifyPassword(password || "", user.password_hash))
     return send(res, 401, { error: "Wrong phone/email or password" });
+  const ban = banMessage(user); if (ban) return send(res, 403, { error: ban, code: "BANNED" });
+  if (user.role === "admin") return startAdmin2fa(req, res, user);
   authResponse(res, 200, user, req);
+});
+
+/* Admins confirm every login with a one-time code (email, else SMS). If no channel
+   is available the login still works, but the super admin is alerted. */
+async function startAdmin2fa(req, res, user) {
+  const ch = user.email && mailConfigured() ? { channel: "email", to: user.email, target: maskEmail(user.email) }
+    : realPhone(user.phone) && smsConfigured() ? { channel: "sms", to: user.phone, target: maskPhone(user.phone) } : null;
+  if (!ch) {
+    adminAlert("Admin signed in without a second step", `${user.name} (#${user.id}) — add an email to this admin account so logins need a code.`);
+    return finishAdminLogin(req, res, user, "password only");
+  }
+  const code = String(crypto.randomInt(100000, 1000000)), challenge = crypto.randomBytes(18).toString("base64url");
+  db.prepare("DELETE FROM verify_codes WHERE user_id=? AND kind='admin2fa'").run(user.id);
+  db.prepare("INSERT INTO verify_codes (user_id,kind,target,code,expires_at) VALUES (?,?,?,?,datetime('now','+10 minutes'))").run(user.id, "admin2fa", challenge, code);
+  try {
+    if (ch.channel === "sms") await sendSms({ to: ch.to, text: `${code} is your PataHome admin login code. Never share it.` });
+    else await sendMail({ to: ch.to, subject: `${code} is your PataHome admin login code`,
+      text: `Your PataHome admin login code is ${code}. It expires in 10 minutes.\n\nIf you didn't just try to sign in, change your password now.\n\nIP: ${clientIp(req)}\nDevice: ${String(req.headers["user-agent"] || "").slice(0, 160)}` });
+  } catch (e) { console.error("admin 2fa send failed:", e.message); return send(res, 400, { error: "Couldn't send your login code — please try again" }); }
+  send(res, 200, { twoFactor: { challenge, channel: ch.channel, target: ch.target } });
+}
+function finishAdminLogin(req, res, user, how) {
+  const ip = clientIp(req);
+  const seen = ip && db.prepare("SELECT 1 FROM admin_audit WHERE admin_id=? AND action='login' AND ip=? LIMIT 1").get(user.id, ip);
+  audit(req, user, "login", "user", user.id, how);
+  if (ip && !seen) adminAlert("Admin login from a new place", `${user.name} (#${user.id}) signed in from ${ip}${req.headers["cf-ipcity"] ? " (" + req.headers["cf-ipcity"] + ")" : ""}.\nDevice: ${String(req.headers["user-agent"] || "").slice(0, 160)}`);
+  authResponse(res, 200, user, req);
+}
+router.add("POST", "/api/auth/login/verify", (req, res) => {
+  const b = req.body || {};
+  const row = db.prepare("SELECT * FROM verify_codes WHERE kind='admin2fa' AND target=?").get(String(b.challenge || ""));
+  if (!row) return send(res, 400, { error: "This login attempt has expired — log in again" });
+  if (new Date(row.expires_at + "Z") < new Date() || row.attempts >= 5) { db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id); return send(res, 400, { error: "Code expired or too many tries — log in again" }); }
+  if (row.code !== String(b.code || "").trim()) { db.prepare("UPDATE verify_codes SET attempts=attempts+1 WHERE id=?").run(row.id); return send(res, 400, { error: "Wrong code — check and try again" }); }
+  db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id);
+  const user = db.prepare("SELECT * FROM users WHERE id=?").get(row.user_id);
+  if (!user) return send(res, 400, { error: "Account not found" });
+  const ban = banMessage(user); if (ban) return send(res, 403, { error: ban, code: "BANNED" });
+  finishAdminLogin(req, res, user, "password + code");
 });
 
 router.add("POST", "/api/auth/forgot-password", async (req, res) => {
@@ -475,6 +563,10 @@ router.add("POST", "/api/auth/google", async (req, res) => {
     const p = await r.json();
     if (!r.ok || p.aud !== GOOGLE_CLIENT_ID || !p.email_verified) return send(res, 401, { error: "Google sign-in failed" });
     let user = db.prepare("SELECT * FROM users WHERE google_id=? OR email=?").get(p.sub, (p.email || "").toLowerCase());
+    if (user && user.role === "admin") return send(res, 403, { error: "Admin accounts sign in with a password and code at /admin" });
+    if (user) { const ban = banMessage(user); if (ban) return send(res, 403, { error: ban, code: "BANNED" }); }
+    if (!user && settingOn("pause_signups")) return send(res, 400, { error: "New sign-ups are paused for a short while. " + setting("maintenance_message") });
+    if (!user && isBlockedIdentifier("email", (p.email || "").toLowerCase())) return send(res, 403, { error: "This email can't be used to create an account." });
     if (user) {
       if (!user.google_id) db.prepare("UPDATE users SET google_id=?, avatar_url=COALESCE(avatar_url,?) WHERE id=?").run(p.sub, p.picture || null, user.id);
     } else {
@@ -524,6 +616,8 @@ router.add("PATCH", "/api/account", (req, res) => {
     if (a === null || a > 120) return send(res, 400, { error: "Enter a valid date of birth" });
     if (a < 18) return send(res, 400, { error: "You must be at least 18 years old to use PataHome" });
   }
+  if (req.body.whatsapp && isBlockedIdentifier("whatsapp", req.body.whatsapp))
+    return send(res, 403, { error: "That WhatsApp number can't be used on PataHome." });
   const sets = [], params = [];
   for (const [k, col] of Object.entries(map)) if (req.body[k] !== undefined) {
     sets.push(`${col}=?`); params.push(String(req.body[k]).slice(0, 400));
@@ -675,7 +769,10 @@ router.add("DELETE", "/api/account", async (req, res) => {
 /* ================= public config ================= */
 router.add("GET", "/api/config", (req, res) => {
   send(res, 200, { googleClientId: GOOGLE_CLIENT_ID || null, cloudinary: cldEnabled(), phoneVerify: phoneVerifyEnabled(),
-    sessionIdleMinutes: Math.round(SESSION_IDLE_MS / 60e3) });
+    sessionIdleMinutes: Math.round(SESSION_IDLE_MS / 60e3), maxPhotos: CLD.maxPhotos,
+    announcement: settingOn("announce_on") && setting("announce_text") ? { text: setting("announce_text"), level: setting("announce_level"), link: setting("announce_link") } : null,
+    pauseListings: settingOn("pause_listings"), pauseSignups: settingOn("pause_signups"),
+    maintenanceMessage: settingOn("pause_listings") || settingOn("pause_signups") ? setting("maintenance_message") : "" });
 });
 
 /* ================= areas ================= */
@@ -877,6 +974,7 @@ router.add("POST", "/api/listings", (req, res) => {
     return send(res, 400, { error: "Verify your phone number first (account menu → Verify phone) before posting" });
   if (mailConfigured() && me.email && !me.email_verified)
     return send(res, 400, { error: "Verify your email first (account menu → Verify email) before posting" });
+  if (settingOn("pause_listings")) return send(res, 400, { error: "Posting new listings is paused for a short while. " + setting("maintenance_message") });
   const { category, title, description, areaId, price, bedrooms } = req.body || {};
   if (!["rent", "sale", "shortlet", "land", "commercial"].includes(category)) return send(res, 400, { error: "Invalid category" });
   const land = category === "land" ? landFields(req.body) : null;
@@ -917,6 +1015,7 @@ router.add("POST", "/api/listings", (req, res) => {
       .run(comm.deal, comm.type, comm.sizeValue, comm.sizeUnit, comm.areaSqft, comm.basis, comm.perSqft, comm.leaseMin, comm.income, pinned,
            String(req.body.titleRef || "").trim().slice(0, 60) || null, info.lastInsertRowid);
   }
+  checkBlocklist(info.lastInsertRowid);
   const row = db.prepare(`${LISTING_SQL} WHERE l.id=?`).get(info.lastInsertRowid);
   notifyFollowers(u.id, "New listing from an owner you follow", `${row.title} is now live in ${row.area_name}.`).catch(e=>console.error("follower notification failed:",e.message));
   runScamChecks(row.id);
@@ -932,7 +1031,7 @@ router.add("POST", "/api/listings", (req, res) => {
    REMIND_DAYS before that the owner gets an email/SMS/in-app nudge with
    one-tap links; at the deadline it's paused (status 'expired', hidden from
    search) until renewed. The sweep runs at boot and then hourly. */
-const LISTING_TTL_DAYS = Math.max(7, +process.env.LISTING_TTL_DAYS || 60);
+let LISTING_TTL_DAYS = Math.max(7, +process.env.LISTING_TTL_DAYS || 60);
 const REMIND_DAYS = 7;
 const lastConfirmed = (row) => new Date(String(row.confirmed_at || row.created_at).replace(" ", "T") + "Z").getTime();
 const expiryOf = (row) => new Date(lastConfirmed(row) + LISTING_TTL_DAYS * 86400e3).toISOString();
@@ -976,7 +1075,7 @@ router.add("POST", "/api/listings/:id/confirm", (req, res, p) => {
   const u = requireAuth(req, res); if (!u) return;
   const row = db.prepare("SELECT * FROM listings WHERE id=?").get(p.id);
   if (!row) return send(res, 404, { error: "Listing not found" });
-  if (row.owner_id !== u.id && u.role !== "admin") return send(res, 403, { error: "Not your listing" });
+  if (row.owner_id !== u.id && !can(u, "moderate")) return send(res, 403, { error: "Not your listing" });
   if (!["active", "expired"].includes(row.status)) return send(res, 409, { error: "Only live or paused listings can be confirmed" });
   db.prepare(`UPDATE listings SET confirmed_at=datetime('now'), reminded_at=NULL, status='active'${row.status !== "active" ? ", status_changed_at=datetime('now')" : ""} WHERE id=?`).run(row.id);
   send(res, 200, listingView(db.prepare(`${LISTING_SQL} WHERE l.id=?`).get(row.id)));
@@ -1009,6 +1108,8 @@ function addFlag(listingId, kind, detail) {
   if (db.prepare("SELECT 1 FROM listing_flags WHERE listing_id=? AND kind=? AND resolved=0").get(listingId, kind)) return false;
   db.prepare("INSERT INTO listing_flags (listing_id,kind,detail) VALUES (?,?,?)").run(listingId, kind, String(detail).slice(0, 300));
   console.log(`[trust] flag ${kind} on listing #${listingId}: ${detail}`);
+  const n = db.prepare("SELECT COUNT(*) n FROM listing_flags WHERE listing_id=? AND resolved=0").get(listingId).n;
+  if (n === 2) adminAlert("Listing looks like a scam", `Listing #${listingId} now has ${n} automatic scam flags (latest: ${kind} — ${detail}). Review it: ${SITE()}/admin`);
   return true;
 }
 function evaluateReports(listingId) {
@@ -1044,6 +1145,8 @@ router.add("POST", "/api/listings/:id/report", (req, res, p) => {
   db.prepare("INSERT INTO reports (listing_id,reason,details,contact,ip) VALUES (?,?,?,?,?)")
     .run(l.id, reason, String(b.details || "").trim().slice(0, 1000), String(b.contact || "").trim().slice(0, 80), ip);
   evaluateReports(l.id);
+  const burst = db.prepare("SELECT COUNT(*) n FROM reports WHERE listing_id=? AND created_at > datetime('now','-1 hour')").get(l.id).n;
+  if (burst === 3) adminAlert("Burst of reports on a listing", `Listing #${l.id} got ${burst} reports in the last hour. Review it: ${SITE()}/admin`);
   send(res, 201, { ok: true });
 });
 
@@ -1215,7 +1318,7 @@ router.add("POST", "/api/listings/:id/land-docs", (req, res, p) => {
   const u = requireAuth(req, res); if (!u) return;
   const l = db.prepare("SELECT * FROM listings WHERE id=?").get(p.id);
   if (!l || (l.category !== "land" && l.category !== "commercial")) return send(res, 404, { error: "Land or commercial listing not found" });
-  if (l.owner_id !== u.id && u.role !== "admin") return send(res, 403, { error: "Not your listing" });
+  if (l.owner_id !== u.id && !can(u, "moderate")) return send(res, 403, { error: "Not your listing" });
   const b = req.body || {};
   const ref = String(b.titleRef || l.title_ref || "").trim().slice(0, 60);
   if (!ref) return send(res, 400, { error: "Enter the title deed / LR number" });
@@ -1226,14 +1329,14 @@ router.add("POST", "/api/listings/:id/land-docs", (req, res, p) => {
   send(res, 200, { ok: true, docsStatus: "pending" });
 });
 router.add("GET", "/api/admin/land-docs", (req, res) => {
-  if (!requireAdmin(req, res)) return;
+  if (!requireAdmin(req, res, "moderate")) return;
   const rows = db.prepare(`${LISTING_SQL} WHERE l.category IN ('land','commercial') AND l.docs_status='pending' ORDER BY l.id`).all();
   send(res, 200, rows.map(r => ({ id: r.id, title: r.title, area: `${r.area_name}, ${r.county}`, owner: r.owner_name, titleRef: r.title_ref, category: r.category,
     size: r.category === "land" ? LAND.sizeLabel(r.size_value, r.size_unit, r.size_acres) : (COMM.TYPES[r.comm_type] || "Commercial") + (r.size_value ? " · " + COMM.areaLabel(r.size_value, r.size_unit, r.area_sqft) : ""), price: priceText(r),
     docs: parsePhotos(r.land_docs).map(d => cldEnabled() ? photoUrl(d, "c_limit,w_1600") : d) })));
 });
 router.add("POST", "/api/admin/land-docs/:id", (req, res, p) => {
-  if (!requireAdmin(req, res)) return;
+  const a = requireAdmin(req, res, "moderate"); if (!a) return; auditOnSuccess(req, res, a, "docs_review", "listing", p.id, req.body);
   const l = db.prepare("SELECT * FROM listings WHERE id=? AND category IN ('land','commercial')").get(p.id);
   if (!l) return send(res, 404, { error: "Land or commercial listing not found" });
   const ok = (req.body || {}).action === "approve", note = String((req.body || {}).note || "").slice(0, 200);
@@ -1259,8 +1362,9 @@ router.add("PATCH", "/api/listings/:id", (req, res, p) => {
   const u = requireAuth(req, res); if (!u) return;
   const row = db.prepare("SELECT * FROM listings WHERE id=?").get(p.id);
   if (!row) return send(res, 404, { error: "Listing not found" });
-  if (row.owner_id !== u.id && u.role !== "admin") return send(res, 403, { error: "Not your listing" });
+  if (row.owner_id !== u.id && !can(u, "moderate")) return send(res, 403, { error: "Not your listing" });
   const body = req.body || {};
+  if (row.owner_id !== u.id) auditOnSuccess(req, res, u, "owner_edit_as_admin", "listing", row.id, Object.keys(body).join(","));
   const allowed = ["title", "description", "price", "bedrooms"];
   const sets = [], params = [];
   for (const k of allowed) if (body[k] !== undefined) { sets.push(`${k}=?`); params.push(body[k]); }
@@ -1312,7 +1416,7 @@ router.add("PATCH", "/api/listings/:id", (req, res, p) => {
   // A listing can be relisted, but it cannot be both rented and sold. Validate
   // the lifecycle on the server as well as in the owner UI so direct API calls
   // cannot make a listing disappear under an incompatible status.
-  if (row.status === "under_review" && u.role !== "admin")
+  if (row.status === "under_review" && !can(u, "moderate"))
     return send(res, 409, { error: "This listing is under review after visitor reports. We'll email you once it's checked." });
   if (body.status !== undefined) {
     if (row.status === "removed")
@@ -1347,6 +1451,7 @@ router.add("PATCH", "/api/listings/:id", (req, res, p) => {
     db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
       .run(row.owner_id, "system", `Listing ${verb}`, `“${row.title}” was ${verb}. ${next}`);
   }
+  if (!can(u, "moderate") && ["title", "description", "agentFee", "features"].some(k => body[k] !== undefined)) checkBlocklist(row.id);
   const updated = db.prepare(`${LISTING_SQL} WHERE l.id=?`).get(row.id);
   notifyFollowers(updated.owner_id, "A followed listing was updated", `${updated.title} has new details on PataHome.`).catch(e=>console.error("follower notification failed:",e.message));
   send(res, 200, listingView(updated));
@@ -1356,7 +1461,8 @@ router.add("DELETE", "/api/listings/:id", (req, res, p) => {
   const u = requireAuth(req, res); if (!u) return;
   const row = db.prepare("SELECT * FROM listings WHERE id=?").get(p.id);
   if (!row) return send(res, 404, { error: "Listing not found" });
-  if (row.owner_id !== u.id && u.role !== "admin") return send(res, 403, { error: "Not your listing" });
+  if (row.owner_id !== u.id && !can(u, "moderate")) return send(res, 403, { error: "Not your listing" });
+  if (row.owner_id !== u.id) auditOnSuccess(req, res, u, "delete_listing", "listing", row.id, row.title);
   // reclaim photo storage before soft-deleting
   for (const id of parsePhotos(row.photos)) cldDestroy(id);
   db.prepare("UPDATE listings SET status='removed', status_changed_at=datetime('now'), photos='[]' WHERE id=?").run(row.id);
@@ -1558,7 +1664,7 @@ router.add("POST", "/api/inquiries/:id/reply", (req, res, p) => {
   const row = db.prepare(`
     SELECT i.id, l.owner_id FROM inquiries i JOIN listings l ON l.id = i.listing_id WHERE i.id=?`).get(p.id);
   if (!row) return send(res, 404, { error: "Inquiry not found" });
-  if (row.owner_id !== u.id && u.role !== "admin") return send(res, 403, { error: "Not your inquiry" });
+  if (row.owner_id !== u.id && !can(u, "moderate")) return send(res, 403, { error: "Not your inquiry" });
   if ((req.body || {}).markRead) { db.prepare("UPDATE inquiries SET owner_unread=0 WHERE id=?").run(row.id); return send(res, 200, { ok: true }); }
   const { reply } = req.body || {};
   if (!reply || !String(reply).trim()) return send(res, 400, { error: "reply is required" });
@@ -1837,7 +1943,7 @@ router.add("POST", "/api/viewings/:id/respond", async (req, res, p) => {
   const u = requireAuth(req, res); if (!u) return;
   const v = db.prepare("SELECT v.*, l.owner_id, l.title FROM viewings v JOIN listings l ON l.id=v.listing_id WHERE v.id=?").get(p.id);
   if (!v) return send(res, 404, { error: "Viewing not found" });
-  if (v.owner_id !== u.id && u.role !== "admin") return send(res, 403, { error: "Not your listing" });
+  if (v.owner_id !== u.id && !can(u, "moderate")) return send(res, 403, { error: "Not your listing" });
   const action = String((req.body || {}).action || ""), msg = String((req.body || {}).message || "").trim().slice(0, 300);
   if (!["confirm", "decline"].includes(action)) return send(res, 400, { error: "action must be confirm or decline" });
   if (v.status !== "requested" && !(v.status === "confirmed" && action === "decline")) return send(res, 409, { error: "This viewing is already " + v.status });
@@ -1957,6 +2063,7 @@ router.add("GET", "/api/alerts/:token/unsubscribe", (req, res, p) => {
   noticeRedirect(res, "Alert removed — you won't get these emails any more.");
 });
 function matchAlerts(listingId) {
+  if (!settingOn("alerts_enabled")) return;
   const r = db.prepare(`${LISTING_SQL} WHERE l.id=?`).get(listingId);
   if (!r || r.status !== "active") return;
   const today = new Date().toISOString().slice(0, 10);
@@ -2076,16 +2183,16 @@ if (process.env.NODE_ENV !== "test" && process.env.BACKUPS !== "off") {
   setInterval(() => { if (backupDue()) runBackup(); }, 3600e3);
 }
 router.add("GET", "/api/admin/backups", (req, res) => {
-  if (!requireAdmin(req, res)) return;
+  if (!requireAdmin(req, res, "super")) return;
   send(res, 200, { cloud: cldEnabled(), dir: BACKUP_DIR, backups: db.prepare("SELECT * FROM backups ORDER BY id DESC LIMIT 20").all() });
 });
 router.add("POST", "/api/admin/backups", async (req, res) => {
-  if (!requireAdmin(req, res)) return;
+  const a = requireAdmin(req, res, "super"); if (!a) return; auditOnSuccess(req, res, a, "backup_now", "backup", null, null);
   const r = await runBackup("manual");
   send(res, r.ok ? 200 : 400, r.ok ? r : { error: r.error });
 });
 router.add("GET", "/api/admin/backups/latest", (req, res) => {
-  if (!requireAdmin(req, res)) return;
+  const a = requireAdmin(req, res, "super"); if (!a) return; auditOnSuccess(req, res, a, "backup_download", "backup", null, null);
   const files = fs.existsSync(BACKUP_DIR) ? fs.readdirSync(BACKUP_DIR).filter(f => /^patahome-.*\.db\.gz$/.test(f)).sort() : [];
   if (!files.length) return send(res, 404, { error: "No backup yet — run one first" });
   const f = files[files.length - 1];
@@ -2138,7 +2245,7 @@ function logSearch(q, results) {
     .run(new Date().toISOString().slice(0, 10), norm, results, results);
 }
 router.add("GET", "/api/admin/analytics", (req, res) => {
-  if (!requireAdmin(req, res)) return;
+  if (!requireAdmin(req, res, "view")) return;
   const days = Math.min(90, Math.max(7, +req.query.days || 30)), since = `-${days} days`;
   const series = [];
   const v = Object.fromEntries(db.prepare("SELECT day, SUM(views) n FROM pv_daily WHERE day >= date('now', ?) GROUP BY day").all(since).map(r => [r.day, r.n]));
@@ -2234,7 +2341,7 @@ async function cldResource(publicId) {
   return r.ok ? r.json() : null;
 }
 router.add("GET", "/api/admin/photos", (req, res) => {
-  if (!requireAdmin(req, res)) return;
+  if (!requireAdmin(req, res, "moderate")) return;
   const rows = db.prepare(`${LISTING_SQL} WHERE l.status IN ('active','under_review','expired') AND l.photos != '[]' ORDER BY l.id DESC LIMIT 60`).all();
   const out = [];
   for (const r of rows) for (const id of parsePhotos(r.photos)) out.push({ listingId: r.id, title: r.title, owner: r.owner_name, status: r.status, publicId: id,
@@ -2242,7 +2349,7 @@ router.add("GET", "/api/admin/photos", (req, res) => {
   send(res, 200, out.slice(0, 180));
 });
 router.add("POST", "/api/admin/photos/remove", (req, res) => {
-  if (!requireAdmin(req, res)) return;
+  const a = requireAdmin(req, res, "moderate"); if (!a) return; auditOnSuccess(req, res, a, "photo_remove", "listing", (req.body || {}).listingId, req.body);
   const { listingId, publicId, reason } = req.body || {};
   const l = db.prepare("SELECT * FROM listings WHERE id=?").get(listingId);
   if (!l) return send(res, 404, { error: "Listing not found" });
@@ -2257,12 +2364,135 @@ router.add("POST", "/api/admin/photos/remove", (req, res) => {
 });
 
 
-/* ================= admin (role: admin only) ================= */
-function requireAdmin(req, res) {
-  const u = requireAuth(req, res);
-  if (!u) return null;
-  if (u.role !== "admin") { send(res, 403, { error: "Admin access only" }); return null; }
+/* ================= admin: team roles, audit log, alerts =================
+   Roles: super (everything), moderator (listings, reports, documents, users),
+   support (tickets + read-only user info). Only the super admin sees contact
+   details in bulk, exports data, changes settings, grants roles or views as a user. */
+const ADMIN_ROLES = { super: "Super admin", moderator: "Moderator", support: "Support" };
+const ROLE_CAPS = {
+  super: ["view", "moderate", "support", "users", "super"],
+  moderator: ["view", "moderate", "users"],
+  support: ["view", "support"]
+};
+function adminRoleOf(id) {
+  const r = db.prepare("SELECT role, admin_role FROM users WHERE id=?").get(id);
+  return r && r.role === "admin" ? (ROLE_CAPS[r.admin_role] ? r.admin_role : "super") : null;
+}
+function can(u, cap) {
+  if (!u || u.ro) return false;
+  const r = adminRoleOf(u.id);
+  return !!(r && ROLE_CAPS[r].includes(cap));
+}
+function requireAdmin(req, res, cap = "view") {
+  const u = requireAuth(req, res); if (!u) return null;
+  const r = u.ro ? null : adminRoleOf(u.id);
+  if (!r) { send(res, 403, { error: "Admin access only" }); return null; }
+  if (!ROLE_CAPS[r].includes(cap)) { send(res, 403, { error: `Your role (${ADMIN_ROLES[r]}) can't do this` }); return null; }
+  u.adminRole = r;
   return u;
+}
+// Append-only record of every admin action (the table refuses UPDATE and DELETE).
+function audit(req, u, action, targetType, targetId, detail) {
+  try {
+    db.prepare("INSERT INTO admin_audit (admin_id,admin_name,action,target_type,target_id,detail,ip,ua) VALUES (?,?,?,?,?,?,?,?)")
+      .run(u ? u.id : null, u ? (u.name || "") : "system", action, targetType || null, targetId == null ? null : String(targetId),
+           detail == null ? null : (typeof detail === "string" ? detail : JSON.stringify(detail)).slice(0, 1000),
+           req ? clientIp(req) : "", req ? String(req.headers["user-agent"] || "").slice(0, 200) : "");
+  } catch (e) { console.error("audit failed:", e.message); }
+}
+// log an admin action once the request has succeeded
+function auditOnSuccess(req, res, a, action, type, id, detail) {
+  res.once("finish", () => { if (res.statusCode < 300) audit(req, a, action, type, id, detail); });
+}
+// Serious events: email ALERT_EMAIL (muted per subject for 30 min) and, if set, SMS ADMIN_ALERT_PHONE.
+const smsAlertSeen = new Map();
+function adminAlert(subject, detail) {
+  alertAdmin(subject, detail);
+  audit(null, null, "alert", null, null, subject + (detail ? " — " + String(detail).slice(0, 300) : ""));
+  const to = process.env.ADMIN_ALERT_PHONE;
+  if (to && smsConfigured() && process.env.NODE_ENV !== "test" && (smsAlertSeen.get(subject) || 0) < Date.now() - 30 * 60e3) {
+    smsAlertSeen.set(subject, Date.now());
+    sendSms({ to, text: `PataHome alert: ${subject}`.slice(0, 160) }).catch(e => console.error("alert sms failed:", e.message));
+  }
+}
+
+/* ---------- bans & suspensions ---------- */
+const lastNine = (s) => String(s || "").replace(/\D/g, "").slice(-9);
+function isBlockedIdentifier(kind, value) {
+  const v = kind === "email" ? String(value || "").trim().toLowerCase() : lastNine(value);
+  if (!v || (kind !== "email" && v.length < 9)) return false;
+  return !!db.prepare("SELECT 1 FROM banned_identifiers WHERE kind=? AND value=?").get(kind === "email" ? "email" : "phone", v);
+}
+function isBanned(row) {
+  if (!row || !row.banned_until) return false;
+  if (row.banned_until === "forever") return true;
+  if (row.banned_until > new Date().toISOString()) return true;
+  unbanUser(row.id, null, null, "ban period ended");
+  return false;
+}
+function banMessage(row) {
+  if (!isBanned(row)) return "";
+  return row.banned_until === "forever"
+    ? "This account has been closed for breaking PataHome's rules. Contact info@patahome.co.ke if you think this is a mistake."
+    : `This account is suspended until ${new Date(row.banned_until).toLocaleString("en-KE", { dateStyle: "medium", timeStyle: "short", timeZone: "Africa/Nairobi" })}${row.ban_reason ? " — " + row.ban_reason : ""}.`;
+}
+function banUser(userId, until, reason, blockIds, adminU, req) {
+  const u = db.prepare("SELECT * FROM users WHERE id=?").get(userId);
+  db.prepare("UPDATE users SET banned_until=?, ban_reason=?, banned_at=datetime('now'), banned_by=? WHERE id=?").run(until, reason || null, adminU ? adminU.id : null, userId);
+  const hidden = db.prepare("UPDATE listings SET status='suspended', status_changed_at=datetime('now') WHERE owner_id=? AND status IN ('active','under_review')").run(userId).changes;
+  revokeSessions(userId);
+  if (blockIds) {
+    const add = db.prepare("INSERT OR IGNORE INTO banned_identifiers (kind,value,user_id) VALUES (?,?,?)");
+    if (lastNine(u.phone).length === 9 && realPhone(u.phone)) add.run("phone", lastNine(u.phone), userId);
+    if (u.email) add.run("email", u.email.toLowerCase(), userId);
+    if (lastNine(u.whatsapp).length === 9) add.run("phone", lastNine(u.whatsapp), userId);
+  }
+  audit(req, adminU, until === "forever" ? "ban" : "suspend", "user", userId, { until, reason, blockIds: !!blockIds, listingsHidden: hidden });
+  return hidden;
+}
+function unbanUser(userId, adminU, req, why) {
+  db.prepare("UPDATE users SET banned_until=NULL, ban_reason=NULL, banned_at=NULL, banned_by=NULL WHERE id=?").run(userId);
+  const shown = db.prepare("UPDATE listings SET status='active', confirmed_at=datetime('now'), status_changed_at=datetime('now') WHERE owner_id=? AND status='suspended'").run(userId).changes;
+  db.prepare("DELETE FROM banned_identifiers WHERE user_id=?").run(userId);
+  audit(req, adminU, "unban", "user", userId, why || null);
+  return shown;
+}
+setInterval(() => {
+  try { for (const r of db.prepare("SELECT * FROM users WHERE banned_until IS NOT NULL AND banned_until!='forever' AND banned_until<=?").all(new Date().toISOString())) isBanned(r); }
+  catch (e) { console.error("ban expiry:", e.message); }
+}, 15 * 60e3).unref();
+
+/* ---------- word / number blocklist for listings ---------- */
+function blocklistHit(text) {
+  const terms = db.prepare("SELECT term FROM blocklist").all().map(r => r.term);
+  if (!terms.length) return null;
+  const low = String(text || "").toLowerCase(), digits = low.replace(/[\s\-().+]/g, "");
+  for (const t of terms) {
+    const nine = lastNine(t);
+    if (/^[\d\s\-+()]+$/.test(t) && nine.length === 9) { if (digits.includes(nine)) return t; }
+    else if (low.includes(t.toLowerCase())) return t;
+  }
+  return null;
+}
+function checkBlocklist(listingId) {
+  const l = db.prepare("SELECT * FROM listings WHERE id=?").get(listingId);
+  if (!l) return;
+  const hit = blocklistHit([l.title, l.description, l.agent_fee, l.features].join(" \n "));
+  if (!hit) return;
+  if (l.status === "active") db.prepare("UPDATE listings SET status='under_review', status_changed_at=datetime('now') WHERE id=?").run(l.id);
+  addFlag(l.id, "blocked_term", `Contains blocked term “${hit}”`);
+  db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)").run(l.owner_id, "listing", "Listing held for review",
+    `"${l.title}" is being checked by our team before it goes live. This usually takes less than a day.`);
+  adminAlert("Listing held: blocked term", `Listing #${l.id} "${l.title}" contains “${hit}”. Review it: ${SITE()}/admin`);
+}
+
+/* ---------- apply saved settings to the running server ---------- */
+function applySettings() {
+  settingsCache.clear();
+  LISTING_TTL_DAYS = +setting("listing_ttl_days");
+  CLD.maxPhotos = +setting("max_photos");
+  SESSION_IDLE_MS = +setting("session_idle_hours") * 3600e3;
+  SESSION_MAX_MS = +setting("session_max_days") * 86400e3;
 }
 
 router.add("GET", "/api/admin/overview", (req, res) => {
@@ -2283,7 +2513,7 @@ router.add("GET", "/api/admin/overview", (req, res) => {
 
 /* -------- moderation: tenant reports + automatic flags -------- */
 router.add("GET", "/api/admin/moderation", (req, res) => {
-  if (!requireAdmin(req, res)) return;
+  if (!requireAdmin(req, res, "moderate")) return;
   const ids = db.prepare(`SELECT listing_id id FROM reports WHERE status='open' UNION SELECT listing_id FROM listing_flags WHERE resolved=0`).all().map(r => r.id);
   const out = ids.map(id => {
     const l = db.prepare(`${LISTING_SQL} WHERE l.id=?`).get(id);
@@ -2300,7 +2530,7 @@ router.add("GET", "/api/admin/moderation", (req, res) => {
   send(res, 200, out);
 });
 router.add("POST", "/api/admin/moderation/:id", (req, res, p) => {
-  if (!requireAdmin(req, res)) return;
+  const a = requireAdmin(req, res, "moderate"); if (!a) return; auditOnSuccess(req, res, a, "moderation_" + String((req.body || {}).action || ""), "listing", p.id, null);
   const l = db.prepare("SELECT * FROM listings WHERE id=?").get(p.id);
   if (!l) return send(res, 404, { error: "Listing not found" });
   const action = String((req.body || {}).action || "");
@@ -2325,7 +2555,7 @@ router.add("POST", "/api/admin/moderation/:id", (req, res, p) => {
 
 /* -------- verification review queue -------- */
 router.add("GET", "/api/admin/verifications", (req, res) => {
-  if (!requireAdmin(req, res)) return;
+  if (!requireAdmin(req, res, "moderate")) return;
   const rows = db.prepare("SELECT * FROM users WHERE verify_status='pending' ORDER BY id").all();
   send(res, 200, rows.map(u => ({
     id: u.id, name: u.name, legalName: u.legal_name, phone: u.phone, email: u.email,
@@ -2338,7 +2568,7 @@ router.add("GET", "/api/admin/verifications", (req, res) => {
 });
 
 router.add("POST", "/api/admin/verifications/:id", (req, res, p) => {
-  if (!requireAdmin(req, res)) return;
+  const a = requireAdmin(req, res, "moderate"); if (!a) return; auditOnSuccess(req, res, a, (req.body && req.body.approve) ? "verify_approve" : "verify_reject", "user", p.id, req.body && req.body.reason);
   const u = db.prepare("SELECT * FROM users WHERE id=?").get(p.id);
   if (!u) return send(res, 404, { error: "User not found" });
   const approve = !!(req.body && req.body.approve);
@@ -2386,29 +2616,37 @@ router.add("GET", "/api/admin/stats", (req, res) => {
 });
 
 router.add("GET", "/api/admin/listings", (req, res) => {
-  if (!requireAdmin(req, res)) return;
+  const a = requireAdmin(req, res, "view"); if (!a) return;
+  const contacts = can(a, "super") || can(a, "support");
   const leads = {};
   for (const r of db.prepare("SELECT listing_id, COUNT(*) n FROM leads GROUP BY listing_id").all()) leads[r.listing_id] = r.n;
+  const q = req.query, where = [], params = [];
+  if (q.status === "all") {} else if (q.status) { where.push("l.status=?"); params.push(String(q.status)); } else where.push("l.status != 'removed'");
+  if (q.owner) { where.push("l.owner_id=?"); params.push(+q.owner); }
   const rows = db.prepare(`SELECT l.*, a.name AS area_name, a.county, u.name AS owner_name, u.phone AS owner_phone
     FROM listings l JOIN areas a ON a.id=l.area_id JOIN users u ON u.id=l.owner_id
-    WHERE l.status != 'removed' ORDER BY l.id DESC`).all();
+    ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY l.id DESC`).all(...params);
   send(res, 200, rows.map(r => ({
-    id: r.id, category: r.category, title: r.title, area: r.area_name, county: r.county,
-    price: r.price, status: r.status, featured: !!(r.featured_until && r.featured_until > new Date().toISOString()),
-    ownerName: r.owner_name, ownerPhone: r.owner_phone, leads: leads[r.id] || 0, createdAt: r.created_at
+    id: r.id, category: r.category, title: r.title, description: r.description, area: r.area_name, areaId: r.area_id, county: r.county,
+    price: r.price, bedrooms: r.bedrooms, status: r.status, featured: !!(r.featured_until && r.featured_until > new Date().toISOString()), featuredUntil: r.featured_until,
+    adminBanner: r.admin_banner || "", ownerId: r.owner_id, ownerName: r.owner_name,
+    ownerPhone: contacts ? realPhone(r.owner_phone) : (realPhone(r.owner_phone) ? maskPhone(r.owner_phone) : ""), leads: leads[r.id] || 0, createdAt: r.created_at
   })));
 });
 
 router.add("GET", "/api/admin/users", (req, res) => {
-  if (!requireAdmin(req, res)) return;
-  const rows = db.prepare(`SELECT u.id, u.name, u.phone, u.verified, u.role, u.created_at,
+  const a = requireAdmin(req, res, "view"); if (!a) return;
+  const contacts = can(a, "super") || can(a, "support");
+  const rows = db.prepare(`SELECT u.id, u.name, u.phone, u.verified, u.role, u.admin_role, u.created_at, u.banned_until,
       (SELECT COUNT(*) FROM listings l WHERE l.owner_id=u.id AND l.status!='removed') AS listings
-    FROM users u ORDER BY u.id`).all();
-  send(res, 200, rows);
+    FROM users u ORDER BY u.id DESC`).all();
+  send(res, 200, rows.map(r => ({ id: r.id, name: r.name, phone: contacts ? realPhone(r.phone) : (realPhone(r.phone) ? maskPhone(r.phone) : ""),
+    verified: r.verified, role: r.role, adminRole: r.role === "admin" ? (r.admin_role || "super") : null, created_at: r.created_at,
+    banned: !!(r.banned_until && (r.banned_until === "forever" || r.banned_until > new Date().toISOString())), bannedUntil: r.banned_until, listings: r.listings })));
 });
 
 router.add("PATCH", "/api/admin/users/:id", (req, res, p) => {
-  if (!requireAdmin(req, res)) return;
+  const a = requireAdmin(req, res, "moderate"); if (!a) return; auditOnSuccess(req, res, a, "set_verified", "user", p.id, req.body);
   const row = db.prepare("SELECT id FROM users WHERE id=?").get(p.id);
   if (!row) return send(res, 404, { error: "User not found" });
   if (req.body.verified !== undefined)
@@ -2418,7 +2656,7 @@ router.add("PATCH", "/api/admin/users/:id", (req, res, p) => {
 
 /* -------- admin: support tickets & live-chat inbox -------- */
 router.add("GET", "/api/admin/support", (req, res) => {
-  if (!requireAdmin(req, res)) return;
+  if (!requireAdmin(req, res, "support")) return;
   const rows = db.prepare(`
     SELECT t.id, t.subject, t.message, t.status, t.created_at,
            t.user_id, u.name AS user_name, u.phone AS user_phone, u.email AS user_email
@@ -2441,7 +2679,7 @@ function parseChatSubject(s) {
 }
 
 router.add("PATCH", "/api/admin/support/:id", (req, res, p) => {
-  if (!requireAdmin(req, res)) return;
+  const a = requireAdmin(req, res, "support"); if (!a) return; auditOnSuccess(req, res, a, "ticket_" + String((req.body || {}).status || ""), "ticket", p.id, null);
   const row = db.prepare("SELECT id FROM support_tickets WHERE id=?").get(p.id);
   if (!row) return send(res, 404, { error: "Ticket not found" });
   const status = req.body && req.body.status;
@@ -2450,6 +2688,379 @@ router.add("PATCH", "/api/admin/support/:id", (req, res, p) => {
   db.prepare("UPDATE support_tickets SET status=? WHERE id=?").run(status, p.id);
   send(res, 200, { ok: true });
 });
+
+/* ================= admin: people ================= */
+router.add("GET", "/api/admin/me", (req, res) => {
+  const a = requireAdmin(req, res); if (!a) return;
+  send(res, 200, { id: a.id, name: a.name, role: a.adminRole, roleLabel: ADMIN_ROLES[a.adminRole], caps: ROLE_CAPS[a.adminRole] });
+});
+
+// One page about one person: profile, listings, reports, flags, leads, viewings, devices, history.
+router.add("GET", "/api/admin/users/:id", (req, res, p) => {
+  const a = requireAdmin(req, res, "view"); if (!a) return;
+  const u = db.prepare("SELECT * FROM users WHERE id=?").get(p.id);
+  if (!u) return send(res, 404, { error: "User not found" });
+  const contacts = can(a, "super") || can(a, "support");
+  const listings = db.prepare(`SELECT l.id, l.title, l.category, l.status, l.price, l.created_at, l.featured_until, l.admin_banner, a.name area,
+      (SELECT COUNT(*) FROM leads WHERE listing_id=l.id) leads, (SELECT COUNT(*) FROM inquiries WHERE listing_id=l.id) inquiries
+    FROM listings l JOIN areas a ON a.id=l.area_id WHERE l.owner_id=? ORDER BY l.id DESC`).all(u.id);
+  const ids = listings.map(l => l.id), inIds = ids.length ? `(${ids.join(",")})` : "(0)";
+  send(res, 200, {
+    user: {
+      id: u.id, name: u.name, businessName: u.business_name || "", role: u.role, adminRole: u.role === "admin" ? (u.admin_role || "super") : null,
+      phone: contacts ? realPhone(u.phone) : (realPhone(u.phone) ? maskPhone(u.phone) : ""), email: u.email ? (contacts ? u.email : maskEmail(u.email)) : "",
+      whatsapp: contacts ? (u.whatsapp || "") : (u.whatsapp ? maskPhone(u.whatsapp) : ""),
+      verified: !!u.verified, verifyStatus: u.verify_status || "none", phoneVerified: !!u.phone_verified, emailVerified: !!u.email_verified,
+      county: u.county || "", town: u.town || "", createdAt: u.created_at,
+      banned: isBanned(u), bannedUntil: u.banned_until, banReason: u.ban_reason || "", bannedAt: u.banned_at
+    },
+    listings: listings.map(l => ({ ...l, featured: !!(l.featured_until && l.featured_until > new Date().toISOString()) })),
+    reports: db.prepare(`SELECT r.listing_id listingId, r.reason, r.details, r.status, r.created_at at FROM reports r WHERE r.listing_id IN ${inIds} ORDER BY r.id DESC LIMIT 50`).all()
+      .map(r => ({ ...r, reason: REPORT_REASONS[r.reason] || r.reason })),
+    flags: db.prepare(`SELECT listing_id listingId, kind, detail, resolved, created_at at FROM listing_flags WHERE listing_id IN ${inIds} ORDER BY id DESC LIMIT 50`).all(),
+    inquiries: db.prepare(`SELECT i.id, i.listing_id listingId, i.from_name fromName, ${contacts ? "i.from_phone" : "''"} fromPhone, i.message, i.owner_reply reply, i.created_at at,
+        (SELECT COUNT(*) FROM messages m WHERE m.inquiry_id=i.id) messages FROM inquiries i WHERE i.listing_id IN ${inIds} ORDER BY i.id DESC LIMIT 50`).all(),
+    viewings: db.prepare(`SELECT id, listing_id listingId, name, slot_at slotAt, status, created_at at FROM viewings WHERE listing_id IN ${inIds} ORDER BY id DESC LIMIT 50`).all(),
+    sessions: db.prepare("SELECT id, created_at, last_seen, ua, ip, readonly FROM sessions WHERE user_id=? ORDER BY last_seen DESC").all(u.id)
+      .map(s => ({ id: s.id.slice(0, 6), started: new Date(s.created_at).toISOString(), lastSeen: new Date(s.last_seen).toISOString(), device: s.ua || "",
+        ip: can(a, "super") ? s.ip : (s.ip ? s.ip.replace(/[\d]+$/, "x") : ""), viewAs: !!s.readonly })),
+    history: db.prepare("SELECT at, admin_name admin, action, detail FROM admin_audit WHERE target_type='user' AND target_id=? ORDER BY id DESC LIMIT 50").all(String(u.id))
+  });
+});
+
+router.add("POST", "/api/admin/users/:id/ban", (req, res, p) => {
+  const a = requireAdmin(req, res, "users"); if (!a) return;
+  const u = db.prepare("SELECT * FROM users WHERE id=?").get(p.id);
+  if (!u) return send(res, 404, { error: "User not found" });
+  if (u.role === "admin") return send(res, 400, { error: "Remove their admin role first" });
+  const b = req.body || {}, reason = String(b.reason || "").trim().slice(0, 200);
+  if (!reason) return send(res, 400, { error: "Give a reason — the user sees it" });
+  const days = +b.days;
+  const until = b.forever ? "forever" : days > 0 ? new Date(Date.now() + Math.min(days, 3650) * 86400e3).toISOString() : null;
+  if (!until) return send(res, 400, { error: "Choose how long (days) or ban permanently" });
+  if (until === "forever" && !can(a, "super")) return send(res, 403, { error: "Only the super admin can ban permanently" });
+  const hidden = banUser(u.id, until, reason, !!b.blockIdentifiers, a, req);
+  send(res, 200, { ok: true, listingsHidden: hidden, bannedUntil: until });
+});
+router.add("POST", "/api/admin/users/:id/unban", (req, res, p) => {
+  const a = requireAdmin(req, res, "users"); if (!a) return;
+  const u = db.prepare("SELECT * FROM users WHERE id=?").get(p.id);
+  if (!u) return send(res, 404, { error: "User not found" });
+  if (u.banned_until === "forever" && !can(a, "super")) return send(res, 403, { error: "Only the super admin can lift a permanent ban" });
+  const shown = unbanUser(u.id, a, req, String((req.body || {}).note || "").slice(0, 200) || null);
+  db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)").run(u.id, "system", "Your account is active again", "Welcome back — your listings are visible again.");
+  send(res, 200, { ok: true, listingsShown: shown });
+});
+router.add("POST", "/api/admin/users/:id/signout", (req, res, p) => {
+  const a = requireAdmin(req, res, "users"); if (!a) return;
+  const u = db.prepare("SELECT id, role FROM users WHERE id=?").get(p.id);
+  if (!u) return send(res, 404, { error: "User not found" });
+  if (u.role === "admin" && !can(a, "super")) return send(res, 403, { error: "Only the super admin can sign out another admin" });
+  const n = revokeSessions(u.id).changes;
+  audit(req, a, "force_signout", "user", u.id, `${n} session(s)`);
+  send(res, 200, { ok: true, signedOut: n });
+});
+// Read-only look at the site as this user (30 min; every use is logged).
+router.add("POST", "/api/admin/users/:id/view-as", (req, res, p) => {
+  const a = requireAdmin(req, res, "super"); if (!a) return;
+  const u = db.prepare("SELECT * FROM users WHERE id=?").get(p.id);
+  if (!u) return send(res, 404, { error: "User not found" });
+  if (u.role === "admin") return send(res, 400, { error: "You can't view as another admin" });
+  audit(req, a, "view_as", "user", u.id, "read-only, 30 min");
+  send(res, 200, { token: createSession(u, req, a), name: u.name, expiresInMinutes: VIEW_AS_MS / 60e3 });
+});
+router.add("POST", "/api/admin/users/:id/role", (req, res, p) => {
+  const a = requireAdmin(req, res, "super"); if (!a) return;
+  const u = db.prepare("SELECT * FROM users WHERE id=?").get(p.id);
+  if (!u) return send(res, 404, { error: "User not found" });
+  if (u.id === a.id) return send(res, 400, { error: "You can't change your own role" });
+  const role = String((req.body || {}).role || "");
+  if (role !== "none" && !ADMIN_ROLES[role]) return send(res, 400, { error: "role must be none, support, moderator or super" });
+  if (role !== "none" && isBanned(u)) return send(res, 400, { error: "Lift the ban first" });
+  if (role !== "none" && !u.email && !realPhone(u.phone)) return send(res, 400, { error: "Admins need an email or phone for login codes" });
+  if (role === "none") db.prepare("UPDATE users SET role='user', admin_role=NULL WHERE id=?").run(u.id);
+  else db.prepare("UPDATE users SET role='admin', admin_role=? WHERE id=?").run(role, u.id);
+  revokeSessions(u.id);
+  audit(req, a, "set_role", "user", u.id, `${u.role === "admin" ? (u.admin_role || "super") : "none"} → ${role}`);
+  if (role !== "none") adminAlert("New admin added", `${a.name} made ${u.name} (#${u.id}) a ${ADMIN_ROLES[role]}.`);
+  send(res, 200, { ok: true });
+});
+router.add("GET", "/api/admin/team", (req, res) => {
+  const a = requireAdmin(req, res, "view"); if (!a) return;
+  send(res, 200, db.prepare("SELECT id, name, admin_role, email FROM users WHERE role='admin' ORDER BY id").all()
+    .map(r => ({ id: r.id, name: r.name, role: r.admin_role || "super", roleLabel: ADMIN_ROLES[r.admin_role || "super"], email: can(a, "super") ? r.email || "" : "",
+      lastLogin: (db.prepare("SELECT at FROM admin_audit WHERE admin_id=? AND action='login' ORDER BY id DESC LIMIT 1").get(r.id) || {}).at || null })));
+});
+
+/* ================= admin: listings ================= */
+function adminListing(id) { return db.prepare("SELECT * FROM listings WHERE id=?").get(id); }
+router.add("PATCH", "/api/admin/listings/:id", (req, res, p) => {
+  const a = requireAdmin(req, res, "moderate"); if (!a) return;
+  const l = adminListing(p.id);
+  if (!l) return send(res, 404, { error: "Listing not found" });
+  const b = req.body || {}, sets = [], params = [], changed = {};
+  if (b.title !== undefined) { const t = String(b.title).trim().slice(0, 140); if (!t) return send(res, 400, { error: "Title can't be empty" }); sets.push("title=?"); params.push(t); changed.title = t; }
+  if (b.description !== undefined) { sets.push("description=?"); params.push(String(b.description).slice(0, 5000)); changed.description = "edited"; }
+  if (b.bedrooms !== undefined && ["rent", "sale", "shortlet"].includes(l.category)) { const v = b.bedrooms === "" || b.bedrooms === null ? null : Math.max(0, Math.min(20, parseInt(b.bedrooms, 10) || 0)); sets.push("bedrooms=?"); params.push(v); changed.bedrooms = v; }
+  if (b.areaId !== undefined) {
+    const area = db.prepare("SELECT * FROM areas WHERE id=?").get(b.areaId);
+    if (!area) return send(res, 400, { error: "Unknown area" });
+    sets.push("area_id=?"); params.push(area.id); changed.area = area.name;
+    if (!l.exact_pin) { sets.push("lat=?", "lng=?"); params.push(area.lat + (Math.random() - 0.5) * 0.01, area.lng + (Math.random() - 0.5) * 0.01); }
+  }
+  if (b.price !== undefined) {
+    const price = Math.round(+b.price); if (!(price > 0)) return send(res, 400, { error: "Enter a price" });
+    sets.push("price=?"); params.push(price); changed.price = `${l.price} → ${price}`;
+    if (l.category === "land") { const f = landFields({ price }, l); if (!f.error) { sets.push("price_per_acre=?"); params.push(f.perAcre); } }
+    if (l.category === "commercial") { const f = commFields({ price }, l); if (!f.error) { sets.push("price_per_sqft=?"); params.push(f.perSqft); } }
+  }
+  if (b.adminBanner !== undefined) { const t = String(b.adminBanner || "").trim().slice(0, 160); sets.push("admin_banner=?"); params.push(t || null); changed.banner = t || "(removed)"; }
+  if (!sets.length) return send(res, 400, { error: "Nothing to change" });
+  db.prepare(`UPDATE listings SET ${sets.join(",")} WHERE id=?`).run(...params, l.id);
+  audit(req, a, "edit_listing", "listing", l.id, changed);
+  if (b.notifyOwner !== false && (changed.title || changed.price || changed.description || changed.area))
+    db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)").run(l.owner_id, "listing", "We updated your listing",
+      `Our team corrected details on "${l.title}"${b.note ? ": " + String(b.note).slice(0, 200) : "."}`);
+  send(res, 200, listingView(db.prepare(`${LISTING_SQL} WHERE l.id=?`).get(l.id)));
+});
+function setListingStatus(l, status, a, req, why) {
+  db.prepare("UPDATE listings SET status=?, status_changed_at=datetime('now')" + (status === "active" ? ", confirmed_at=datetime('now')" : "") + " WHERE id=?").run(status, l.id);
+  if (status === "removed") { db.prepare("UPDATE reports SET status='actioned' WHERE listing_id=? AND status='open'").run(l.id); db.prepare("UPDATE listing_flags SET resolved=1 WHERE listing_id=?").run(l.id); }
+  const msg = { removed: ["Listing removed", `"${l.title}" was removed by our team${why ? ": " + why : " because it broke our listing rules"}. Contact info@patahome.co.ke to discuss.`],
+    under_review: ["Listing paused", `"${l.title}" is paused while our team checks it${why ? ": " + why : ""}.`],
+    active: ["Listing live again", `"${l.title}" is visible again.`] }[status];
+  if (msg) db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)").run(l.owner_id, "listing", msg[0], msg[1]);
+}
+function setFeatured(l, days) {
+  const until = days > 0 ? new Date(Date.now() + days * 86400e3).toISOString() : null;
+  db.prepare("UPDATE listings SET featured_until=? WHERE id=?").run(until, l.id);
+  return until;
+}
+router.add("POST", "/api/admin/listings/:id/feature", (req, res, p) => {
+  const a = requireAdmin(req, res, "moderate"); if (!a) return;
+  const l = adminListing(p.id); if (!l) return send(res, 404, { error: "Listing not found" });
+  const days = Math.max(0, Math.min(365, Math.round(+((req.body || {}).days) || 0)));
+  const until = setFeatured(l, days);
+  audit(req, a, days ? "feature" : "unfeature", "listing", l.id, days ? `${days} days` : null);
+  if (days) db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)").run(l.owner_id, "listing", "Your listing is featured ⭐", `"${l.title}" is featured at the top of search for ${days} day${days === 1 ? "" : "s"}.`);
+  send(res, 200, { ok: true, featuredUntil: until });
+});
+router.add("POST", "/api/admin/listings/bulk", (req, res) => {
+  const a = requireAdmin(req, res, "moderate"); if (!a) return;
+  const b = req.body || {};
+  const ids = [...new Set((Array.isArray(b.ids) ? b.ids : []).map(Number).filter(n => Number.isInteger(n) && n > 0))].slice(0, 500);
+  const action = String(b.action || ""), why = String(b.reason || "").trim().slice(0, 200);
+  if (!ids.length) return send(res, 400, { error: "Select at least one listing" });
+  if (!["remove", "pause", "restore", "feature", "unfeature"].includes(action)) return send(res, 400, { error: "Unknown action" });
+  const days = Math.max(1, Math.min(365, Math.round(+b.days || 7)));
+  let done = 0;
+  for (const id of ids) {
+    const l = adminListing(id); if (!l) continue;
+    if (action === "remove" && l.status !== "removed") setListingStatus(l, "removed", a, req, why);
+    else if (action === "pause" && l.status === "active") setListingStatus(l, "under_review", a, req, why);
+    else if (action === "restore" && ["under_review", "removed", "expired"].includes(l.status)) setListingStatus(l, "active", a, req);
+    else if (action === "feature") setFeatured(l, days);
+    else if (action === "unfeature") setFeatured(l, 0);
+    else continue;
+    done++;
+  }
+  audit(req, a, "bulk_" + action, "listing", ids.join(",").slice(0, 900), { count: done, reason: why || undefined, days: action === "feature" ? days : undefined });
+  send(res, 200, { ok: true, changed: done });
+});
+
+/* ---------- blocklist ---------- */
+router.add("GET", "/api/admin/blocklist", (req, res) => {
+  if (!requireAdmin(req, res, "moderate")) return;
+  send(res, 200, db.prepare("SELECT b.id, b.term, b.created_at at, u.name addedBy FROM blocklist b LEFT JOIN users u ON u.id=b.created_by ORDER BY b.id DESC").all());
+});
+router.add("POST", "/api/admin/blocklist", (req, res) => {
+  const a = requireAdmin(req, res, "moderate"); if (!a) return;
+  const term = String((req.body || {}).term || "").trim().replace(/\s+/g, " ").slice(0, 80);
+  if (term.length < 3) return send(res, 400, { error: "Enter at least 3 characters" });
+  try { db.prepare("INSERT INTO blocklist (term, created_by) VALUES (?,?)").run(term, a.id); }
+  catch (e) { return send(res, 409, { error: "That term is already on the list" }); }
+  audit(req, a, "blocklist_add", "blocklist", null, term);
+  // hold any live listing that already contains it
+  const live = db.prepare("SELECT id FROM listings WHERE status='active'").all();
+  let held = 0;
+  for (const r of live) { const before = adminListing(r.id).status; checkBlocklist(r.id); if (adminListing(r.id).status !== before) held++; }
+  send(res, 201, { ok: true, held });
+});
+router.add("DELETE", "/api/admin/blocklist/:id", (req, res, p) => {
+  const a = requireAdmin(req, res, "moderate"); if (!a) return;
+  const row = db.prepare("SELECT * FROM blocklist WHERE id=?").get(p.id);
+  if (!row) return send(res, 404, { error: "Not found" });
+  db.prepare("DELETE FROM blocklist WHERE id=?").run(row.id);
+  audit(req, a, "blocklist_remove", "blocklist", row.id, row.term);
+  send(res, 200, { ok: true });
+});
+
+/* ================= admin: site ================= */
+router.add("GET", "/api/admin/settings", (req, res) => {
+  if (!requireAdmin(req, res, "super")) return;
+  send(res, 200, Object.fromEntries(Object.keys(SETTINGS_DEFAULTS).map(k => [k, setting(k)])));
+});
+router.add("PATCH", "/api/admin/settings", (req, res) => {
+  const a = requireAdmin(req, res, "super"); if (!a) return;
+  const b = req.body || {}, changed = {};
+  for (const [k, rule] of Object.entries(SETTING_RULES)) {
+    if (b[k] === undefined) continue;
+    const v = String(rule(b[k]));
+    if (v === "NaN") return send(res, 400, { error: `Invalid value for ${k}` });
+    if (v === setting(k)) continue;
+    changed[k] = { from: setting(k), to: v };
+    db.prepare("INSERT INTO settings (key,value,updated_at,updated_by) VALUES (?,?,datetime('now'),?) ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at, updated_by=excluded.updated_by").run(k, v, a.id);
+  }
+  applySettings();
+  if (Object.keys(changed).length) audit(req, a, "settings", "settings", null, changed);
+  send(res, 200, Object.fromEntries(Object.keys(SETTINGS_DEFAULTS).map(k => [k, setting(k)])));
+});
+
+/* ---------- areas ---------- */
+router.add("GET", "/api/admin/areas", (req, res) => {
+  if (!requireAdmin(req, res, "view")) return;
+  send(res, 200, db.prepare(`SELECT a.*, (SELECT COUNT(*) FROM listings l WHERE l.area_id=a.id) listings,
+    (SELECT COUNT(*) FROM listings l WHERE l.area_id=a.id AND l.status='active') active FROM areas a ORDER BY a.county, a.name`).all());
+});
+function areaInput(b, e) {
+  const name = String(b.name ?? (e && e.name) ?? "").trim().replace(/\s+/g, " ").slice(0, 60);
+  const county = String(b.county ?? (e && e.county) ?? "").trim().slice(0, 40);
+  const lat = b.lat !== undefined ? +b.lat : e && e.lat, lng = b.lng !== undefined ? +b.lng : e && e.lng;
+  if (name.length < 2 || !county) return { error: "Enter the area name and county" };
+  if (!(lat > -5.2 && lat < 5.5 && lng > 33.5 && lng < 42.2)) return { error: "Those coordinates aren't in Kenya — check the pin (lat, lng)" };
+  return { name, county, lat, lng };
+}
+router.add("POST", "/api/admin/areas", (req, res) => {
+  const a = requireAdmin(req, res, "super"); if (!a) return;
+  const v = areaInput(req.body || {}); if (v.error) return send(res, 400, v);
+  try { const info = db.prepare("INSERT INTO areas (name,county,lat,lng) VALUES (?,?,?,?)").run(v.name, v.county, v.lat, v.lng);
+    audit(req, a, "area_add", "area", info.lastInsertRowid, v); send(res, 201, { id: info.lastInsertRowid, ...v }); }
+  catch (e) { send(res, 409, { error: "An area with that name already exists" }); }
+});
+router.add("PATCH", "/api/admin/areas/:id", (req, res, p) => {
+  const a = requireAdmin(req, res, "super"); if (!a) return;
+  const e = db.prepare("SELECT * FROM areas WHERE id=?").get(p.id); if (!e) return send(res, 404, { error: "Area not found" });
+  const v = areaInput(req.body || {}, e); if (v.error) return send(res, 400, v);
+  try { db.prepare("UPDATE areas SET name=?, county=?, lat=?, lng=? WHERE id=?").run(v.name, v.county, v.lat, v.lng, e.id); }
+  catch (err) { return send(res, 409, { error: "An area with that name already exists" }); }
+  audit(req, a, "area_edit", "area", e.id, { from: { name: e.name, county: e.county, lat: e.lat, lng: e.lng }, to: v });
+  send(res, 200, { id: e.id, ...v });
+});
+router.add("POST", "/api/admin/areas/:id/merge", (req, res, p) => {
+  const a = requireAdmin(req, res, "super"); if (!a) return;
+  const from = db.prepare("SELECT * FROM areas WHERE id=?").get(p.id), into = db.prepare("SELECT * FROM areas WHERE id=?").get((req.body || {}).into);
+  if (!from || !into) return send(res, 404, { error: "Area not found" });
+  if (from.id === into.id) return send(res, 400, { error: "Pick a different area to merge into" });
+  const moved = db.prepare("UPDATE listings SET area_id=? WHERE area_id=?").run(into.id, from.id).changes;
+  db.prepare("DELETE FROM areas WHERE id=?").run(from.id);
+  audit(req, a, "area_merge", "area", into.id, `${from.name} → ${into.name} (${moved} listings moved)`);
+  send(res, 200, { ok: true, moved });
+});
+
+/* ---------- audit log ---------- */
+router.add("GET", "/api/admin/audit", (req, res) => {
+  if (!requireAdmin(req, res, "super")) return;
+  const q = req.query, where = [], params = [];
+  if (q.admin) { where.push("admin_id=?"); params.push(+q.admin); }
+  if (q.action) { where.push("action=?"); params.push(String(q.action)); }
+  if (q.target) { where.push("target_type=? AND target_id=?"); const [t, id] = String(q.target).split(":"); params.push(t, id); }
+  const limit = Math.min(500, Math.max(20, +q.limit || 200)), before = +q.before || 0;
+  if (before) { where.push("id<?"); params.push(before); }
+  send(res, 200, db.prepare(`SELECT * FROM admin_audit ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY id DESC LIMIT ${limit}`).all(...params));
+});
+
+/* ================= admin: business ================= */
+router.add("GET", "/api/admin/growth", (req, res) => {
+  if (!requireAdmin(req, res, "view")) return;
+  const weeks = 12, out = [];
+  const count = (sql, a, b) => db.prepare(sql).get(a, b).n;
+  for (let i = weeks - 1; i >= 0; i--) {
+    const end = new Date(Date.now() - i * 7 * 86400e3), start = new Date(end - 7 * 86400e3);
+    const s = start.toISOString().replace("T", " ").slice(0, 19), e = end.toISOString().replace("T", " ").slice(0, 19);
+    out.push({
+      week: start.toISOString().slice(0, 10),
+      users: count("SELECT COUNT(*) n FROM users WHERE role='user' AND created_at>=? AND created_at<?", s, e),
+      owners: count("SELECT COUNT(*) n FROM (SELECT owner_id, MIN(created_at) f FROM listings GROUP BY owner_id) WHERE f>=? AND f<?", s, e),
+      listings: count("SELECT COUNT(*) n FROM listings WHERE created_at>=? AND created_at<?", s, e),
+      leads: count("SELECT COUNT(*) n FROM leads WHERE created_at>=? AND created_at<?", s, e) + count("SELECT COUNT(*) n FROM inquiries WHERE created_at>=? AND created_at<?", s, e),
+      viewings: count("SELECT COUNT(*) n FROM viewings WHERE created_at>=? AND created_at<?", s, e),
+      revenue: db.prepare("SELECT COALESCE(SUM(amount),0) n FROM payments WHERE status='completed' AND created_at>=? AND created_at<?").get(s, e).n
+    });
+  }
+  const counties = db.prepare(`SELECT a.county,
+      SUM(CASE WHEN l.created_at >= datetime('now','-30 days') THEN 1 ELSE 0 END) now30,
+      SUM(CASE WHEN l.created_at >= datetime('now','-60 days') AND l.created_at < datetime('now','-30 days') THEN 1 ELSE 0 END) prev30,
+      SUM(CASE WHEN l.status='active' THEN 1 ELSE 0 END) active
+    FROM listings l JOIN areas a ON a.id=l.area_id GROUP BY a.county ORDER BY now30 DESC, active DESC LIMIT 15`).all();
+  const leads30 = db.prepare(`SELECT a.county, COUNT(*) n FROM leads le JOIN listings l ON l.id=le.listing_id JOIN areas a ON a.id=l.area_id
+    WHERE le.created_at >= datetime('now','-30 days') GROUP BY a.county`).all();
+  const lm = Object.fromEntries(leads30.map(r => [r.county, r.n]));
+  const topOwners = db.prepare(`SELECT u.id, u.name, u.verified, COUNT(DISTINCT l.id) listings,
+      (SELECT COUNT(*) FROM leads le JOIN listings x ON x.id=le.listing_id WHERE x.owner_id=u.id AND le.created_at >= datetime('now','-30 days')) leads30
+    FROM users u JOIN listings l ON l.owner_id=u.id AND l.status='active' GROUP BY u.id ORDER BY leads30 DESC, listings DESC LIMIT 10`).all();
+  send(res, 200, { weeks: out, counties: counties.map(c => ({ ...c, leads30: lm[c.county] || 0 })), topOwners });
+});
+
+// CSV exports (super admin only; every export is logged)
+const csvCell = (v) => { const s = v == null ? "" : String(v); return /[",\n\r]/.test(s) || /^[=+\-@]/.test(s) ? `"${(/^[=+\-@]/.test(s) ? "'" : "") + s.replace(/"/g, '""')}"` : s; };
+router.add("GET", "/api/admin/export", (req, res) => {
+  const a = requireAdmin(req, res, "super"); if (!a) return;
+  const kind = String(req.query.kind || "");
+  const sets = {
+    users: ["SELECT u.id, u.name, u.phone, u.email, u.county, u.town, u.verified, u.role, u.created_at, (SELECT COUNT(*) FROM listings l WHERE l.owner_id=u.id) listings FROM users u ORDER BY u.id",
+      r => ({ ...r, phone: realPhone(r.phone) })],
+    listings: [`SELECT l.id, l.category, l.title, l.price, l.status, a.name area, a.county, u.name owner, l.lister_role, l.created_at,
+        (SELECT COUNT(*) FROM leads WHERE listing_id=l.id) leads FROM listings l JOIN areas a ON a.id=l.area_id JOIN users u ON u.id=l.owner_id ORDER BY l.id`, r => r],
+    leads: [`SELECT i.id, i.created_at, i.listing_id, l.title, i.from_name, i.from_phone, i.message, CASE WHEN i.owner_reply IS NULL THEN 'no' ELSE 'yes' END replied
+        FROM inquiries i JOIN listings l ON l.id=i.listing_id ORDER BY i.id`, r => r]
+  };
+  if (!sets[kind]) return send(res, 400, { error: "kind must be users, listings or leads" });
+  const rows = db.prepare(sets[kind][0]).all().map(sets[kind][1]);
+  const cols = rows.length ? Object.keys(rows[0]) : [];
+  const csv = "﻿" + [cols.join(","), ...rows.map(r => cols.map(c => csvCell(r[c])).join(","))].join("\r\n");
+  audit(req, a, "export", "export", kind, `${rows.length} rows`);
+  res.writeHead(200, { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="patahome-${kind}-${new Date().toISOString().slice(0, 10)}.csv"`, "Cache-Control": "no-store" });
+  res.end(csv);
+});
+
+// Message one user or a group: in-app notification, email and/or SMS.
+function broadcastAudience(t) {
+  if (t.type === "user") return db.prepare("SELECT * FROM users WHERE id=?").all(+t.id);
+  const where = ["u.role='user'", "(u.banned_until IS NULL)"], params = [];
+  if (t.type === "owners") where.push("EXISTS (SELECT 1 FROM listings l WHERE l.owner_id=u.id AND l.status='active')");
+  if (t.county) { where.push("(u.county=? OR EXISTS (SELECT 1 FROM listings l JOIN areas a ON a.id=l.area_id WHERE l.owner_id=u.id AND a.county=?))"); params.push(t.county, t.county); }
+  if (t.type !== "owners" && t.type !== "all") return [];
+  return db.prepare(`SELECT u.* FROM users u WHERE ${where.join(" AND ")}`).all(...params);
+}
+router.add("POST", "/api/admin/broadcast", async (req, res) => {
+  const a = requireAdmin(req, res, "super"); if (!a) return;
+  const b = req.body || {}, t = b.audience || {};
+  const title = String(b.title || "").trim().slice(0, 100), body = String(b.body || "").trim().slice(0, 1000);
+  const ch = new Set(Array.isArray(b.channels) ? b.channels : ["notification"]);
+  if (!title || !body) return send(res, 400, { error: "Write a title and a message" });
+  const people = broadcastAudience(t);
+  const reach = { total: people.length, notification: ch.has("notification") ? people.length : 0,
+    email: ch.has("email") && mailConfigured() ? people.filter(u => u.email).length : 0,
+    sms: ch.has("sms") && smsConfigured() ? people.filter(u => realPhone(u.phone)).length : 0 };
+  if (b.dryRun) return send(res, 200, { dryRun: true, reach });
+  if (!people.length) return send(res, 400, { error: "Nobody matches that audience" });
+  if (reach.sms > 1000) return send(res, 400, { error: "SMS is limited to 1,000 people per message — narrow the audience" });
+  const note = db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)");
+  if (reach.notification) for (const u of people) note.run(u.id, "system", title, body);
+  audit(req, a, "broadcast", t.type === "user" ? "user" : "audience", t.type === "user" ? t.id : JSON.stringify(t), { title, channels: [...ch], reach });
+  send(res, 200, { ok: true, reach });
+  // emails/SMS go out in the background, a few at a time
+  (async () => {
+    for (const u of people) {
+      try {
+        if (reach.email && u.email) await sendMail({ to: u.email, subject: title, text: `Hi ${String(u.name || "").split(" ")[0] || "there"},\n\n${body}\n\n— PataHome · patahome.co.ke` });
+        if (reach.sms && realPhone(u.phone)) await sendSms({ to: u.phone, text: `PataHome: ${body}`.slice(0, 300) });
+      } catch (e) { console.error("broadcast send failed:", e.message); }
+    }
+  })().catch(() => {});
+});
+
+applySettings();
 
 router.add("GET", "/api/health", (req, res) => {
   send(res, 200, { ok: true, listings: db.prepare("SELECT COUNT(*) n FROM listings WHERE status='active'").get().n });
@@ -2591,6 +3202,7 @@ function listingPage(req, res, p) {
   const bodyHtml = `
     ${image ? `<img src="${image}" alt="${escapeHtml(row.title)}" style="width:100%;border-radius:14px;aspect-ratio:1200/630;object-fit:cover">` : ""}
     <h1>${escapeHtml(row.title)}</h1>
+    ${row.admin_banner ? `<p style="background:#fdecea;border:1.5px solid #e7a9a2;border-radius:10px;padding:10px 12px;color:#8a2319;font-weight:700">⚠️ ${escapeHtml(row.admin_banner)}</p>` : ""}
     <div class="card">
       <div class="price">${escapeHtml(priceText(row))}</div>
       ${isLand ? `<div class="meta">📐 ${escapeHtml(landSize)}</div><p style="background:#fff8ec;border:1px solid #f3dfb8;border-radius:10px;padding:10px 12px;color:#6b4712;font-size:.9rem"><b>Before paying anything:</b> ${row.category === "commercial" && row.land_deal === "lease" ? "view the premises and confirm the landlord owns or manages it" : "do an official search on Ardhisasa and visit the property with the owner"}.</p>` : ""}
