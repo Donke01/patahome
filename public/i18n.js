@@ -26,8 +26,8 @@
     // homepage (calm & premium)
     "Homes across Kenya · Direct from owners": "Nyumba kote Kenya · Moja kwa moja kutoka kwa wamiliki",
     "Find a home that": "Pata nyumba", "feels": "inayohisi", "like yours.": "kama yako.",
-    "Rentals, homes for sale, BnBs, land and business spaces — listed by the people who own them. No viewing fees. Every fee shown upfront.":
-      "Nyumba za kupanga, za kuuza, BnB, ardhi na nafasi za biashara — zimetangazwa na wamiliki wenyewe. Hakuna ada ya kutazama. Kila ada inaonyeshwa wazi.",
+    "Rentals, homes for sale, Airbnbs, land and business spaces — listed by the people who own them. No viewing fees. Every fee shown upfront.":
+      "Nyumba za kupanga, za kuuza, Airbnb, ardhi na nafasi za biashara — zimetangazwa na wamiliki wenyewe. Hakuna ada ya kutazama. Kila ada inaonyeshwa wazi.",
     "Where": "Wapi", "Looking for": "Unatafuta", "Budget": "Bajeti", "Anything": "Chochote", "Any budget": "Bajeti yoyote",
     "Town, estate or county": "Mji, mtaa au kaunti", "Verified owners": "Wamiliki waliothibitishwa", "No viewing fees": "Hakuna ada ya kutazama",
     "All 47 counties": "Kaunti zote 47", "Rentals": "Za kupanga", "For sale": "Zinauzwa", "Sign in": "Ingia",

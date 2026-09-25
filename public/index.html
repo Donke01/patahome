@@ -36,7 +36,7 @@
     <nav class="ph-nav" aria-label="Main">
       <a href="/browse?cat=rent">Rent</a>
       <a href="/browse?cat=sale">Buy</a>
-      <a href="/browse?cat=shortlet">BnB</a>
+      <a href="/browse?cat=shortlet">Airbnb</a>
       <a href="/browse?cat=land">Land</a>
       <a href="/browse?cat=commercial">Commercial</a>
     </nav>
@@ -54,7 +54,7 @@
       <a class="np-item" href="/browse?cat=rent&beds=1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>1 Bedroom</a>
       <a class="np-item" href="/browse?cat=rent&beds=2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3"/><path d="M2 13a2 2 0 0 1 4 0v2h12v-2a2 2 0 0 1 4 0v3a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z"/></svg>2 Bedroom and more</a>
       <a class="np-item" href="/browse?cat=sale"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.4"/></svg>Homes for sale</a>
-      <a class="np-item" href="/browse?cat=shortlet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="7" width="16" height="13" rx="2.5"/><path d="M9 7V5h6v2"/></svg>BnB</a>
+      <a class="np-item" href="/browse?cat=shortlet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="7" width="16" height="13" rx="2.5"/><path d="M9 7V5h6v2"/></svg>Airbnb</a>
       <a class="np-item" href="/browse?cat=land"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20"/><path d="M4 20 9 10l4 6 3-4 4 8"/></svg>Land for sale &amp; lease</a>
       <a class="np-item" href="/browse?cat=commercial"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M4 21V8l4-3 4 3v13"/><path d="M12 21V11h8v10"/></svg>Commercial property</a>
       <a class="np-item" href="/areas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m9 20-6-3V4l6 3 6-3 6 3v13l-6-3-6 3z"/><path d="M9 7v13M15 4v13"/></svg>Browse by area</a>
@@ -79,11 +79,11 @@
     <div>
       <div class="ph-eyebrow">Homes across Kenya · Direct from owners</div>
       <h1>Find a home that <em>feels</em> like yours.</h1>
-      <p class="ph-lead">Rentals, homes for sale, BnBs, land and business spaces — listed by the people who own them. No viewing fees. Every fee shown upfront.</p>
+      <p class="ph-lead">Rentals, homes for sale, Airbnbs, land and business spaces — listed by the people who own them. No viewing fees. Every fee shown upfront.</p>
       <div class="ph-search-wrap">
         <form class="ph-search" onsubmit="event.preventDefault();closeSugg();doSearch()" role="search">
           <div class="f grow"><label for="searchInput">Where</label><input id="searchInput" type="text" placeholder="Town, estate or county" autocomplete="off" oninput="onSearchInput()" onfocus="renderSugg()" onkeydown="if(event.key==='Escape')closeSugg()"></div>
-          <div class="f half"><label for="catSel">Looking for</label><select id="catSel" onchange="syncBudget()"><option value="">Anything</option><option value="rent">Rent</option><option value="sale">Buy</option><option value="shortlet">BnB</option><option value="land">Land</option><option value="commercial">Commercial</option></select></div>
+          <div class="f half"><label for="catSel">Looking for</label><select id="catSel" onchange="syncBudget()"><option value="">Anything</option><option value="rent">Rent</option><option value="sale">Buy</option><option value="shortlet">Airbnb</option><option value="land">Land</option><option value="commercial">Commercial</option></select></div>
           <div class="f half" id="budgetF"><label for="budgetSel">Budget</label><select id="budgetSel"></select></div>
           <button class="go" id="searchBtn" type="submit" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span class="lbl">Search</span></button>
         </form>
@@ -93,7 +93,7 @@
     </div>
     <a class="ph-hero-photo" id="heroPhoto" href="/browse">
       <img id="heroImg" src="https://res.cloudinary.com/pm0sj0b5/image/upload/c_fill,g_auto,w_1100,h_1210,q_auto:good/patahome/listings/ncjfrnuwhhffxycyiga9" alt="A home listed on PataHome" fetchpriority="high">
-      <span class="tag" id="heroTag">BnB · Nyali, Mombasa</span>
+      <span class="tag" id="heroTag">Airbnb · Nyali, Mombasa</span>
       <div class="float"><b id="heroPrice">KES 5,000 <small>/ night</small></b><span id="heroSub">Direct from the owner</span></div>
     </a>
   </div>
@@ -104,7 +104,7 @@
     <a class="ph-cat" href="/browse?cat=rent"><svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg>Rentals <small data-count="rent"></small></a>
     <a class="ph-cat" href="/browse?cat=rent&beds=0"><svg viewBox="0 0 24 24"><path d="M3 19V6"/><path d="M3 15h18v4"/><path d="M21 15v-2.5A2.5 2.5 0 0 0 18.5 10H11v5"/><circle cx="7" cy="12" r="1.8"/></svg>Bedsitters</a>
     <a class="ph-cat" href="/browse?cat=sale"><svg viewBox="0 0 24 24"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.4"/></svg>For sale <small data-count="sale"></small></a>
-    <a class="ph-cat" href="/browse?cat=shortlet"><svg viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="13" rx="2.5"/><path d="M9 7V5h6v2"/><path d="M9 11v5M15 11v5"/></svg>BnB <small data-count="shortlet"></small></a>
+    <a class="ph-cat" href="/browse?cat=shortlet"><svg viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="13" rx="2.5"/><path d="M9 7V5h6v2"/><path d="M9 11v5M15 11v5"/></svg>Airbnb <small data-count="shortlet"></small></a>
     <a class="ph-cat" href="/browse?cat=land"><svg viewBox="0 0 24 24"><path d="M2 20h20M4 20 9 10l4 6 3-4 4 8"/></svg>Land <small data-count="land"></small></a>
     <a class="ph-cat" href="/browse?cat=commercial"><svg viewBox="0 0 24 24"><path d="M3 21h18M4 21V8l4-3 4 3v13M12 21V11h8v10"/></svg>Commercial <small data-count="commercial"></small></a>
     <a class="ph-cat" href="/browse?nearby=1"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.1-7-11a7 7 0 0 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Near me</a>
@@ -183,7 +183,7 @@
           <a href="https://www.tiktok.com/" target="_blank" rel="noopener" aria-label="TikTok"><svg viewBox="0 0 24 24"><path d="M19.6 6.2a5.4 5.4 0 01-3.2-1V16a5.7 5.7 0 11-5.7-5.7c.3 0 .6 0 .9.1v2.8a2.9 2.9 0 102 2.8V0h2.8a5.4 5.4 0 003.2 4.7v1.5z"/></svg></a>
         </div>
       </div>
-      <div class="col"><h4>Explore</h4><a href="/browse?cat=rent">Rent</a><a href="/browse?cat=sale">Buy</a><a href="/browse?cat=shortlet">BnB</a><a href="/browse?cat=land">Land</a><a href="/browse?cat=commercial">Commercial</a><a href="/areas">Areas</a></div>
+      <div class="col"><h4>Explore</h4><a href="/browse?cat=rent">Rent</a><a href="/browse?cat=sale">Buy</a><a href="/browse?cat=shortlet">Airbnb</a><a href="/browse?cat=land">Land</a><a href="/browse?cat=commercial">Commercial</a><a href="/areas">Areas</a></div>
       <div class="col"><h4>Owners</h4><a href="/dashboard">List a property</a><a href="/dashboard">Dashboard</a><a href="/messages">My messages</a></div>
       <div class="col"><h4>Contact</h4><a href="tel:+254748181876">0748 181 876</a><a href="mailto:info@patahome.co.ke">info@patahome.co.ke</a><a href="https://wa.me/254748181876" target="_blank" rel="noopener">WhatsApp</a></div>
     </div>
@@ -231,13 +231,13 @@ const ICONS={
 const CAT={
   rent:{label:"For Rent",short:"Rent",unit:"/month",icon:"home",tint:"#0E2A3B"},
   sale:{label:"For Sale",short:"For sale",unit:"",icon:"home",tint:"#2B3A44"},
-  shortlet:{label:"BnB",short:"BnB",unit:"/night",icon:"home",tint:"#6B5226"},
+  shortlet:{label:"Airbnb",short:"Airbnb",unit:"/night",icon:"home",tint:"#6B5226"},
   land:{label:"Land",short:"Land",unit:"",icon:"land",tint:"#3F5A2A"},
   commercial:{label:"Commercial",short:"Commercial",unit:"",icon:"shop",tint:"#014B6A"}
 };
 const catLabel=x=>x.cat==="land"?(x.landDeal==="lease"?"Land for lease":"Land for sale")
   :x.cat==="commercial"?((window.PH_COMM&&PH_COMM.TYPES[x.commType]||"Commercial").split(" / ")[0]+(x.deal==="lease"?" to let":" for sale")):CAT[x.cat].label;
-const kindLabel=x=>x.cat==="land"?"Land":x.cat==="commercial"?(x.deal==="lease"?"To let":"Commercial"):x.cat==="rent"?"Rent":x.cat==="sale"?"For sale":"BnB";
+const kindLabel=x=>x.cat==="land"?"Land":x.cat==="commercial"?(x.deal==="lease"?"To let":"Commercial"):x.cat==="rent"?"Rent":x.cat==="sale"?"For sale":"Airbnb";
 function priceHTML(x){
   if(x.cat==="commercial"&&window.PH_COMM){const p=PH_COMM.priceLabel(x);return `${esc(p.main)}${p.extra?` <small>${esc(p.extra)}</small>`:""}`}
   if(x.cat==="land"&&window.PH_LAND){const p=PH_LAND.priceLabel(x);return `${esc(p.main)}${p.extra?` <small>${esc(p.extra)}</small>`:""}`}
@@ -374,7 +374,7 @@ function toggleFav(e,id){
 }
 function renderLatest(){
   const g=document.getElementById("latestGrid");
-  // newest first, but every category that has listings (land, commercial, BnB…) gets a spot
+  // newest first, but every category that has listings (land, commercial, Airbnb…) gets a spot
   const byNew=[...LISTINGS].sort((a,b)=>b.id-a.id),pick=[];
   for(const c of Object.keys(CAT)){const x=byNew.find(y=>y.cat===c);if(x)pick.push(x)}
   for(const x of byNew){if(pick.length>=6)break;if(!pick.includes(x))pick.push(x)}
