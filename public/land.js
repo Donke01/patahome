@@ -1,4 +1,4 @@
-/* PataHome land helpers — shared by the browse page, homepage and dashboard.
+/* PataHome land helpers, shared by the browse page, homepage and dashboard.
    The server keeps an identical copy of UNITS/BASIS in server.js; keep them in sync.
    Sizes are stored in the owner's unit AND as acres (so buyers can filter and
    compare). "Points": 10 points = 1 acre, as used in parts of Kenya. */

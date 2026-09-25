@@ -4,9 +4,9 @@
 <script src="/cookie-consent.js" defer></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Browse Listings — PataHome</title>
-<meta name="description" content="Find bedsitters, 1BRs and family houses for rent or sale across Kenya — direct from verified owners. PataHome shows what is nearest to you first. No agents, no viewing fees.">
-<meta property="og:title" content="PataHome — Houses for Rent & Sale Near You">
+<title>Browse Listings | PataHome</title>
+<meta name="description" content="Find bedsitters, 1BRs and family houses for rent or sale across Kenya, direct from verified owners. PataHome shows what is nearest to you first. No agents, no viewing fees.">
+<meta property="og:title" content="PataHome: Houses for Rent & Sale Near You">
 <meta property="og:description" content="Rentals and homes for sale from verified owners across Kenya, sorted by what is nearest to you.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="PataHome">
@@ -25,8 +25,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="/ph.css?v=2">
-<link rel="stylesheet" href="/browse.css?v=1">
+<link rel="stylesheet" href="/ph.css?v=3">
+<link rel="stylesheet" href="/browse.css?v=2">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#0B5D3B">
 </head>
@@ -35,7 +35,7 @@
 
 <header class="ph-header" id="hd">
   <div class="ph-wrap ph-hd">
-    <a class="ph-logo" href="/" aria-label="PataHome home"><img src="/patahome-logo-transparent.png?v=20260921-2" alt="PataHome — Kwa sababu tunakujali"></a>
+    <a class="ph-logo" href="/" aria-label="PataHome home"><img src="/patahome-logo-transparent.png?v=20260921-2" alt="PataHome: Kwa sababu tunakujali"></a>
     <nav class="ph-nav" id="mainNav" aria-label="Main">
       <a href="/browse?cat=rent">Rent</a>
       <a href="/browse?cat=sale">Buy</a>
@@ -80,9 +80,7 @@
 
 <section class="br-head">
   <div class="ph-wrap">
-    <div class="ph-eyebrow">Browse · Every listing, direct from owners</div>
     <h1 id="brTitle">Homes across <em>Kenya</em></h1>
-    <p class="ph-lead">Search by town or estate, filter by what matters, and see everything on the map.</p>
     <div class="br-search">
       <div class="ph-search-wrap search-wrap">
         <form class="ph-search" role="search" onsubmit="event.preventDefault();closeSugg();doSearch()">
@@ -167,7 +165,7 @@
     <div class="map-panel" id="mapPanel">
       <button class="map-close" onclick="toggleMobileMap(false)">✕</button>
       <div id="map"></div>
-      <div class="map-hint">Green dot marks your location · click a pin for listing details</div>
+      
     </div>
   </div>
 </div>
@@ -182,7 +180,7 @@
     <div class="ph-ft">
       <div>
         <div class="brand">Pata<em>Home</em></div>
-        <p class="about">Homes, land and business spaces across Kenya — direct from the people who own them.</p>
+        <p class="about">Homes, land and business spaces across Kenya, direct from the people who own them.</p>
         <div class="ph-social">
           <a href="https://www.facebook.com/share/1GBzjtrL7z/" target="_blank" rel="noopener" aria-label="Facebook"><svg viewBox="0 0 24 24"><path d="M13.5 22v-8h2.6l.4-3.1h-3V8.9c0-.9.3-1.5 1.6-1.5H17V4.6c-.3 0-1.4-.1-2.6-.1-2.6 0-4.4 1.6-4.4 4.4v2h-3V14h3v8h3.5z"/></svg></a>
           <a href="https://instagram.com/" target="_blank" rel="noopener" aria-label="Instagram"><svg viewBox="0 0 24 24"><path d="M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0 8.2a3.2 3.2 0 1 1 0-6.4 3.2 3.2 0 0 1 0 6.4zM17.3 5.5a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4zM12 2c-2.7 0-3.1 0-4.1.1-1.1 0-1.8.2-2.5.5a5 5 0 0 0-1.8 1.2A5 5 0 0 0 2.4 5.6c-.3.6-.4 1.4-.5 2.5C2 9 2 9.4 2 12s0 3 .1 4.1c0 1.1.2 1.8.5 2.5.3.7.6 1.2 1.2 1.8.6.5 1.1.9 1.8 1.1.6.3 1.4.5 2.5.5 1 .1 1.4.1 4 .1s3 0 4.1-.1c1.1 0 1.8-.2 2.5-.5a5 5 0 0 0 1.8-1.1 5 5 0 0 0 1.1-1.8c.3-.7.5-1.4.5-2.5.1-1 .1-1.4.1-4.1s0-3-.1-4c0-1.1-.2-1.9-.5-2.5a5 5 0 0 0-1.1-1.9 5 5 0 0 0-1.8-1.1c-.7-.3-1.4-.5-2.5-.5C15 2 14.7 2 12 2zm0 1.8c2.7 0 3 0 4 .1 1 0 1.5.2 1.9.3.4.2.8.4 1.1.7.3.3.6.7.7 1.1.1.4.3.9.3 1.9.1 1 .1 1.4.1 4s0 3-.1 4c0 1-.2 1.5-.3 1.9-.2.4-.4.8-.7 1.1-.3.3-.7.6-1.1.7-.4.1-.9.3-1.9.3-1 .1-1.3.1-4 .1s-3 0-4-.1c-1 0-1.5-.2-1.9-.3a3 3 0 0 1-1.1-.7 3 3 0 0 1-.7-1.1c-.1-.4-.3-.9-.3-1.9-.1-1-.1-1.4-.1-4s0-3 .1-4c0-1 .2-1.5.3-1.9.2-.4.4-.8.7-1.1.3-.3.7-.6 1.1-.7.4-.1.9-.3 1.9-.3 1-.1 1.4-.1 4-.1z"/></svg></a>
@@ -265,7 +263,7 @@
     <div class="vw-times" id="vwTimes"></div>
     <label>Your name</label><input id="vwName" autocomplete="name" placeholder="Your name">
     <label>Phone</label><input id="vwPhone" inputmode="tel" autocomplete="tel" placeholder="07XXXXXXXX">
-    <label>Email <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional — for confirmation & reminder)</span></label><input id="vwEmail" type="email" placeholder="you@example.com">
+    <label>Email <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional, for confirmation & reminder)</span></label><input id="vwEmail" type="email" placeholder="you@example.com">
     <label>Note to the owner (optional)</label><input id="vwNote" maxlength="500" placeholder="e.g. I'll come with my spouse">
     <div class="safe-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.5 8 8 11 4.5-3 8-6 8-11V5z"/><path d="M12 8v4M12 16h.01"/></svg><span>Viewings on PataHome are free. <b>Never pay a "viewing fee".</b></span></div>
     <div class="err" id="vwErr"></div>
@@ -281,10 +279,10 @@
   <div class="modal">
     <button class="close-x" onclick="closeModal('alertModal')" aria-label="Close">✕</button>
     <h2>Get new matches first</h2>
-    <div class="sub">We'll email you as soon as a new home matches:</div>
+    <div class="sub">We'll email you new homes that match:</div>
     <div class="al-crit" id="alCrit"></div>
     <label>Email</label><input id="alEmail" type="email" autocomplete="email" placeholder="you@example.com">
-    <div class="photo-note" style="margin-top:6px">We'll send one email to confirm. Every alert has a one-tap unsubscribe link.</div>
+    <div class="photo-note" style="margin-top:6px">Unsubscribe anytime.</div>
     <div class="err" id="alErr"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('alertModal')">Cancel</button>
@@ -306,18 +304,18 @@
   <div class="modal">
     <button class="close-x" onclick="closeModal('reportModal')" aria-label="Close">✕</button>
     <h2>Report this listing</h2>
-    <div class="sub" id="rpSub">Tell us what's wrong. Reports are anonymous to the owner.</div>
+    <div class="sub" id="rpSub">Reports are anonymous.</div>
     <div class="rp-reasons" id="rpReasons">
-      <label><input type="radio" name="rpReason" value="scam"> <span><b>Scam</b> — asks for money before viewing</span></label>
-      <label><input type="radio" name="rpReason" value="taken"> <span><b>Already taken</b> — rented or sold</span></label>
-      <label><input type="radio" name="rpReason" value="price"> <span><b>Wrong price</b> — different from what's listed</span></label>
-      <label><input type="radio" name="rpReason" value="photos"> <span><b>Fake photos</b> — not this house</span></label>
+      <label><input type="radio" name="rpReason" value="scam"> <span><b>Scam</b> asks for money before viewing</span></label>
+      <label><input type="radio" name="rpReason" value="taken"> <span><b>Already taken</b> rented or sold</span></label>
+      <label><input type="radio" name="rpReason" value="price"> <span><b>Wrong price</b> different from what's listed</span></label>
+      <label><input type="radio" name="rpReason" value="photos"> <span><b>Fake photos</b> not this house</span></label>
       <label><input type="radio" name="rpReason" value="location"> <span><b>Wrong location</b></span></label>
       <label><input type="radio" name="rpReason" value="other"> <span><b>Something else</b></span></label>
     </div>
     <label>Details (optional)</label>
     <textarea id="rpDetails" rows="3" maxlength="1000" placeholder="What happened? e.g. they asked me to send KES 2,000 by M-Pesa before viewing"></textarea>
-    <label>Your phone or email (optional — only if you're happy for us to follow up)</label>
+    <label>Your phone or email (optional, only if you're happy for us to follow up)</label>
     <input id="rpContact" maxlength="80" placeholder="07XXXXXXXX or you@email.com">
     <div class="err" id="rpErr"></div>
     <div class="modal-actions">
@@ -332,7 +330,7 @@
   <div class="modal">
     <button class="close-x" onclick="closeModal('followModal')">✕</button>
     <h2 id="followTitle">Follow this owner</h2>
-    <div class="sub" id="followSub">Get notified when this owner posts or updates a listing.</div>
+    <div class="sub" id="followSub">Get told when they post a new listing.</div>
     <div id="followForm">
       <label>Your name</label><input id="fName" autocomplete="name" placeholder="Your name">
       <label>Phone number</label><input id="fPhone" inputmode="tel" autocomplete="tel" placeholder="07XXXXXXXX">
@@ -370,7 +368,7 @@
     <label>Or send a message</label>
     <input id="qName" placeholder="Your name" style="margin-bottom:8px">
     <input id="qPhone" placeholder="Your phone e.g. 0712 345 678" style="margin-bottom:8px">
-    <input id="qEmail" type="email" placeholder="Your email (optional — to get the owner's reply)" style="margin-bottom:8px">
+    <input id="qEmail" type="email" placeholder="Your email (optional, to get the owner's reply)" style="margin-bottom:8px">
     <textarea id="qMsg" rows="2" placeholder="e.g. Is it still available? Can I view Saturday?"></textarea>
     <button class="btn btn-primary" style="width:100%;margin-top:12px;padding:12px" onclick="sendInquiry()">Send Message</button>
   </div>
@@ -395,7 +393,7 @@
     <button class="cb-x" onclick="toggleChat(false)" aria-label="Close chat">✕</button>
   </div>
   <div class="cb-body" id="cbBody">
-    <div class="cb-msg">Karibu! 👋 How can we help? Leave your details and message — we'll get back to you on WhatsApp or SMS.</div>
+    <div class="cb-msg">Karibu! 👋 How can we help? Leave your details and message, we'll get back to you on WhatsApp or SMS.</div>
     <input id="cbName" placeholder="Your name">
     <input id="cbPhone" placeholder="Phone e.g. 0712 345 678">
     <textarea id="cbMsg" rows="3" placeholder="Type your message…"></textarea>
@@ -609,8 +607,8 @@ function lockSubHeight(){
 }
 const HERO_SUBS=[
   "Verified rentals and homes for sale across Kenya, sorted by what's nearest to you. Owners first, every fee shown upfront. No viewing fees. Karibu home.",
-  "Every owner is ID-verified and every listing is direct — chat on WhatsApp, book a viewing, move in.",
-  "From campus bedsitters to family maisonettes, see what's closest to you first — on the map or in the list."
+  "Every owner is ID-verified and every listing is direct, chat on WhatsApp, book a viewing, move in.",
+  "From campus bedsitters to family maisonettes, see what's closest to you first, on the map or in the list."
 ];
 let subIdx=0;
 function rotateSub(){
@@ -651,7 +649,7 @@ async function renderSugg(){
   const matches=r.listings.filter(x=>CAT[x.category]).map(toItem);
   matches.forEach(x=>BYID.set(x.id,x));
   if(!matches.length){
-    box.innerHTML=`<div class="sg-none">No matches yet — try other keywords, e.g. “bedsitter Kasarani” or “2br under 20k”</div>`;
+    box.innerHTML=`<div class="sg-none">No matches yet, try other keywords, e.g. “bedsitter Kasarani” or “2br under 20k”</div>`;
     box.classList.add("show");return;
   }
   const total=r.total;
@@ -686,7 +684,7 @@ function quickFilter(cat,price,beds,label){
   document.getElementById("bedFilter").value=beds;
   document.getElementById("searchInput").value="";
   render();
-  toast(label+" — filters applied");
+  toast(label+", filters applied");
   document.getElementById("tabs").scrollIntoView({behavior:"smooth",block:"start"});
 }
 /* Favourites (saved on this device) */
@@ -703,7 +701,7 @@ function toggleFav(id){
   if(favView)render();else repaint();
 }
 function toggleFavView(){
-  if(!favView&&!favs.size){toast("No saved listings yet — tap ♥ on a listing");return}
+  if(!favView&&!favs.size){toast("No saved listings yet, tap ♥ on a listing");return}
   favView=!favView;
   document.getElementById("favBtn").classList.toggle("active-filter",favView);
   toast(favView?"Showing saved listings only":"Showing all listings");
@@ -713,7 +711,7 @@ function toggleFavView(){
 /* ================= LOCATION ================= */
 function useMyLocation(){
   const st=document.getElementById("locStatus");
-  if(!navigator.geolocation){st.textContent="Geolocation not supported — pick an area instead.";return}
+  if(!navigator.geolocation){st.textContent="Geolocation not supported, pick an area instead.";return}
   const btn=document.getElementById("gpsBtn");
   if(btn.dataset.locating==="1")return;
   btn.dataset.locating="1";
@@ -724,7 +722,7 @@ function useMyLocation(){
       let best=null,bd=1e9;
       for(const[name,[la,ln]]of Object.entries(AREAS)){const d=dist(userLoc[0],userLoc[1],la,ln);if(d<bd){bd=d;best=name}}
       userLocName=bd<40?("near "+best):"your location";
-      st.textContent="Location set — showing homes nearest to you";
+      st.textContent="Location set, showing homes nearest to you";
       btn.classList.add("active");
       delete btn.dataset.locating;
       document.getElementById("citySelect").value="";
@@ -734,8 +732,8 @@ function useMyLocation(){
       delete btn.dataset.locating;
       btn.classList.remove("active");
       st.textContent=e&&e.code===1
-        ?"Location permission is off — pick an area instead."
-        :"Couldn’t get your location in time — pick an area instead.";
+        ?"Location permission is off, pick an area instead."
+        :"Couldn’t get your location in time, pick an area instead.";
     },
     {enableHighAccuracy:false,timeout:10000,maximumAge:300000}
   );
@@ -771,8 +769,8 @@ async function renderInsights(){
       :`<small>KES</small>${n.toLocaleString("en-KE")}`;
     document.getElementById("insightGrid").innerHTML=`
       <div class="insight-card"><div class="lbl">Listings within ${o.radiusKm} km</div><div class="val" id="iv0">0</div></div>
-      <div class="insight-card"><div class="lbl">Average rent / month</div><div class="val">${o.avgRent?money(o.avgRent):"—"}</div></div>
-      <div class="insight-card"><div class="lbl">Cheapest rental</div><div class="val">${o.cheapestRent?money(o.cheapestRent):"—"}</div></div>
+      <div class="insight-card"><div class="lbl">Average rent / month</div><div class="val">${o.avgRent?money(o.avgRent):"-"}</div></div>
+      <div class="insight-card"><div class="lbl">Cheapest rental</div><div class="val">${o.cheapestRent?money(o.cheapestRent):"-"}</div></div>
       <div class="insight-card"><div class="lbl">Homes for sale</div><div class="val" id="iv3">0</div></div>`;
     box.classList.add("show");
     countUp(document.getElementById("iv0"),o.totalNearby,700);
@@ -915,8 +913,8 @@ async function fetchResults(append){
   catch(e){
     if(seq!==searchSeq)return;
     cards.classList.remove("loading");
-    if(append){const w=document.getElementById("moreWrap");if(w){delete w.dataset.busy;w.querySelector("button").textContent="Couldn't load — tap to retry"}}
-    else cards.innerHTML=`<div class="empty">Couldn't load listings — check your connection and try again.</div>`;
+    if(append){const w=document.getElementById("moreWrap");if(w){delete w.dataset.busy;w.querySelector("button").textContent="Couldn't load, tap to retry"}}
+    else cards.innerHTML=`<div class="empty">Couldn't load listings, check your connection and try again.</div>`;
     return;
   }
   if(seq!==searchSeq)return; // a newer search started while this one was in flight
@@ -941,7 +939,7 @@ function drawCards(list,append){
   const offset=append?LISTINGS.length-list.length:0;
   const html=list.map((x,i)=>cardHTML(x,append?i:offset+i)).join("");
   if(append)cards.insertAdjacentHTML("beforeend",html);
-  else cards.innerHTML=list.length?html:`<div class="empty">${document.getElementById("searchInput").value.trim()?`No matches for “${esc(document.getElementById("searchInput").value.trim())}” — try fewer or different keywords.`:"No listings match your filters. Try widening your search."}</div>`;
+  else cards.innerHTML=list.length?html:`<div class="empty">${document.getElementById("searchInput").value.trim()?`No matches for “${esc(document.getElementById("searchInput").value.trim())}”, try fewer or different keywords.`:"No listings match your filters. Try widening your search."}</div>`;
   if(HAS_MORE){
     cards.insertAdjacentHTML("beforeend",`<div class="more-wrap" id="moreWrap"><button type="button" class="btn btn-ghost more-btn" onclick="loadMore()">Show more homes <small>(${LISTINGS.length} of ${TOTAL})</small></button></div>`);
     watchMore();
@@ -1032,7 +1030,7 @@ function openDetail(id){
   if(x.photos&&x.photos.length)facts.push(['<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h3l2-2h6l2 2h3v13H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',x.photos.length+" photo"+(x.photos.length===1?"":"s")]);
   document.getElementById("dFacts").innerHTML=facts.map(([ic,t])=>t==="Video tour"
     ?`<button type="button" class="dm-vid" onclick="playVideo(${x.id})">${ic}${t}</button>`:`<span>${ic}${esc(t)}</span>`).join("");
-  // Only what the owner actually told us — no made-up amenities.
+  // Only what the owner actually told us, no made-up amenities.
   const F=x.features||{};
   const LD=(window.PH_LAND&&PH_LAND.DETAILS)||{};
   const CD=(window.PH_COMM&&PH_COMM.DETAILS)||{};
@@ -1094,7 +1092,7 @@ async function shareListing(id){
   const x=BYID.get(id);if(!x)return;
   const c=CAT[x.cat];
   const url=`${location.origin}/listing/${x.id}/${x.title.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")}`;
-  const text=`${x.title} — ${priceTxt(x)} in ${x.area}. On PataHome:`;
+  const text=`${x.title}: ${priceTxt(x)} in ${x.area}. On PataHome:`;
   track(id,"share");
   if(navigator.share){try{await navigator.share({title:x.title,text,url});return}catch(e){if(e&&e.name==="AbortError")return}}
   window.open("https://wa.me/?text="+encodeURIComponent(text+" "+url),"_blank","noopener");
@@ -1125,7 +1123,7 @@ function pickDay(iso){
   document.querySelectorAll("#vwDays button").forEach(b=>b.classList.toggle("on",b.dataset.d===iso));
   const now=Date.now(),slots=[];
   for(let h=8;h<=18;h++)for(const m of ["00","30"]){if(h===18&&m==="30")continue;const t=`${String(h).padStart(2,"0")}:${m}`;if(new Date(`${iso}T${t}:00+03:00`).getTime()>now+60*60e3)slots.push(t)}
-  document.getElementById("vwTimes").innerHTML=slots.length?slots.map(t=>{const [h,m]=t.split(":");const lab=`${(+h%12)||12}:${m} ${+h<12?"am":"pm"}`;return `<button type="button" data-t="${t}" onclick="pickTime('${t}')">${lab}</button>`}).join(""):'<div class="photo-note">No times left today — pick another day</div>';
+  document.getElementById("vwTimes").innerHTML=slots.length?slots.map(t=>{const [h,m]=t.split(":");const lab=`${(+h%12)||12}:${m} ${+h<12?"am":"pm"}`;return `<button type="button" data-t="${t}" onclick="pickTime('${t}')">${lab}</button>`}).join(""):'<div class="photo-note">No times left today, pick another day</div>';
 }
 function pickTime(t){vwTime=t;document.querySelectorAll("#vwTimes button").forEach(b=>b.classList.toggle("on",b.dataset.t===t))}
 async function sendViewing(){
@@ -1138,7 +1136,7 @@ async function sendViewing(){
     const r=await api(`/api/listings/${viewId}/viewings`,{method:"POST",body:JSON.stringify(body)});
     ["vwName","vwPhone","vwEmail"].forEach(k=>{try{localStorage.setItem("ph_"+k,document.getElementById(k).value.trim())}catch(e){}});
     rememberViewing(r.token,(BYID.get(viewId)||{}).title||"");
-    closeModal("viewModal");toast("Viewing requested — you'll hear back once the owner confirms.");
+    closeModal("viewModal");toast("Viewing requested, you'll hear back once the owner confirms.");
   }catch(e){err.textContent=e.message}
   finally{btn.disabled=false}
 }
@@ -1158,7 +1156,7 @@ function openAlert(){
   if(c.q)bits.push("“"+c.q+"”");
   if(c.price)bits.push(document.getElementById("priceFilter").selectedOptions[0].textContent);
   if(c.direct)bits.push("direct owners only");
-  document.getElementById("alCrit").innerHTML=bits.map(b=>`<span>${esc(b)}</span>`).join("")+`<div class="photo-note" style="width:100%">Change the search or filters first to narrow it down.</div>`;
+  document.getElementById("alCrit").innerHTML=bits.map(b=>`<span>${esc(b)}</span>`).join("")+`<div class="photo-note" style="width:100%">Change the filters first to narrow it down.</div>`;
   document.getElementById("alErr").textContent="";
   try{document.getElementById("alEmail").value=localStorage.getItem("ph_vwEmail")||""}catch(e){}
   openModal("alertModal");
@@ -1177,7 +1175,7 @@ let reportId=null;
 function openReport(id){
   reportId=id;
   const x=BYID.get(id);
-  document.getElementById("rpSub").textContent=(x?`“${x.title}” · `:"")+"Tell us what's wrong. Reports are anonymous to the owner.";
+  document.getElementById("rpSub").textContent=(x?`“${x.title}” · `:"")+"Reports are anonymous.";
   document.querySelectorAll('input[name="rpReason"]').forEach(r=>r.checked=false);
   document.getElementById("rpDetails").value="";document.getElementById("rpContact").value="";document.getElementById("rpErr").textContent="";
   openModal("reportModal");
@@ -1189,11 +1187,11 @@ async function sendReport(){
   const btn=document.getElementById("rpSend");btn.disabled=true;
   try{
     await api(`/api/listings/${reportId}/report`,{method:"POST",body:JSON.stringify({reason:r.value,details:document.getElementById("rpDetails").value,contact:document.getElementById("rpContact").value})});
-    closeModal("reportModal");toast("Thanks — our team will review this listing.");
+    closeModal("reportModal");toast("Thanks, our team will review this listing.");
   }catch(e){err.textContent=e.message}
   finally{btn.disabled=false}
 }
-/* Details / About / Nearby as tabs — keeps the popup short. */
+/* Details / About / Nearby as tabs, keeps the popup short. */
 function buildDetailTabs(){
   const panes=[...document.querySelectorAll("#detailModal .dm-pane")];
   const has=panes.filter(p=>p.style.display!=="none"&&p.textContent.trim());
@@ -1209,7 +1207,7 @@ function openFollow(id){
   const x=BYID.get(id); if(!x||!x.ownerId)return;
   followOwnerId=x.ownerId;followChallenge=null;
   document.getElementById("followTitle").textContent="Follow "+x.owner;
-  document.getElementById("followSub").textContent="Get notified when this owner posts or updates a listing.";
+  document.getElementById("followSub").textContent="Get told when they post a new listing.";
   document.getElementById("followForm").style.display="block";document.getElementById("followCode").style.display="none";
   document.getElementById("followErr").textContent="";closeModal("detailModal");openModal("followModal");
 }
@@ -1252,8 +1250,8 @@ function renderPhotoGrid(gEl,photos){
     // mobile shows the big photo + 3 small; the 4th small tile carries "+N" there
     const mMore=(i===3&&n>4)?`<span class="pg-more pg-more-m">+${n-4} photo${n-4===1?"":"s"}</span>`:"";
     return i===0
-      ?`<button type="button" class="pg-tile pg-main" onclick="openZoom(0)" aria-label="View photo 1 of ${n} full screen"><img class="ph-bg" src="${p.thumb}" alt="" aria-hidden="true"><img class="pg-img pg-fit" src="${p.full}" alt="${esc(galItem.title)} — photo 1"><span class="gal-zoom">⤢ ${n>1?"View all "+n+" photos":"Full screen"}</span></button>`
-      :`<button type="button" class="pg-tile pg-s${i}" onclick="openZoom(${i})" aria-label="View photo ${i+1} of ${n} full screen"><img class="pg-img" src="${p.thumb}" alt="${esc(galItem.title)} — photo ${i+1}" loading="lazy">${more}${mMore}</button>`;
+      ?`<button type="button" class="pg-tile pg-main" onclick="openZoom(0)" aria-label="View photo 1 of ${n} full screen"><img class="ph-bg" src="${p.thumb}" alt="" aria-hidden="true"><img class="pg-img pg-fit" src="${p.full}" alt="${esc(galItem.title)}, photo 1"><span class="gal-zoom">⤢ ${n>1?"View all "+n+" photos":"Full screen"}</span></button>`
+      :`<button type="button" class="pg-tile pg-s${i}" onclick="openZoom(${i})" aria-label="View photo ${i+1} of ${n} full screen"><img class="pg-img" src="${p.thumb}" alt="${esc(galItem.title)}, photo ${i+1}" loading="lazy">${more}${mMore}</button>`;
   };
   gEl.className="gallery pgrid pg-n"+shown;
   gEl.innerHTML=photos.slice(0,shown).map(tile).join("");
@@ -1285,7 +1283,7 @@ async function openContact(id){
     document.getElementById("cWhatsApp").href="https://wa.me/"+intl+"?text="+encodeURIComponent("Hi! I found your listing '"+x.title+"' on PataHome. Is it still available?");
     document.getElementById("cCall").href="tel:"+r.ownerPhone.replace(/\s/g,"");
   }catch(e){
-    document.getElementById("cPhone").textContent="Couldn't load contact — try again";
+    document.getElementById("cPhone").textContent="Couldn't load contact, try again";
   }
 }
 async function sendInquiry(){
@@ -1300,7 +1298,7 @@ async function sendInquiry(){
     rememberThread(r.threadToken,x?x.title:"");
     closeModal("contactModal");
     document.getElementById("qMsg").value="";
-    toast("Message sent — follow the chat under “My messages”.");
+    toast("Message sent, follow the chat under “My messages”.");
   }catch(e){toast(e.message)}
 }
 
@@ -1319,7 +1317,7 @@ async function paintAccount(){
     chip.style.display="flex";
   }catch(e){/* stay logged-out visually */}
 }
-/* Scroll-reveal is armed FIRST and independently — if anything else fails
+/* Scroll-reveal is armed FIRST and independently, if anything else fails
    (map CDN, data load), sections must still become visible. */
 (function armReveal(){
   try{
@@ -1366,7 +1364,7 @@ async function paintAccount(){
   if(P.get("open"))setTimeout(()=>{try{openDetail(+P.get("open"))}catch(e){}},400);
   if(P.get("notice")){setTimeout(()=>toast(P.get("notice")),700);history.replaceState(null,"",location.pathname)}
   try{initMap()}catch(e){
-    // Map library unavailable (slow/blocked CDN) — hide the map gracefully, keep the site working
+    // Map library unavailable (slow/blocked CDN), hide the map gracefully, keep the site working
     document.getElementById("mapPanel").style.display="none";
     const fab=document.querySelector(".map-fab");if(fab)fab.style.display="none";
   }
@@ -1400,14 +1398,14 @@ async function sendChat(){
   try{
     const r=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name,phone,message})});
     if(!r.ok)throw new Error((await r.json()).error||"Could not send");
-    document.getElementById("cbBody").innerHTML='<div class="cb-msg">Asante, '+name.split(" ")[0].replace(/[<>&]/g,"")+'! 🙌 Your message is in — we\'ll reply on WhatsApp or SMS shortly.</div><button class="cb-send" onclick="toggleChat(false)">Close</button>';
+    document.getElementById("cbBody").innerHTML='<div class="cb-msg">Asante, '+name.split(" ")[0].replace(/[<>&]/g,"")+'! 🙌 Your message is in, we\'ll reply on WhatsApp or SMS shortly.</div><button class="cb-send" onclick="toggleChat(false)">Close</button>';
   }catch(e){err.textContent=e.message}
 }
 
 function toggleNav(e){if(e)e.stopPropagation();document.getElementById("navPop").classList.toggle("show")}
 document.addEventListener("click",e=>{if(!e.target.closest("#navPop,#hamBtn"))document.getElementById("navPop").classList.remove("show")});
 </script>
-<script src="/i18n.js?v=2" defer></script>
+<script src="/i18n.js?v=3" defer></script>
 <script src="/app.js?v=3" defer></script>
 </body>
 </html>

@@ -20,7 +20,7 @@
     b.id = "phInstall";
     b.setAttribute("role", "dialog");
     b.innerHTML = '<img src="/favicon-192.png" alt="" width="36" height="36">' +
-      '<div><b data-i18n="install.title">Get the PataHome app</b><span data-i18n="install.sub">Faster on your phone — free, no Play Store needed.</span></div>' +
+      '<div><b data-i18n="install.title">Get the PataHome app</b><span data-i18n="install.sub">Faster on your phone, free, no Play Store needed.</span></div>' +
       '<button type="button" class="phi-go" data-i18n="install.go">Install</button>' +
       '<button type="button" class="phi-x" aria-label="Not now">✕</button>';
     var css = document.createElement("style");

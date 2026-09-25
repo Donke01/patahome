@@ -1,4 +1,4 @@
-/* PataHome photo viewer — full-screen, zoomable, swipeable.
+/* PataHome photo viewer, full-screen, zoomable, swipeable.
    Usage: PataLightbox.open(["url1","url2"], startIndex)
    - Pinch or double-tap (mobile), scroll wheel or double-click (desktop) to zoom
    - Drag to pan while zoomed; swipe / arrow keys to change photo; Esc or ✕ to close

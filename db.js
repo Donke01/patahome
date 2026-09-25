@@ -1,9 +1,9 @@
-// db.js — SQLite via Node's built-in node:sqlite (Node 22.5+). Zero dependencies.
+// db.js: SQLite via Node's built-in node:sqlite (Node 22.5+). Zero dependencies.
 const { DatabaseSync } = require("node:sqlite");
 const path = require("node:path");
 
 const db = new DatabaseSync(process.env.DB_PATH || path.join(__dirname, "patahome.db"));
-try { db.exec("PRAGMA journal_mode = WAL"); } catch { /* WAL unsupported on some filesystems — default journal is fine */ }
+try { db.exec("PRAGMA journal_mode = WAL"); } catch { /* WAL unsupported on some filesystems, default journal is fine */ }
 db.exec("PRAGMA foreign_keys = ON");
 
 db.exec(`
@@ -92,7 +92,7 @@ try { db.exec("ALTER TABLE listings ADD COLUMN photos TEXT"); } catch (e) { /* c
 
 // Expand listings.category to allow 'shortlet' (Airbnb-style furnished nightly rentals).
 // SQLite doesn't support ALTER on CHECK constraints, so if the old CHECK is present we
-// rebuild the table in a transaction. Idempotent — skipped once the new CHECK is in place.
+// rebuild the table in a transaction. Idempotent, skipped once the new CHECK is in place.
 try {
   const info = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='listings'").get();
   if (info && info.sql && info.sql.includes("'vehicle'") && !info.sql.includes("'shortlet'")) {
@@ -252,7 +252,7 @@ CREATE INDEX IF NOT EXISTS idx_photo_etag ON photo_hashes(etag);
 /* ---- Listing extras: structured details, video, nearby places ---- */
 try { db.exec("ALTER TABLE listings ADD COLUMN features TEXT NOT NULL DEFAULT '{}'"); } catch (e) { /* exists */ }
 try { db.exec("ALTER TABLE listings ADD COLUMN video TEXT NOT NULL DEFAULT ''"); } catch (e) { /* exists */ }
-try { db.exec("ALTER TABLE listings ADD COLUMN nearby TEXT"); } catch (e) { /* exists — JSON, NULL = not fetched yet */ }
+try { db.exec("ALTER TABLE listings ADD COLUMN nearby TEXT"); } catch (e) { /* exists: JSON, NULL = not fetched yet */ }
 
 db.exec(`
 /* Viewing requests from tenants */
@@ -379,7 +379,7 @@ try {
 }
 try { db.exec("CREATE INDEX IF NOT EXISTS idx_listings_comm ON listings(category, comm_type, area_sqft)"); } catch (e) { /* ignore */ }
 
-/* Login sessions — one row per signed-in device. Tokens carry the session id,
+/* Login sessions, one row per signed-in device. Tokens carry the session id,
    so a session can be expired for inactivity, capped in length, or revoked
    (logout, "sign out everywhere", password/phone/email change). */
 db.exec(`
@@ -401,7 +401,7 @@ for (const [table, col] of [
   ["users", "admin_role TEXT"],            // super | moderator | support (only when role='admin')
   ["users", "banned_until TEXT"],          // ISO time, or 'forever'
   ["users", "ban_reason TEXT"], ["users", "banned_at TEXT"], ["users", "banned_by INTEGER"],
-  ["listings", "admin_banner TEXT"],       // e.g. "Under investigation — do not pay"
+  ["listings", "admin_banner TEXT"],       // e.g. "Under investigation, do not pay"
   ["sessions", "readonly INTEGER NOT NULL DEFAULT 0"], ["sessions", "viewer_id INTEGER"]
 ]) { try { db.exec(`ALTER TABLE ${table} ADD COLUMN ${col}`); } catch (e) { /* exists */ } }
 for (const [table, col] of [

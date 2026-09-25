@@ -1,4 +1,4 @@
-// lib.js — zero-dependency helpers: password hashing, JWT-style tokens, tiny router
+// lib.js, zero-dependency helpers: password hashing, JWT-style tokens, tiny router
 const crypto = require("node:crypto");
 
 const SECRET = process.env.JWT_SECRET || "dev-secret-change-in-production";
@@ -47,7 +47,7 @@ function km(a, b, c, d) {
 }
 
 /* ---------- tiny router ---------- */
-// route("GET", "/api/listings/:id", handler) — handler(req, res, params)
+// route("GET", "/api/listings/:id", handler), handler(req, res, params)
 function makeRouter() {
   const routes = [];
   function add(method, pattern, handler) {
@@ -66,7 +66,7 @@ function makeRouter() {
   return { add, match };
 }
 
-/* ---------- minimal SMTP client (STARTTLS) — zero dependencies ----------
+/* ---------- minimal SMTP client (STARTTLS), zero dependencies ----------
    Configured via env: SMTP_HOST, SMTP_PORT (default 587), SMTP_USER, SMTP_PASS, MAIL_FROM
    For iCloud custom domains: SMTP_HOST=smtp.mail.me.com, SMTP_USER=<Apple ID>,
    SMTP_PASS=<app-specific password>, MAIL_FROM=info@yourdomain */
@@ -97,9 +97,9 @@ async function sendMail({ to, subject, text, html }) {
 
 /* ---------- SMS via Infobip HTTPS API ----------
    Configured via env:
-     INFOBIP_API_KEY   — from the Infobip dashboard (API keys)
-     INFOBIP_BASE_URL  — your personal base URL, e.g. xxxxx.api.infobip.com
-     SMS_SENDER        — alphanumeric sender ID (default "PataHome")
+     INFOBIP_API_KEY  , from the Infobip dashboard (API keys)
+     INFOBIP_BASE_URL , your personal base URL, e.g. xxxxx.api.infobip.com
+     SMS_SENDER       , alphanumeric sender ID (default "PataHome")
    Uses HTTPS so it works on hosts that block SMTP/SMPP ports. */
 const smsConfigured = () =>
   !!(process.env.INFOBIP_API_KEY && process.env.INFOBIP_BASE_URL);
@@ -139,7 +139,7 @@ async function sendSms({ to, text }) {
     console.error(`[sms] HTTP ${r.status} to ${masked}: ${msg}`);
     throw new Error(msg);
   }
-  // Infobip returns 200 even when an individual message is rejected — check the status group.
+  // Infobip returns 200 even when an individual message is rejected, check the status group.
   const m = d?.messages?.[0];
   const group = m?.status?.groupName;
   const messageId = m?.messageId || "?";
@@ -147,7 +147,7 @@ async function sendSms({ to, text }) {
     console.error(`[sms] rejected to ${masked} id=${messageId} group=${group}: ${m?.status?.description || ""}`);
     throw new Error(m.status.description || `SMS rejected (${group})`);
   }
-  // PENDING means Infobip accepted it — NOT that the carrier delivered it.
+  // PENDING means Infobip accepted it: NOT that the carrier delivered it.
   // Log the id so it can be traced in the Infobip portal's delivery reports.
   console.log(`[sms] accepted to ${masked} id=${messageId} group=${group || "?"} status=${m?.status?.name || "?"}`);
   return { messageId, group };
@@ -162,7 +162,7 @@ function smtpSend({ to, subject, text, html }) {
     let sock = implicitTls ? tls.connect(port, host, { servername: host }) : net.connect(port, host);
     let buf = "", stage = 0;
     const fail = (m) => { try { sock.destroy(); } catch {} ; reject(new Error(m)); };
-    const timer = setTimeout(() => fail("SMTP timeout — server unreachable (host/port blocked?)"), 20000);
+    const timer = setTimeout(() => fail("SMTP timeout, server unreachable (host/port blocked?)"), 20000);
     const write = (line) => sock.write(line + "\r\n");
     const starttlsSteps = [
       { expect: /^250/, send: () => write("STARTTLS") },

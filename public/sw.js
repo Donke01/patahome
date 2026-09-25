@@ -1,10 +1,10 @@
-/* PataHome service worker — makes the site installable and quick on slow
+/* PataHome service worker, makes the site installable and quick on slow
    connections without ever serving stale listings:
    - pages (HTML): network first, cached copy only when offline
    - CSS/JS/icons: served from cache, refreshed in the background
    - /api/*: never cached (always live data)
    Bump VERSION to drop old caches after big changes. */
-const VERSION = "ph-v5";
+const VERSION = "ph-v6";
 const SHELL = ["/", "/browse", "/messages", "/offline.html", "/favicon.svg", "/favicon-192.png"];
 
 self.addEventListener("install", (e) => {

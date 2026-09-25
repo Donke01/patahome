@@ -1,7 +1,7 @@
 /* PataHome English ⇄ Kiswahili.
    How it works: English stays in the HTML. When Kiswahili is chosen, every
    piece of text (and placeholder) that exactly matches a phrase below is
-   swapped — including cards and popups the page builds later (a
+   swapped, including cards and popups the page builds later (a
    MutationObserver catches those). Switching back to English reloads.
    To translate something new, add "English text": "Kiswahili" below. */
 (function () {
@@ -25,9 +25,11 @@
     // homepage sections
     // homepage (calm & premium)
     "Homes across Kenya · Direct from owners": "Nyumba kote Kenya · Moja kwa moja kutoka kwa wamiliki",
-    "Find a home that": "Pata nyumba", "feels": "inayohisi", "like yours.": "kama yako.",
-    "Rentals, homes for sale, Airbnbs, land and business spaces — listed by the people who own them. No viewing fees. Every fee shown upfront.":
-      "Nyumba za kupanga, za kuuza, Airbnb, ardhi na nafasi za biashara — zimetangazwa na wamiliki wenyewe. Hakuna ada ya kutazama. Kila ada inaonyeshwa wazi.",
+    "Find a home that": "Pata nyumba",
+    "Find your next": "Pata", "home.": "nyumba yako.", "Rentals, homes, Airbnbs, land and shops across Kenya.": "Nyumba za kupanga, za kuuza, Airbnb, ardhi na maduka kote Kenya.",
+    "See all": "Tazama zote", "Own a property?": "Una nyumba au ardhi?", "List it free.": "Tangaza bure.", "Homes, land and shops across Kenya, straight from the owners.": "Nyumba, ardhi na maduka kote Kenya, moja kwa moja kutoka kwa wamiliki.", "feels": "inayohisi", "like yours.": "kama yako.",
+    "Rentals, homes for sale, Airbnbs, land and business spaces, listed by the people who own them. No viewing fees. Every fee shown upfront.":
+      "Nyumba za kupanga, za kuuza, Airbnb, ardhi na nafasi za biashara, zimetangazwa na wamiliki wenyewe. Hakuna ada ya kutazama. Kila ada inaonyeshwa wazi.",
     "Where": "Wapi", "Looking for": "Unatafuta", "Budget": "Bajeti", "Anything": "Chochote", "Any budget": "Bajeti yoyote",
     "Town, estate or county": "Mji, mtaa au kaunti", "Verified owners": "Wamiliki waliothibitishwa", "No viewing fees": "Hakuna ada ya kutazama",
     "All 47 counties": "Kaunti zote 47", "Rentals": "Za kupanga", "For sale": "Zinauzwa", "Sign in": "Ingia",
@@ -48,7 +50,7 @@
     "Direct owner": "Mmiliki moja kwa moja", "✓ Verified owner": "✓ Mmiliki aliyethibitishwa", "Agent listing": "Tangazo la wakala",
     // footer
     "Houses for rent & sale across Kenya.": "Nyumba za kupanga na kuuza kote Kenya.",
-    "Owners first — every fee shown upfront.": "Wamiliki kwanza — kila ada inaonyeshwa wazi.",
+    "Owners first, every fee shown upfront.": "Wamiliki kwanza, kila ada inaonyeshwa wazi.",
     "List your property free": "Tangaza nyumba yako bure", "Explore": "Gundua", "Owners": "Wamiliki",
     "Contact": "Mawasiliano", "Follow": "Tufuate", "Rent": "Kupanga", "Buy": "Kununua", "Near me": "Karibu nami",
     "My messages": "Jumbe zangu", "List a property": "Tangaza nyumba", "Dashboard": "Dashibodi",
@@ -78,7 +80,7 @@
     "Get new matches first": "Pata nyumba mpya kwanza", "Create alert": "Unda arifa", "Day": "Siku", "Time": "Saa",
     "Your name": "Jina lako", "Phone": "Simu", "Email": "Barua pepe", "Send": "Tuma", "Today": "Leo", "Tomorrow": "Kesho",
     // install banner
-    "Get the PataHome app": "Pata programu ya PataHome", "Faster on your phone — free, no Play Store needed.": "Haraka kwenye simu yako — bure, bila Play Store.",
+    "Get the PataHome app": "Pata programu ya PataHome", "Faster on your phone, free, no Play Store needed.": "Haraka kwenye simu yako, bure, bila Play Store.",
     "Install": "Sakinisha",
     // messages / viewing pages
     // land
@@ -108,7 +110,7 @@
   var SUBS_SW = [
     "Nyumba za kupanga na kuuza kote Kenya, zikipangwa kwa ukaribu nawe. Hakuna ada ya kutazama. Karibu nyumbani.",
     "Wamiliki wamethibitishwa na kila tangazo ni la moja kwa moja. Ongea kwa WhatsApp, panga kutazama, hamia.",
-    "Kuanzia bedsita za chuo hadi nyumba za familia — ona zilizo karibu nawe kwanza, kwenye ramani au orodha."
+    "Kuanzia bedsita za chuo hadi nyumba za familia, ona zilizo karibu nawe kwanza, kwenye ramani au orodha."
   ];
   var HINTS_SW = ["bedsita Kasarani…", "chumba 1 karibu na chuo…", "vyumba 2 Ruiru…", "nyumba ya vyumba 3…", "nyumba ya familia Nakuru…"];
 

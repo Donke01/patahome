@@ -1,10 +1,10 @@
-/* PataHome admin — people, listing controls, site settings, growth, messaging, audit log.
+/* PataHome admin, people, listing controls, site settings, growth, messaging, audit log.
    Loaded after the main admin script; uses its helpers ($, api, esc, fmt, toast, cache, refresh, hasCap). */
 (function () {
   const CAT = { rent: "Rent", sale: "Sale", shortlet: "Airbnb", land: "Land", commercial: "Commercial" };
   const STATUS = { active: "ok", under_review: "warn", suspended: "bad", removed: "bad", expired: "warn", rented: "ok", sold: "ok" };
   const statusPill = s => `<span class="pill ${STATUS[s] || "ok"}">${esc(String(s).replace("_", " "))}</span>`;
-  const when = s => s ? esc(String(s).replace("T", " ").slice(0, 16)) : "—";
+  const when = s => s ? esc(String(s).replace("T", " ").slice(0, 16)) : "-";
   let AREAS = null;
   const areas = async () => AREAS || (AREAS = await api("/api/areas"));
 
@@ -47,7 +47,7 @@
           <button class="btn btn-ghost btn-sm" onclick="featureListing(${x.id},${x.featured})">${x.featured ? "Unfeature" : "⭐"}</button>
           ${x.status !== "removed" ? `<button class="btn btn-danger btn-sm" onclick="removeListing(${x.id})">Remove</button>` : ""}` : ""}</td>
       </tr>`).join("")}</table>
-      ${rows.length > 400 ? '<div class="muted" style="padding:10px 14px">Showing the first 400 — search to narrow down.</div>' : ""}`;
+      ${rows.length > 400 ? '<div class="muted" style="padding:10px 14px">Showing the first 400, search to narrow down.</div>' : ""}`;
     if (document.activeElement && document.activeElement.id !== "lq") return;
   };
   let lqTimer;
@@ -72,25 +72,25 @@
     try { await api(`/api/admin/listings/${id}/feature`, { method: "POST", body: JSON.stringify({ days }) }); toast(days ? `Featured for ${days} days ⭐` : "No longer featured"); await refresh(); }
     catch (e) { toast(e.message); }
   };
-  const BANNERS = ["Under investigation — do not pay any money", "Owner not yet verified — view before paying", "Reported as already taken", "Price under review"];
+  const BANNERS = ["Under investigation, do not pay any money", "Owner not yet verified, view before paying", "Reported as already taken", "Price under review"];
   window.editListing = async id => {
     const x = (cache.listings || []).find(y => y.id === id); if (!x) return;
     const ar = await areas();
     openModal(`<h2>Edit listing #${x.id}</h2><div class="muted">${esc(x.ownerName)} · the owner is told when you change the title, price, description or area.</div>
       <label>Category</label>
-      <select id="eC" onchange="catFields('${x.category}')">${[["rent", "House / room — for rent"], ["sale", "House — for sale"], ["shortlet", "Airbnb / short stay"], ["land", "Land — sale or lease"], ["commercial", "Commercial property"]]
+      <select id="eC" onchange="catFields('${x.category}')">${[["rent", "House / room, for rent"], ["sale", "House, for sale"], ["shortlet", "Airbnb / short stay"], ["land", "Land, sale or lease"], ["commercial", "Commercial property"]]
         .map(([v, l]) => `<option value="${v}"${v === x.category ? " selected" : ""}>${l}</option>`).join("")}</select>
       <div id="eCatBox"></div>
       <label>Title</label><input id="eT" value="${esc(x.title)}">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label>Price (KES)</label><input id="eP" type="number" value="${x.price}"></div>
-        <div><label>Area</label><select id="eA">${ar.map(a => `<option value="${a.id}"${a.id === x.areaId ? " selected" : ""}>${esc(a.name)} — ${esc(a.county)}</option>`).join("")}</select></div>
+        <div><label>Area</label><select id="eA">${ar.map(a => `<option value="${a.id}"${a.id === x.areaId ? " selected" : ""}>${esc(a.name)}, ${esc(a.county)}</option>`).join("")}</select></div>
       </div>
       ${["rent", "sale", "shortlet"].includes(x.category) ? `<div id="eBWrap"><label>Bedrooms</label><select id="eB"><option value="">N/A</option>${[0, 1, 2, 3, 4, 5, 6].map(n => `<option value="${n}"${x.bedrooms === n ? " selected" : ""}>${n === 0 ? "Bedsitter" : n}</option>`).join("")}</select></div>` : ""}
       <label>Description</label><textarea id="eD" rows="4">${esc(x.description || "")}</textarea>
-      <label>Warning banner on the listing <span class="muted">(shown in red to visitors — leave empty for none)</span></label>
-      <input id="eBn" list="bnList" value="${esc(x.adminBanner || "")}" placeholder="e.g. Under investigation — do not pay"><datalist id="bnList">${BANNERS.map(b => `<option value="${esc(b)}">`).join("")}</datalist>
-      <label>Note to the owner (optional)</label><input id="eN" placeholder="e.g. Your number was in the title — please use the Contact button">
+      <label>Warning banner on the listing <span class="muted">(shown in red to visitors, leave empty for none)</span></label>
+      <input id="eBn" list="bnList" value="${esc(x.adminBanner || "")}" placeholder="e.g. Under investigation, do not pay"><datalist id="bnList">${BANNERS.map(b => `<option value="${esc(b)}">`).join("")}</datalist>
+      <label>Note to the owner (optional)</label><input id="eN" placeholder="e.g. Your number was in the title, please use the Contact button">
       <label class="chk"><input type="checkbox" id="eNo" checked> Tell the owner about these changes</label>
       <div class="err" id="eErr"></div>
       <div class="actions"><button class="btn btn-primary" onclick="saveListingEdit(${x.id})">Save changes</button><button class="btn btn-ghost" onclick="closeModal()">Cancel</button></div>`);
@@ -156,7 +156,7 @@
       <table><tr><th>Person</th><th>Phone</th><th>Listings</th><th>Status</th><th>Joined</th><th></th></tr>
       ${rows.slice(0, 400).map(u => `<tr>
         <td><b>${esc(u.name)}</b> <span class="muted">#${u.id}</span>${u.role === "admin" ? ` <span class="pill feat">${esc((u.adminRole || "super").toUpperCase())}</span>` : ""}</td>
-        <td>${esc(u.phone || "—")}</td><td>${u.listings}</td>
+        <td>${esc(u.phone || "-")}</td><td>${u.listings}</td>
         <td>${u.banned ? `<span class="pill bad">${u.bannedUntil === "forever" ? "banned" : "suspended"}</span>` : u.verified ? '<span class="pill ok">✓ verified</span>' : '<span class="pill warn">unverified</span>'}</td>
         <td class="muted">${when(u.created_at)}</td>
         <td><button class="btn btn-ghost btn-sm" onclick="openUser(${u.id})">Open ›</button></td></tr>`).join("")}</table>`;
@@ -176,8 +176,8 @@
         ${u.banned ? `<span class="pill bad">${u.bannedUntil === "forever" ? "Banned" : "Suspended until " + when(u.bannedUntil)}</span>` : ""}</h2>
       ${u.banned && u.banReason ? `<div class="muted">Reason: ${esc(u.banReason)}</div>` : ""}
       <div class="kv">
-        <div><span>Phone</span>${esc(u.phone || "—")} ${u.phoneVerified ? "✓" : ""}</div><div><span>Email</span>${esc(u.email || "—")} ${u.emailVerified ? "✓" : ""}</div>
-        <div><span>WhatsApp</span>${esc(u.whatsapp || "—")}</div><div><span>Location</span>${esc([u.town, u.county].filter(Boolean).join(", ") || "—")}</div>
+        <div><span>Phone</span>${esc(u.phone || "-")} ${u.phoneVerified ? "✓" : ""}</div><div><span>Email</span>${esc(u.email || "-")} ${u.emailVerified ? "✓" : ""}</div>
+        <div><span>WhatsApp</span>${esc(u.whatsapp || "-")}</div><div><span>Location</span>${esc([u.town, u.county].filter(Boolean).join(", ") || "-")}</div>
         <div><span>Owner check</span>${u.verified ? "✓ Verified" : esc(u.verifyStatus)}</div><div><span>Joined</span>${when(u.createdAt)}</div>
       </div>
       <div class="actions">
@@ -197,14 +197,14 @@
       <div class="sec"><h3>Listings (${d.listings.length})</h3>${tbl(["Listing", "Status", "Price", "Leads"], d.listings.map(l =>
         `<tr><td><a href="/browse?open=${l.id}" target="_blank" rel="noopener">${esc(l.title)}</a> <span class="muted">#${l.id} · ${esc(l.area)}</span>${l.featured ? " ⭐" : ""}${l.admin_banner ? ` <span class="pill bad">⚠</span>` : ""}</td><td>${statusPill(l.status)}</td><td>${fmt(l.price)}</td><td>${l.leads + l.inquiries}</td></tr>`))}</div>
       <div class="sec"><h3>Reports &amp; flags</h3>${tbl(["Listing", "What", "When"], [
-        ...d.reports.map(r => `<tr><td>#${r.listingId}</td><td><b>${esc(r.reason)}</b> ${r.details ? "— " + esc(r.details) : ""} <span class="muted">(${esc(r.status)})</span></td><td>${when(r.at)}</td></tr>`),
+        ...d.reports.map(r => `<tr><td>#${r.listingId}</td><td><b>${esc(r.reason)}</b> ${r.details ? ", " + esc(r.details) : ""} <span class="muted">(${esc(r.status)})</span></td><td>${when(r.at)}</td></tr>`),
         ...d.flags.map(f => `<tr><td>#${f.listingId}</td><td><span class="pill feat">${esc(f.kind)}</span> ${esc(f.detail)}${f.resolved ? ' <span class="muted">(resolved)</span>' : ""}</td><td>${when(f.at)}</td></tr>`)])}</div>
       <div class="sec"><h3>Messages from tenants (${d.inquiries.length})</h3>${tbl(["From", "Message", "Replied", "When"], d.inquiries.map(i =>
-        `<tr><td>${esc(i.fromName)}<div class="muted">${esc(i.fromPhone || "")}</div></td><td>${esc(String(i.message).slice(0, 160))}${i.messages ? ` <span class="muted">(+${i.messages} in thread)</span>` : ""}</td><td>${i.reply ? "✓" : "—"}</td><td>${when(i.at)}</td></tr>`))}</div>
+        `<tr><td>${esc(i.fromName)}<div class="muted">${esc(i.fromPhone || "")}</div></td><td>${esc(String(i.message).slice(0, 160))}${i.messages ? ` <span class="muted">(+${i.messages} in thread)</span>` : ""}</td><td>${i.reply ? "✓" : "-"}</td><td>${when(i.at)}</td></tr>`))}</div>
       <div class="sec"><h3>Viewings (${d.viewings.length})</h3>${tbl(["Listing", "Visitor", "Slot", "Status"], d.viewings.map(v =>
         `<tr><td>#${v.listingId}</td><td>${esc(v.name)}</td><td>${when(v.slotAt)}</td><td>${esc(v.status)}</td></tr>`))}</div>
       <div class="sec"><h3>Signed-in devices</h3>${tbl(["Device", "IP", "Started", "Last active"], d.sessions.map(s =>
-        `<tr><td>${esc(s.device.slice(0, 70) || "—")}${s.viewAs ? ' <span class="pill warn">admin view-as</span>' : ""}</td><td>${esc(s.ip || "—")}</td><td>${when(s.started)}</td><td>${when(s.lastSeen)}</td></tr>`))}</div>
+        `<tr><td>${esc(s.device.slice(0, 70) || "-")}${s.viewAs ? ' <span class="pill warn">admin view-as</span>' : ""}</td><td>${esc(s.ip || "-")}</td><td>${when(s.started)}</td><td>${when(s.lastSeen)}</td></tr>`))}</div>
       <div class="sec"><h3>Admin history</h3>${tbl(["When", "Admin", "Action", "Detail"], d.history.map(h =>
         `<tr><td>${when(h.at)}</td><td>${esc(h.admin || "system")}</td><td>${esc(h.action)}</td><td class="muted">${esc(String(h.detail || "").slice(0, 140))}</td></tr>`))}</div>`;
   };
@@ -222,10 +222,10 @@
   window.doBan = async (id, forever) => {
     try {
       const r = await api(`/api/admin/users/${id}/ban`, { method: "POST", body: JSON.stringify({ forever, days: forever ? 0 : +$("bDays").value, reason: $("bReason").value.trim(), blockIdentifiers: $("bBlock").checked }) });
-      toast(`${forever ? "Banned" : "Suspended"} — ${r.listingsHidden} listing(s) hidden`); reopen(id);
+      toast(`${forever ? "Banned" : "Suspended"}: ${r.listingsHidden} listing(s) hidden`); reopen(id);
     } catch (e) { $("bErr").textContent = e.message; }
   };
-  window.uUnban = async id => { if (!confirm("Lift this suspension/ban? Their listings go live again.")) return; try { const r = await api(`/api/admin/users/${id}/unban`, { method: "POST" }); toast(`Account active — ${r.listingsShown} listing(s) back`); reopen(id); } catch (e) { toast(e.message); } };
+  window.uUnban = async id => { if (!confirm("Lift this suspension/ban? Their listings go live again.")) return; try { const r = await api(`/api/admin/users/${id}/unban`, { method: "POST" }); toast(`Account active: ${r.listingsShown} listing(s) back`); reopen(id); } catch (e) { toast(e.message); } };
   window.uSignout = async id => { if (!confirm("Sign this person out on every device?")) return; try { const r = await api(`/api/admin/users/${id}/signout`, { method: "POST" }); toast(`Signed out of ${r.signedOut} device(s)`); reopen(id); } catch (e) { toast(e.message); } };
   window.uViewAs = async id => {
     if (!confirm("Open this person's dashboard in read-only mode for 30 minutes? This is recorded in the audit log.")) return;
@@ -244,15 +244,15 @@
     async growth() {
       const g = await api("/api/admin/growth");
       const sum = k => g.weeks.slice(-4).reduce((s, w) => s + w[k], 0), prev = k => g.weeks.slice(-8, -4).reduce((s, w) => s + w[k], 0);
-      const trend = k => { const a = sum(k), b = prev(k); const p = b ? Math.round((a - b) / b * 100) : (a ? 100 : 0); return `<span class="trend ${p > 0 ? "up" : p < 0 ? "down" : "flat"}">${p > 0 ? "▲" : p < 0 ? "▼" : "—"} ${Math.abs(p)}%</span>`; };
+      const trend = k => { const a = sum(k), b = prev(k); const p = b ? Math.round((a - b) / b * 100) : (a ? 100 : 0); return `<span class="trend ${p > 0 ? "up" : p < 0 ? "down" : "flat"}">${p > 0 ? "▲" : p < 0 ? "▼" : "-"} ${Math.abs(p)}%</span>`; };
       $("panel").innerHTML = `<div style="padding:14px">
         <div class="stats">${[["users", "New people"], ["owners", "New owners"], ["listings", "New listings"], ["leads", "Leads & messages"], ["viewings", "Viewings booked"]]
           .map(([k, l]) => `<div class="stat"><div class="num">${sum(k)}${trend(k)}</div><div class="lbl">${l} · last 4 weeks</div></div>`).join("")}
           <div class="stat rev"><div class="num">${fmt(sum("revenue"))}</div><div class="lbl">Revenue · last 4 weeks</div></div></div>
         <div class="chart-card" style="margin-bottom:14px"><h3>Weekly growth<small>last 12 weeks</small></h3><div class="chart-wrap"><canvas id="gChart"></canvas></div></div>
         <div class="tr-grid">
-          <div class="tr-card"><h4>Counties — new listings (30 days)</h4>${g.counties.map(c => `<div class="tr-row"><span>${esc(c.county)} <span class="muted">${c.active} live · ${c.leads30} leads</span></span><b>${c.now30}${c.prev30 !== c.now30 ? ` <span class="muted">(${c.now30 >= c.prev30 ? "+" : ""}${c.now30 - c.prev30})</span>` : ""}</b></div>`).join("") || '<div class="muted">No data yet</div>'}</div>
-          <div class="tr-card"><h4>Top owners — leads (30 days)</h4>${g.topOwners.map(o => `<div class="tr-row"><a href="#" onclick="openUser(${o.id});return false">${esc(o.name)}${o.verified ? " ✓" : ""}</a><b>${o.leads30} <span class="muted">· ${o.listings} live</span></b></div>`).join("") || '<div class="muted">No data yet</div>'}</div>
+          <div class="tr-card"><h4>Counties, new listings (30 days)</h4>${g.counties.map(c => `<div class="tr-row"><span>${esc(c.county)} <span class="muted">${c.active} live · ${c.leads30} leads</span></span><b>${c.now30}${c.prev30 !== c.now30 ? ` <span class="muted">(${c.now30 >= c.prev30 ? "+" : ""}${c.now30 - c.prev30})</span>` : ""}</b></div>`).join("") || '<div class="muted">No data yet</div>'}</div>
+          <div class="tr-card"><h4>Top owners, leads (30 days)</h4>${g.topOwners.map(o => `<div class="tr-row"><a href="#" onclick="openUser(${o.id});return false">${esc(o.name)}${o.verified ? " ✓" : ""}</a><b>${o.leads30} <span class="muted">· ${o.listings} live</span></b></div>`).join("") || '<div class="muted">No data yet</div>'}</div>
           ${hasCap("super") ? `<div class="tr-card"><h4>Export (CSV for Excel)</h4><div class="muted" style="margin-bottom:8px">Every export is recorded in the audit log.</div>
             <div class="actions"><button class="btn btn-ghost btn-sm" onclick="exportCsv('users')">People</button><button class="btn btn-ghost btn-sm" onclick="exportCsv('listings')">Listings</button><button class="btn btn-ghost btn-sm" onclick="exportCsv('leads')">Leads</button></div></div>` : ""}
         </div></div>`;
@@ -288,7 +288,7 @@
           <label class="chk"><input type="checkbox" id="s_sms_enabled" ${on("sms_enabled")}> Send SMS (codes, alerts, reminders)</label>
           <div class="muted">Admins are always signed out after 30 minutes idle.</div>
           <div class="actions"><button class="btn btn-primary btn-sm" onclick="saveSettings(['listing_ttl_days','max_photos','session_idle_hours','session_max_days','alerts_enabled','sms_enabled'])">Save</button></div></div>` : ""}
-        <div class="site-card"><h3>🚫 Blocked words &amp; numbers</h3><div class="muted">Listings containing these are held for review automatically — e.g. “pay viewing fee”, or a scammer's M-Pesa number.</div>
+        <div class="site-card"><h3>🚫 Blocked words &amp; numbers</h3><div class="muted">Listings containing these are held for review automatically, e.g. “pay viewing fee”, or a scammer's M-Pesa number.</div>
           <div style="display:flex;gap:8px"><input id="blTerm" placeholder="word, phrase or phone number" onkeydown="if(event.key==='Enter')addBlock()"><button class="btn btn-primary btn-sm" onclick="addBlock()">Add</button></div>
           <div class="mini" style="margin-top:10px">${bl.length ? `<table>${bl.map(b => `<tr><td><b>${esc(b.term)}</b><div class="muted">${esc(b.addedBy || "")} · ${when(b.at)}</div></td><td style="text-align:right"><button class="btn btn-danger btn-sm" onclick="delBlock(${b.id})">Remove</button></td></tr>`).join("")}</table>` : '<div class="muted" style="padding:10px">Nothing blocked yet.</div>'}</div></div>
         <div class="site-card"><h3>👥 Team</h3><div class="muted">Change roles from a person's page (People → Open). Admins log in with a code every time.</div>
@@ -324,7 +324,7 @@
         <h3 style="margin-bottom:4px">Message people</h3><div class="muted">Everyone gets it in their PataHome notifications; tick email or SMS to also send it there. Suspended accounts are skipped.</div>
         <label>Who</label><select id="mAud" onchange="$('mUserWrap').style.display=this.value==='user'?'':'none'">
           <option value="owners">Owners with live listings</option><option value="all">Everyone</option><option value="user"${composeTarget ? " selected" : ""}>One person</option></select>
-        <div id="mUserWrap" style="display:${composeTarget ? "" : "none"}"><label>Person (id)</label><input id="mUser" type="number" value="${composeTarget ? composeTarget.id : ""}" placeholder="User #id — find it under People">${composeTarget ? `<div class="muted">${esc(composeTarget.name)}</div>` : ""}</div>
+        <div id="mUserWrap" style="display:${composeTarget ? "" : "none"}"><label>Person (id)</label><input id="mUser" type="number" value="${composeTarget ? composeTarget.id : ""}" placeholder="User #id, find it under People">${composeTarget ? `<div class="muted">${esc(composeTarget.name)}</div>` : ""}</div>
         <label>County (optional)</label><select id="mCounty"><option value="">All counties</option>${counties.map(c => `<option>${esc(c)}</option>`).join("")}</select>
         <label>Send by</label><div class="actions" style="margin:4px 0"><label class="chk"><input type="checkbox" id="mN" checked disabled> In-app</label><label class="chk"><input type="checkbox" id="mE"> Email</label><label class="chk"><input type="checkbox" id="mS"> SMS <span class="muted">(costs credit)</span></label></div>
         <label>Title</label><input id="mTitle" maxlength="100" placeholder="e.g. New: list land and commercial property">
@@ -348,7 +348,7 @@
     for (const k of keys) { const el = $("s_" + k); b[k] = el.type === "checkbox" ? (el.checked ? "1" : "0") : el.value; }
     try { await api("/api/admin/settings", { method: "PATCH", body: JSON.stringify(b) }); toast("Saved"); } catch (e) { toast(e.message); }
   };
-  window.addBlock = async () => { const term = $("blTerm").value.trim(); if (!term) return; try { const r = await api("/api/admin/blocklist", { method: "POST", body: JSON.stringify({ term }) }); toast(r.held ? `Added — ${r.held} live listing(s) held for review` : "Added"); NEW_LOADERS.site(); } catch (e) { toast(e.message); } };
+  window.addBlock = async () => { const term = $("blTerm").value.trim(); if (!term) return; try { const r = await api("/api/admin/blocklist", { method: "POST", body: JSON.stringify({ term }) }); toast(r.held ? `Added: ${r.held} live listing(s) held for review` : "Added"); NEW_LOADERS.site(); } catch (e) { toast(e.message); } };
   window.delBlock = async id => { try { await api("/api/admin/blocklist/" + id, { method: "DELETE" }); toast("Removed"); NEW_LOADERS.site(); } catch (e) { toast(e.message); } };
   window.addArea = async () => {
     try { await api("/api/admin/areas", { method: "POST", body: JSON.stringify({ name: $("nName").value, county: $("nCounty").value, lat: $("nLat").value, lng: $("nLng").value }) }); AREAS = null; toast("Area added"); NEW_LOADERS.site(); }
@@ -368,11 +368,11 @@
   window.mergeArea = id => {
     const a = window._areas.find(x => x.id === id);
     openModal(`<h2>Merge “${esc(a.name)}”</h2><div class="muted">Its ${a.listings} listing(s) move to the area you pick, then “${esc(a.name)}” is deleted. This can't be undone.</div>
-      <label>Merge into</label><select id="mgInto">${window._areas.filter(x => x.id !== id).map(x => `<option value="${x.id}"${x.county === a.county ? "" : ""}>${esc(x.name)} — ${esc(x.county)}</option>`).join("")}</select>
+      <label>Merge into</label><select id="mgInto">${window._areas.filter(x => x.id !== id).map(x => `<option value="${x.id}"${x.county === a.county ? "" : ""}>${esc(x.name)}: ${esc(x.county)}</option>`).join("")}</select>
       <div class="actions"><button class="btn btn-danger" onclick="doMerge(${id})">Merge</button><button class="btn btn-ghost" onclick="closeModal()">Cancel</button></div>`);
   };
   window.doMerge = async id => {
-    try { const r = await api(`/api/admin/areas/${id}/merge`, { method: "POST", body: JSON.stringify({ into: +$("mgInto").value }) }); AREAS = null; closeModal(); toast(`Merged — ${r.moved} listing(s) moved`); NEW_LOADERS.site(); }
+    try { const r = await api(`/api/admin/areas/${id}/merge`, { method: "POST", body: JSON.stringify({ into: +$("mgInto").value }) }); AREAS = null; closeModal(); toast(`Merged: ${r.moved} listing(s) moved`); NEW_LOADERS.site(); }
     catch (e) { toast(e.message); }
   };
   window.composeTo = (id, name) => { closeModal(); composeTarget = { id, name }; setTab("message"); };

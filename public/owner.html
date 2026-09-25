@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><script src="/cookie-consent.js" defer></script>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Owner profile — PataHome</title>
+<title>Owner profile | PataHome</title>
 <link rel="stylesheet" href="/refresh.css?v=20260925-1">
 <link rel="stylesheet" href="/dark.css?v=3">
 <style>
@@ -15,5 +15,5 @@ body{margin:0;background:#fff;color:#17231e;font-family:system-ui,-apple-system,
 </main><script>
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>"KSh "+Number(n||0).toLocaleString();
-async function init(){const id=new URLSearchParams(location.search).get("id");if(!id){document.getElementById("listings").innerHTML='<div class="empty">Owner not found.</div>';return}try{const p=await fetch(`/api/owners/${encodeURIComponent(id)}/profile`).then(r=>r.ok?r.json():Promise.reject());document.title=`${p.name} — PataHome`;document.getElementById("name").textContent=p.name;document.getElementById("avatar").textContent=(p.name||"?")[0];document.getElementById("bio").textContent=p.bio||"Direct property owner on PataHome";document.getElementById("followers").textContent=p.followers;document.getElementById("listings").innerHTML=p.listings.length?p.listings.map(x=>`<a class="card" href="/browse?open=${x.id}"><div class="photo">${x.photoUrls&&x.photoUrls.length?`<img src="${esc(x.photoUrls[0].thumb)}" alt="${esc(x.title)}">`:''}</div><div class="body"><div class="price">${money(x.price)}</div><div class="title">${esc(x.title)}</div><div class="area">${esc(x.area)}, ${esc(x.county)}</div></div></a>`).join(""):'<div class="empty">No active listings yet.</div>'}catch(e){document.getElementById("listings").innerHTML='<div class="empty">We couldn’t load this owner profile.</div>'}}init();
+async function init(){const id=new URLSearchParams(location.search).get("id");if(!id){document.getElementById("listings").innerHTML='<div class="empty">Owner not found.</div>';return}try{const p=await fetch(`/api/owners/${encodeURIComponent(id)}/profile`).then(r=>r.ok?r.json():Promise.reject());document.title=`${p.name}: PataHome`;document.getElementById("name").textContent=p.name;document.getElementById("avatar").textContent=(p.name||"?")[0];document.getElementById("bio").textContent=p.bio||"Direct property owner on PataHome";document.getElementById("followers").textContent=p.followers;document.getElementById("listings").innerHTML=p.listings.length?p.listings.map(x=>`<a class="card" href="/browse?open=${x.id}"><div class="photo">${x.photoUrls&&x.photoUrls.length?`<img src="${esc(x.photoUrls[0].thumb)}" alt="${esc(x.title)}">`:''}</div><div class="body"><div class="price">${money(x.price)}</div><div class="title">${esc(x.title)}</div><div class="area">${esc(x.area)}, ${esc(x.county)}</div></div></a>`).join(""):'<div class="empty">No active listings yet.</div>'}catch(e){document.getElementById("listings").innerHTML='<div class="empty">We couldn’t load this owner profile.</div>'}}init();
 </script></body></html>

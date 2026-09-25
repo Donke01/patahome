@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Your viewing — PataHome</title>
+<title>Your viewing | PataHome</title>
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <style>
@@ -39,7 +39,7 @@
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const token=new URLSearchParams(location.search).get("t");
-const TXT={requested:"Waiting for the owner to confirm",confirmed:"Confirmed — see you there",declined:"The owner can't make this time",cancelled:"You cancelled this viewing"};
+const TXT={requested:"Waiting for the owner to confirm",confirmed:"Confirmed, see you there",declined:"The owner can't make this time",cancelled:"You cancelled this viewing"};
 async function load(){
   if(!token){$("app").innerHTML='<div class="card">No viewing selected. <a href="/messages">See your viewings</a>.</div>';return}
   const r=await fetch("/api/viewings/"+token);const v=await r.json().catch(()=>({}));
@@ -67,7 +67,7 @@ async function cancelIt(){
 }
 load();
 </script>
-<script src="/i18n.js?v=2" defer></script>
+<script src="/i18n.js?v=3" defer></script>
 <script src="/app.js?v=3" defer></script>
 </body>
 </html>

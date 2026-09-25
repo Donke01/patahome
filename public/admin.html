@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>Admin — PataHome</title>
+<title>Admin | PataHome</title>
 <meta name="theme-color" content="#0e8a68">
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
@@ -200,7 +200,7 @@
     </div>
     <div class="hot-card">
       <div class="hc-kick">Hottest This Week</div>
-      <div class="hc-title" id="hcTitle">—</div>
+      <div class="hc-title" id="hcTitle">-</div>
       <div class="hc-sub">leads in the last 7 days</div>
       <div class="hc-num" id="hcLeads">0</div>
     </div>
@@ -293,7 +293,7 @@ async function refresh(){
   const openTix=tickets.filter(t=>t.status==="open").length;
   const sc=$("sCount");sc.textContent=openTix;sc.style.display=openTix?"inline-block":"none";
   const t=stats?stats.trendPct:0;
-  const trend=stats?(t>0?`<span class="trend up">▲ ${t}%</span>`:t<0?`<span class="trend down">▼ ${Math.abs(t)}%</span>`:`<span class="trend flat">— 0%</span>`):"";
+  const trend=stats?(t>0?`<span class="trend up">▲ ${t}%</span>`:t<0?`<span class="trend down">▼ ${Math.abs(t)}%</span>`:`<span class="trend flat">0%</span>`):"";
   $("stats").innerHTML=`
     <div class="stat"><div class="num">${o.activeListings}</div><div class="lbl">Active listings</div></div>
     <div class="stat"><div class="num">${o.users}</div><div class="lbl">Registered users</div></div>
@@ -366,7 +366,7 @@ function renderTab(){
       <table><tr><th>Property</th><th>Title / LR no.</th><th>Documents</th><th></th></tr>`+
       ld.map(x=>`<tr>
         <td><b>${esc(x.title)}</b><div class="muted">${esc(x.area)} · ${esc(x.size)} · ${esc(x.price)}</div><div class="muted">Owner: ${esc(x.owner)} · <a href="/browse?open=${x.id}" target="_blank" rel="noopener">#${x.id} ↗</a></div></td>
-        <td><b>${esc(x.titleRef||"—")}</b></td>
+        <td><b>${esc(x.titleRef||"-")}</b></td>
         <td>${x.docs.length?x.docs.map((d,i)=>`<a href="${esc(d)}" target="_blank" rel="noopener" class="pill ok" style="margin-right:4px;text-decoration:none">Doc ${i+1} ↗</a>`).join(""):'<span class="muted">none</span>'}</td>
         <td style="white-space:nowrap">
           <button class="btn btn-primary btn-sm" onclick="reviewLand(${x.id},true)">Documents OK ✓</button>
@@ -375,15 +375,15 @@ function renderTab(){
     $("panel").innerHTML=(v.length?`<table><tr><th>Applicant</th><th>ID</th><th>Location</th><th>Documents</th><th></th></tr>`+
       v.map(x=>`<tr>
         <td><b>${esc(x.legalName||x.name)}</b><div class="muted">${esc(x.name)} · ${esc(x.phone||"")} ${x.email?"· "+esc(x.email):""}</div><div class="muted">${x.listings} listing${x.listings===1?"":"s"}${x.dob?" · DOB "+esc(x.dob):""}</div></td>
-        <td>${esc(x.idType||"ID")}: <b>${esc(x.idNumber||"—")}</b>${x.kraPin?`<div class="muted">KRA ${esc(x.kraPin)}</div>`:""}</td>
-        <td class="muted">${esc([x.town,x.county].filter(Boolean).join(", ")||"—")}</td>
+        <td>${esc(x.idType||"ID")}: <b>${esc(x.idNumber||"-")}</b>${x.kraPin?`<div class="muted">KRA ${esc(x.kraPin)}</div>`:""}</td>
+        <td class="muted">${esc([x.town,x.county].filter(Boolean).join(", ")||"-")}</td>
         <td>${x.docs.length?x.docs.map((d,i)=>`<a href="${esc(d)}" target="_blank" rel="noopener" class="pill ok" style="margin-right:4px;text-decoration:none">Doc ${i+1} ↗</a>`).join(""):'<span class="muted">none</span>'}</td>
         <td style="white-space:nowrap">
           <button class="btn btn-primary btn-sm" onclick="reviewVerif(${x.id},true)">Approve ✓</button>
           <button class="btn btn-danger btn-sm" onclick="reviewVerif(${x.id},false)">Reject</button>
         </td>
       </tr>`).join("")+`</table>`
-      :(ld.length?"":`<div style="padding:34px;text-align:center;color:var(--muted)">No pending verifications — new requests will appear here.</div>`))+landHtml;
+      :(ld.length?"":`<div style="padding:34px;text-align:center;color:var(--muted)">No pending verifications, new requests will appear here.</div>`))+landHtml;
   }else if(tab==="users"){ renderUsers(); return;
   }else if(tab==="reports"){
     const m=cache.moderation||[];
@@ -395,7 +395,7 @@ function renderTab(){
           <a class="muted" href="/browse?open=${x.id}" target="_blank" rel="noopener">View listing ↗</a></td>
         <td style="white-space:normal;max-width:460px">
           ${x.flags.map(f=>`<div style="margin-bottom:6px"><span class="pill feat">${esc(FLAG[f.kind]||f.kind)}</span> <span class="muted">${esc(f.detail)}</span></div>`).join("")}
-          ${x.reports.length?`<div style="margin-top:4px"><b>${x.reports.length} report${x.reports.length===1?"":"s"}</b></div>`+x.reports.map(r=>`<div class="muted" style="margin-top:4px">• <b>${esc(r.reason)}</b>${r.details?" — “"+esc(r.details)+"”":""}${r.contact?` <span style="white-space:nowrap">(${esc(r.contact)})</span>`:""} <span style="opacity:.7">${esc(r.at)}</span></div>`).join(""):""}
+          ${x.reports.length?`<div style="margin-top:4px"><b>${x.reports.length} report${x.reports.length===1?"":"s"}</b></div>`+x.reports.map(r=>`<div class="muted" style="margin-top:4px">• <b>${esc(r.reason)}</b>${r.details?": “"+esc(r.details)+"”":""}${r.contact?` <span style="white-space:nowrap">(${esc(r.contact)})</span>`:""} <span style="opacity:.7">${esc(r.at)}</span></div>`).join(""):""}
         </td>
         <td>${esc(x.ownerName)}<div class="muted">${esc(x.ownerPhone||"")}${x.ownerEmail?"<br>"+esc(x.ownerEmail):""}</div></td>
         <td style="white-space:nowrap">
@@ -404,11 +404,11 @@ function renderTab(){
           <button class="btn btn-ghost btn-sm" onclick="openUser(${x.ownerId})">Owner ›</button>
         </td>
       </tr>`).join("")+`</table>`
-      :`<div style="padding:34px;text-align:center;color:var(--muted)">Nothing to review — visitor reports and automatic scam flags will appear here.</div>`;
+      :`<div style="padding:34px;text-align:center;color:var(--muted)">Nothing to review, visitor reports and automatic scam flags will appear here.</div>`;
   }else if(tab==="support"){
     const t=cache.tickets||[];
     if(!t.length){
-      $("panel").innerHTML=`<div style="padding:34px;text-align:center;color:var(--muted)">No support tickets yet — messages from Request Help and the Live Chat widget will appear here.</div>`;
+      $("panel").innerHTML=`<div style="padding:34px;text-align:center;color:var(--muted)">No support tickets yet, messages from Request Help and the Live Chat widget will appear here.</div>`;
       return;
     }
     const waLink=(p,name,subj)=>{
@@ -426,8 +426,8 @@ function renderTab(){
           f.email?`<a href="mailto:${esc(f.email)}" style="text-decoration:none">✉️ ${esc(f.email)}</a>`:""
         ].filter(Boolean).join(" · ");
         return `<tr>
-        <td><b>${esc(f.name||"—")}</b>${x.source==="live-chat"?' <span class="pill feat">CHAT</span>':""}
-          <div class="muted" style="font-size:.82rem">${contactLinks||"—"}</div></td>
+        <td><b>${esc(f.name||"-")}</b>${x.source==="live-chat"?' <span class="pill feat">CHAT</span>':""}
+          <div class="muted" style="font-size:.82rem">${contactLinks||"-"}</div></td>
         <td><b>${esc(x.subject)}</b><div class="muted" style="white-space:normal;max-width:520px;margin-top:4px">${esc(x.message)}</div></td>
         <td class="muted" style="white-space:nowrap">${esc(x.createdAt)}</td>
         <td>${x.status==="open"?'<span class="pill warn">open</span>':'<span class="pill ok">resolved</span>'}</td>
@@ -445,13 +445,13 @@ async function loadExtra(t){
     if(t==="traffic"){
       const a=await api("/api/admin/analytics?days=30");
       const max=Math.max(1,...a.series.map(x=>x.views));
-      const list=(title,rows,fmtK)=>`<div class="tr-card"><h4>${title}</h4>${rows.length?rows.map(r=>`<div class="tr-row"><span>${fmtK?fmtK(r):esc(r.k||"—")}</span><b>${r.n}</b></div>`).join(""):'<div class="muted">No data yet</div>'}</div>`;
+      const list=(title,rows,fmtK)=>`<div class="tr-card"><h4>${title}</h4>${rows.length?rows.map(r=>`<div class="tr-row"><span>${fmtK?fmtK(r):esc(r.k||"-")}</span><b>${r.n}</b></div>`).join(""):'<div class="muted">No data yet</div>'}</div>`;
       $("panel").innerHTML=`
         <div class="tr-top"><div><b>${a.totals.visitors}</b><span>visitors · 30 days</span></div><div><b>${a.totals.views}</b><span>page views</span></div><div><b>${a.noResults.reduce((s,x)=>s+x.n,0)}</b><span>searches with no results</span></div></div>
         <div class="tr-bars">${a.series.map(x=>`<i title="${x.day}: ${x.visitors} visitors, ${x.views} views" style="height:${Math.round(x.views/max*100)}%"><em style="height:${x.views?Math.round(x.visitors/x.views*100):0}%"></em></i>`).join("")}</div>
         <div class="muted" style="font-size:.75rem;margin:4px 0 16px">Bars = daily page views (dark part = visitors). No cookies; counts are anonymous.</div>
         <div class="tr-grid">
-          ${list("Searches with no results — recruit owners here",a.noResults)}
+          ${list("Searches with no results, recruit owners here",a.noResults)}
           ${list("Top searches",a.searches,r=>`${esc(r.k)} <span class="muted">(${r.results} results)</span>`)}
           ${list("Visitors' towns",a.towns)}
           ${list("Where visitors come from",a.referrers)}
@@ -466,9 +466,9 @@ async function loadExtra(t){
         :'<div style="padding:34px;text-align:center;color:var(--muted)">No listing photos yet.</div>';
     }else if(t==="backups"){
       const b=await api("/api/admin/backups");
-      $("panel").innerHTML=`<div class="bk-head"><div><b>Daily database backups</b><div class="muted">Kept on the server volume (last 7)${b.cloud?" and in Cloudinary as private files (last 30)":" — add Cloudinary keys to also keep off-server copies"}.</div></div>
+      $("panel").innerHTML=`<div class="bk-head"><div><b>Daily database backups</b><div class="muted">Kept on the server volume (last 7)${b.cloud?" and in Cloudinary as private files (last 30)":", add Cloudinary keys to also keep off-server copies"}.</div></div>
           <div style="display:flex;gap:8px"><button class="btn btn-ghost btn-sm" onclick="downloadBackup()">Download latest</button><button class="btn btn-primary btn-sm" id="bkNow" onclick="backupNow()">Back up now</button></div></div>
-        <table><tr><th>When (UTC)</th><th>File</th><th>Size</th><th>Off-server copy</th><th>Status</th></tr>${b.backups.map(x=>`<tr><td>${esc(x.at)}</td><td class="muted">${esc(x.file)}</td><td>${x.bytes?Math.round(x.bytes/1024)+" KB":"—"}</td><td>${x.remote?"✓ Cloudinary":"—"}</td><td>${x.ok?'<span class="pill ok">ok</span>':`<span class="pill warn">failed</span> <span class="muted">${esc(x.error)}</span>`}</td></tr>`).join("")||'<tr><td colspan="5" class="muted">No backups yet — the first runs a minute after the server starts.</td></tr>'}</table>`;
+        <table><tr><th>When (UTC)</th><th>File</th><th>Size</th><th>Off-server copy</th><th>Status</th></tr>${b.backups.map(x=>`<tr><td>${esc(x.at)}</td><td class="muted">${esc(x.file)}</td><td>${x.bytes?Math.round(x.bytes/1024)+" KB":"-"}</td><td>${x.remote?"✓ Cloudinary":"-"}</td><td>${x.ok?'<span class="pill ok">ok</span>':`<span class="pill warn">failed</span> <span class="muted">${esc(x.error)}</span>`}</td></tr>`).join("")||'<tr><td colspan="5" class="muted">No backups yet, the first runs a minute after the server starts.</td></tr>'}</table>`;
     }
   }catch(e){$("panel").innerHTML=`<div style="padding:34px;text-align:center;color:var(--red)">${esc(e.message)}</div>`}
 }
@@ -538,6 +538,6 @@ async function reviewVerif(id,approve){
 <script src="/land.js?v=1"></script>
 <script src="/commercial.js?v=1"></script>
 <script src="/admin-powers.js?v=2"></script>
-<script src="/admin-assisted.js?v=2"></script>
+<script src="/admin-assisted.js?v=3"></script>
 </body>
 </html>

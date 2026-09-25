@@ -4,7 +4,7 @@
 <script src="/cookie-consent.js" defer></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Owner Dashboard — PataHome</title>
+<title>Owner Dashboard | PataHome</title>
 <meta name="theme-color" content="#0e8a68">
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
@@ -12,8 +12,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/ph.css?v=2">
-<link rel="stylesheet" href="/dashboard.css?v=1">
+<link rel="stylesheet" href="/ph.css?v=3">
+<link rel="stylesheet" href="/dashboard.css?v=2">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#0B5D3B">
 </head>
@@ -22,7 +22,7 @@
 
 <header class="ph-header" id="hd">
  <div class="ph-wrap ph-hd">
-  <a class="ph-logo" href="/" aria-label="PataHome home"><img src="/patahome-logo-transparent.png?v=20260921-2" alt="PataHome — Kwa sababu tunakujali"></a>
+  <a class="ph-logo" href="/" aria-label="PataHome home"><img src="/patahome-logo-transparent.png?v=20260921-2" alt="PataHome: Kwa sababu tunakujali"></a>
   <span class="db-tag">Owner dashboard</span>
   <div class="header-actions">
   <button class="ph-icon-btn" id="darkBtn" title="Dark mode" aria-label="Dark mode" onclick="phToggleTheme&&phToggleTheme()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></button>
@@ -73,7 +73,7 @@
 <div id="authView" style="display:none">
   <div class="auth-card">
     <h1>Karibu, Property Owner</h1>
-    <div class="sub">Manage your listings, track leads, and boost visibility.</div>
+    <div class="sub">Manage your listings and messages.</div>
     <div class="auth-tabs">
       <button id="tabLogin" class="on" onclick="setMode('login')">Log In</button>
       <button id="tabReg" onclick="setMode('register')">Register</button>
@@ -121,7 +121,6 @@
       <div>
         <div class="overview-kicker">OWNER CONTROL CENTRE</div>
         <h1 id="ownerOverviewTitle">Welcome back<span id="ownerGreetingName"></span>.</h1>
-        <p>See what needs attention and keep your homes moving.</p>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end"><button class="btn btn-ghost" onclick="shareOwnerProfile()">Share profile</button><button class="btn btn-primary" onclick="openAdd()">+ New Listing</button></div>
     </div>
@@ -158,14 +157,14 @@
   <!-- Feedback -->
   <section class="tabpane" id="tab-feedback" style="display:none">
     <div class="section-head"><h2>Messages from tenants &amp; buyers</h2></div>
-    <p class="pane-sub">Conversations stay here on PataHome — reply as often as you like. Tenants get your replies by email or SMS with a link back to the chat.</p>
+    <p class="pane-sub">Tenants get your replies by email or SMS.</p>
     <div class="inbox" id="inbox"></div>
   </section>
 
   <!-- Viewings -->
   <section class="tabpane" id="tab-viewings" style="display:none">
     <div class="section-head"><h2>Viewing requests</h2></div>
-    <p class="pane-sub">Confirm or decline each request — the tenant is told straight away, and both of you get a reminder the day before.</p>
+    <p class="pane-sub">Confirm or decline. Both of you get a reminder the day before.</p>
     <div class="inbox" id="viewingsList"></div>
   </section>
 
@@ -190,7 +189,7 @@
       </div>
       <div class="top-card is-clickable" id="topCard" data-card-tab="listings" tabindex="0" role="link">
         <div class="tc-kick">Top Performer</div>
-        <div class="tc-title" id="tcTitle">—</div>
+        <div class="tc-title" id="tcTitle">-</div>
         <div class="tc-sub">total leads on this listing</div>
         <div class="tc-num" id="tcLeads">0</div>
       </div>
@@ -202,13 +201,13 @@
   <!-- Followers -->
   <section class="tabpane" id="tab-followers" style="display:none">
     <div class="section-head"><h2>Your Followers</h2></div>
-    <p class="pane-sub">People who follow you get notified about your new listings. They follow you from your listing pages.</p>
+    <p class="pane-sub">They get told when you post a new listing.</p>
     <div class="table" id="followersList"></div>
   </section>
 
   <section class="tabpane" id="tab-following" style="display:none">
     <div class="section-head"><h2>Owners you follow</h2></div>
-    <p class="pane-sub">Followed owners will appear here so you can quickly return to their active listings.</p>
+    <p class="pane-sub">Owners you follow appear here.</p>
     <div class="table" id="followingList"></div>
   </section>
 
@@ -249,7 +248,7 @@
     <div class="sub">Your listing goes live immediately.</div>
     <div id="emCatWrap">
       <label>Category</label>
-      <select id="eCat" onchange="syncCat()"><option value="rent">House — For Rent (monthly)</option><option value="sale">House — For Sale</option><option value="shortlet">Airbnb (per night)</option><option value="land">Land — for sale or lease</option><option value="commercial">Commercial — shop, office, warehouse, building</option></select>
+      <select id="eCat" onchange="syncCat()"><option value="rent">House for rent (monthly)</option><option value="sale">House for sale</option><option value="shortlet">Airbnb (per night)</option><option value="land">Land, for sale or lease</option><option value="commercial">Commercial, shop, office, warehouse, building</option></select>
       <label>Area</label>
       <select id="eArea"></select>
     </div>
@@ -261,7 +260,7 @@
       <label>Photos (up to 5)</label>
       <div class="photo-grid" id="photoGrid"></div>
       <div class="up-prog" id="upProg" aria-live="polite"><div class="up-bar"><i id="upBar"></i></div><span id="upPct">0%</span></div>
-      <div class="photo-note">JPG, PNG or WebP, max 8&nbsp;MB each. Photos are compressed automatically — listings with photos get far more leads.</div>
+      <div class="photo-note">JPG, PNG or WebP, up to 8&nbsp;MB each.</div>
       <input type="file" id="photoFile" accept="image/jpeg,image/png,image/webp" multiple style="display:none" onchange="uploadPhotos(this.files);this.value=''">
     </div>
     <div id="landWrap" style="display:none">
@@ -283,7 +282,7 @@
         <input id="lLeaseMin" maxlength="40" placeholder="e.g. 1 year, 2 seasons">
       </div>
       <details class="em-more" id="lMore">
-        <summary>Land details <small>— title, use, road, water, power</small></summary>
+        <summary>Land details <small>title, use, road, water, power</small></summary>
         <div class="em-grid">
           <div><label>Title status</label><select id="lTitle" onchange="$('lLeaseYearsWrap').style.display=this.value==='leasehold'?'':'none'"></select></div>
           <div id="lLeaseYearsWrap" style="display:none"><label>Leasehold years left</label><input id="lLeaseYears" type="number" min="0" placeholder="e.g. 85"></div>
@@ -305,13 +304,13 @@
           <div class="em-ticks" id="lSuits"></div>
         </div>
       </details>
-      <label>Exact location on the map <small style="text-transform:none;letter-spacing:0;font-weight:500">(optional — buyers love it)</small></label>
+      <label>Exact location on the map <small style="text-transform:none;letter-spacing:0;font-weight:500">(optional, buyers love it)</small></label>
       <div class="pin-row">
-        <button type="button" class="btn btn-ghost btn-sm" onclick="pinHere()">📍 I'm on the land — use my location</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="pinHere()">📍 I'm on the land, use my location</button>
         <input id="lPin" placeholder="or paste lat, lng e.g. 1.0157, 35.0062">
       </div>
       <div class="land-hint" id="lPinHint">Without a pin, the listing shows the area's approximate location.</div>
-      <label>Title deed / LR number <small style="text-transform:none;letter-spacing:0;font-weight:500">(private — only our team sees it)</small></label>
+      <label>Title deed / LR number <small style="text-transform:none;letter-spacing:0;font-weight:500">(private, only our team sees it)</small></label>
       <input id="lTitleRef" maxlength="60" placeholder="e.g. KITALE MUNICIPALITY/BLOCK 3/123">
       <div class="land-hint">After publishing, tap <b>Get documents checked</b> on the listing to upload the official search and earn a “Documents checked” badge.</div>
     </div>
@@ -336,11 +335,11 @@
         <input id="cLeaseMin" maxlength="40" placeholder="e.g. 2 years, 5 years 3 months">
       </div>
       <div id="cIncomeWrap" style="display:none">
-        <label>Current rent income per month <small style="text-transform:none;letter-spacing:0;font-weight:500">(if tenanted — shows buyers the yield)</small></label>
+        <label>Current rent income per month <small style="text-transform:none;letter-spacing:0;font-weight:500">(if tenanted, shows buyers the yield)</small></label>
         <input id="cIncome" type="number" min="0" placeholder="e.g. 350000" oninput="commPreview()">
       </div>
       <details class="em-more" id="cMore">
-        <summary>Property details <small>— frontage, fit-out, power, parking</small></summary>
+        <summary>Property details <small>frontage, fit-out, power, parking</small></summary>
         <div class="em-grid">
           <div><label>Road frontage</label><select id="cFrontage"></select></div>
           <div><label>Fit-out</label><select id="cFit"></select></div>
@@ -357,12 +356,12 @@
       </details>
       <label>Exact location on the map <small style="text-transform:none;letter-spacing:0;font-weight:500">(optional)</small></label>
       <div class="pin-row">
-        <button type="button" class="btn btn-ghost btn-sm" onclick="pinHere('c')">📍 I'm at the property — use my location</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="pinHere('c')">📍 I'm at the property, use my location</button>
         <input id="cPin" placeholder="or paste lat, lng e.g. -1.2864, 36.8172">
       </div>
       <div class="land-hint" id="cPinHint">Without a pin, the listing shows the area's approximate location.</div>
       <div id="cTitleRefWrap">
-        <label>Title / LR number <small style="text-transform:none;letter-spacing:0;font-weight:500">(private — only our team sees it)</small></label>
+        <label>Title / LR number <small style="text-transform:none;letter-spacing:0;font-weight:500">(private, only our team sees it)</small></label>
         <input id="cTitleRef" maxlength="60" placeholder="e.g. NAIROBI/BLOCK 37/456">
         <div class="land-hint">After publishing, tap <b>Get documents checked</b> on the listing to earn a “Documents checked” badge.</div>
       </div>
@@ -390,10 +389,10 @@
         </select>
         <input id="eFeeVal" style="flex:1;display:none" placeholder="e.g. 5000">
       </div>
-      <div class="photo-note" id="eFeeNote">Shown clearly to tenants on your listing. Honest fees build trust — undisclosed fees get listings reported.</div>
+      <div class="photo-note" id="eFeeNote">Shown to tenants on your listing.</div>
     </div>
     <details class="em-more" id="eMore">
-      <summary>Home details <small>— the questions tenants always ask</small></summary>
+      <summary>Home details <small>the questions tenants always ask</small></summary>
       <div class="em-grid">
         <div><label>Deposit</label><input id="fDeposit" maxlength="40" placeholder="e.g. 1 month's rent"></div>
         <div><label>Service charge</label><input id="fSvc" maxlength="40" placeholder="e.g. KES 1,500/month or none"></div>
@@ -551,7 +550,7 @@ function sessionEnded(msg){
   try{closeMenu();hide("setModal")}catch(e){}
   $("headerRight").style.display="none";
   showAuth();setMode("login");
-  $("authErr").textContent=msg||"You've been signed out — please log in again";
+  $("authErr").textContent=msg||"You've been signed out, please log in again";
 }
 function armIdleTimer(){
   const mins=(CONFIG&&CONFIG.sessionIdleMinutes)||240;
@@ -561,7 +560,7 @@ function armIdleTimer(){
   if(left<=0){
     fetch("/api/auth/logout",{method:"POST",headers:{Authorization:"Bearer "+token}}).catch(()=>{});
     const h=Math.round(mins/6)/10;
-    sessionEnded(`You were signed out after ${h} hour${h===1?"":"s"} of inactivity — please log in again`);
+    sessionEnded(`You were signed out after ${h} hour${h===1?"":"s"} of inactivity, please log in again`);
     return;
   }
   idleTimer=setTimeout(armIdleTimer,Math.min(left,60e3));
@@ -619,7 +618,7 @@ async function submitAuth(){
 }
 function openForgot(){show("forgotModal");$("forgotStart").style.display="block";$("forgotReset").style.display="none";$("forgotErr").textContent=""}
 async function sendResetCode(){const identifier=$("forgotId").value.trim();if(!identifier){$("forgotErr").textContent="Enter your phone or email";return}try{await api("/api/auth/forgot-password",{method:"POST",body:JSON.stringify({identifier})});window._resetIdentifier=identifier;$("forgotStart").style.display="none";$("forgotReset").style.display="block";toast("If an account exists, a code was sent")}catch(e){$("forgotErr").textContent=e.message}}
-async function resetPassword(){const code=$("resetCode").value.trim(),password=$("resetPass").value;if(!code||password.length<8){$("resetErr").textContent="Enter the code and a password of at least 8 characters";return}try{await api("/api/auth/reset-password",{method:"POST",body:JSON.stringify({identifier:window._resetIdentifier,code,password})});hide("forgotModal");setMode("login");toast("Password reset — you can now log in")}catch(e){$("resetErr").textContent=e.message}}
+async function resetPassword(){const code=$("resetCode").value.trim(),password=$("resetPass").value;if(!code||password.length<8){$("resetErr").textContent="Enter the code and a password of at least 8 characters";return}try{await api("/api/auth/reset-password",{method:"POST",body:JSON.stringify({identifier:window._resetIdentifier,code,password})});hide("forgotModal");setMode("login");toast("Password reset, you can now log in")}catch(e){$("resetErr").textContent=e.message}}
 /* ---------- invites ---------- */
 (function(){const P=new URLSearchParams(location.search);const r=P.get("ref");if(r){try{localStorage.setItem("ph_ref",r.toUpperCase().slice(0,12))}catch(e){}}})();
 function inviteRef(){try{return localStorage.getItem("ph_ref")||""}catch(e){return""}}
@@ -630,7 +629,7 @@ async function openInvite(){
   $("setBody").innerHTML='<div class="empty" style="padding:14px">Loading…</div>';$("setActions").innerHTML="";show("setModal");
   try{
     const r=await api("/api/my/referral");
-    const msg=`I list my rentals on PataHome — tenants contact you directly, no fees. Join with my link and your first listing is featured free for a week: ${r.link}`;
+    const msg=`I list my rentals on PataHome, tenants contact you directly, no fees. Join with my link and your first listing is featured free for a week: ${r.link}`;
     $("setBody").innerHTML=`
       <label>Your invite link</label>
       <div style="display:flex;gap:8px"><input id="invLink" readonly value="${esc(r.link)}" onclick="this.select()"><button class="btn btn-ghost btn-sm" onclick="navigator.clipboard.writeText($('invLink').value).then(()=>toast('Link copied'))">Copy</button></div>
@@ -642,7 +641,7 @@ async function openInvite(){
 if(VIEW_AS)document.addEventListener("DOMContentLoaded",()=>{
   const b=document.createElement("div");b.setAttribute("role","status");
   b.style.cssText="position:sticky;top:0;z-index:5000;background:#b3261e;color:#fff;font:700 .88rem/1.4 Inter,system-ui,sans-serif;padding:9px 14px;text-align:center";
-  b.innerHTML='👁 Read-only view as this user — nothing can be changed. <button type="button" style="margin-left:10px;border:0;border-radius:8px;padding:5px 12px;font-weight:700;cursor:pointer">Exit</button>';
+  b.innerHTML='👁 Read-only view as this user, nothing can be changed. <button type="button" style="margin-left:10px;border:0;border-radius:8px;padding:5px 12px;font-weight:700;cursor:pointer">Exit</button>';
   b.querySelector("button").onclick=()=>{try{sessionStorage.removeItem("pb_viewas")}catch(e){}window.close();location.href="/admin"};
   document.body.insertBefore(b,document.body.firstChild);
 });
@@ -651,7 +650,7 @@ function saveSession(r){
   localStorage.setItem("pb_token",token);localStorage.setItem("pb_name",userName);
   lastActivity=Date.now();armIdleTimer();
 }
-/* Google Identity Services — official rendered button (reliable on mobile,
+/* Google Identity Services, official rendered button (reliable on mobile,
    unlike prompt() which Google suppresses after a dismissal) */
 let gsiInited=false;
 function initGoogle(){
@@ -724,7 +723,7 @@ async function enterDash(){
   paintUser();
   if(!areas.length){
     areas=await api("/api/areas");
-    $("eArea").innerHTML=areas.map(a=>`<option value="${a.id}">${esc(a.name)} — ${esc(a.county)}</option>`).join("");
+    $("eArea").innerHTML=areas.map(a=>`<option value="${a.id}">${esc(a.name)}, ${esc(a.county)}</option>`).join("");
   }
   await refresh();
 }
@@ -763,9 +762,9 @@ function badge(id,n){const b=$(id);b.textContent=n;b.style.display=n>0?"inline-f
 function renderStats(o){
   $("sWeek").textContent=o.thisWeek;
   if($("sFollowers"))$("sFollowers").textContent=o.followers||0;
-  if($("sFollowerTrend")){const ft=o.followerTrendPct||0;$("sFollowerTrend").innerHTML=ft>0?`<span class="trend up">▲ ${ft}%</span>`:ft<0?`<span class="trend down">▼ ${Math.abs(ft)}%</span>`:`<span class="trend flat">— 0%</span>`}
+  if($("sFollowerTrend")){const ft=o.followerTrendPct||0;$("sFollowerTrend").innerHTML=ft>0?`<span class="trend up">▲ ${ft}%</span>`:ft<0?`<span class="trend down">▼ ${Math.abs(ft)}%</span>`:`<span class="trend flat">0%</span>`}
   const t=o.trendPct;
-  $("sTrend").innerHTML=t>0?`<span class="trend up">▲ ${t}%</span>`:t<0?`<span class="trend down">▼ ${Math.abs(t)}%</span>`:`<span class="trend flat">— 0%</span>`;
+  $("sTrend").innerHTML=t>0?`<span class="trend up">▲ ${t}%</span>`:t<0?`<span class="trend down">▼ ${Math.abs(t)}%</span>`:`<span class="trend flat">0%</span>`;
   if(o.topListing){
     $("tcTitle").textContent=o.topListing.title;
     $("tcLeads").textContent=o.topListing.leads;
@@ -812,7 +811,7 @@ async function loadFollowers(){
   $("followersList").innerHTML=list.length?
     `<div class="row head"><div>Name</div><div>Phone</div><div>Following since</div></div>`+
     list.map(f=>`<div class="row" style="grid-template-columns:1.5fr 1fr 1fr"><div class="title">${esc(f.name)}</div><div>${esc(f.phone)}</div><div class="area">${esc(f.since)}</div></div>`).join("")
-    :`<div class="empty">No followers yet — renters and buyers can follow you from your listing pages to hear about new posts.</div>`;
+    :`<div class="empty">No followers yet, renters and buyers can follow you from your listing pages to hear about new posts.</div>`;
 }
 async function loadFollowing(){
   const list=await api("/api/my/following").catch(()=>[]);
@@ -835,7 +834,7 @@ async function loadNotifs(){
         <span class="n-at">${esc(n.at)}</span>
         <div class="n-detail" id="notifDetail${n.id}" hidden><strong>What happened</strong><div>${esc(n.body)}</div><small>${esc(n.at)} · ${esc(n.kind)}</small></div>
       </div>`).join("")
-    :`<div class="empty" style="background:var(--card);border:1px solid var(--line);border-radius:12px">Nothing yet — leads, messages and new followers will appear here.</div>`;
+    :`<div class="empty" style="background:var(--card);border:1px solid var(--line);border-radius:12px">Nothing yet, leads, messages and new followers will appear here.</div>`;
   if(data.unread>0){
     api("/api/my/notifications/read",{method:"POST"}).catch(()=>{});
     window._notifs={...data,unread:0};
@@ -860,19 +859,19 @@ async function submitTicket(){
   try{
     await api("/api/support",{method:"POST",body:JSON.stringify({subject,message})});
     $("hSubject").value="";$("hMessage").value="";
-    toast("Request sent — we'll get back to you soon");
+    toast("Request sent, we'll get back to you soon");
     loadTickets();
   }catch(e){$("hErr").textContent=e.message}
 }
 const FAQS=[
-  ["How do I post a listing?","Open My Listings and click + New Listing. Fill in the category, area, price and photos, then Publish — it goes live on the site immediately."],
+  ["How do I post a listing?","Open My Listings and click + New Listing. Fill in the category, area, price and photos, then Publish, it goes live on the site immediately."],
   ["Is PataHome free?","Posting and receiving leads is free. Optional visibility boosts for your listings may be offered later."],
   ["How do I get the verified badge?","Open the account menu (your name, top right) → Verify my details → Request verification. Our team confirms your ID and property ownership, then your listings show the trusted green badge."],
-  ["How do leads work?","When a renter or buyer taps Contact Owner on your listing, your phone number is shared with them and it counts as a lead. Their messages appear in your Feedback tab — reply promptly to close faster."],
-  ["Can I add photos?","Yes — up to 5 photos per listing (JPG, PNG or WebP, max 8 MB each). Listings with photos receive far more leads. Add them when creating or editing a listing."],
-  ["What are followers?","People who follow you from your listing pages. They're potential clients interested in your future posts — you can see their contacts in the Followers tab."],
+  ["How do leads work?","When a renter or buyer taps Contact Owner on your listing, your phone number is shared with them and it counts as a lead. Their messages appear in your Feedback tab, reply promptly to close faster."],
+  ["Can I add photos?","Yes, up to 5 photos per listing (JPG, PNG or WebP, max 8 MB each). Listings with photos receive far more leads. Add them when creating or editing a listing."],
+  ["What are followers?","People who follow you from your listing pages. They're potential clients interested in your future posts, you can see their contacts in the Followers tab."],
   ["How do I mark a house as rented or sold?","Use the Mark rented or Mark sold button beside an active listing. We ask you to confirm, hide it from public search, preserve its leads and history, and let you relist it at any time."],
-  ["How do I contact PataHome?","Use the Request Help tab, or email info@patahome.co.ke — we respond as fast as we can."]
+  ["How do I contact PataHome?","Use the Request Help tab, or email info@patahome.co.ke, we respond as fast as we can."]
 ];
 let faqDone=false;
 function renderFaq(){
@@ -890,9 +889,9 @@ function renderPerfTable(){
       const pc=s2.price;
       const priceTxt=!pc?'<span class="area">Not enough similar homes yet</span>'
         :Math.abs(pc.pct)<=10?`<span style="color:var(--green-dark);font-weight:700">About right</span><div class="area">typical ${fmt(pc.median)} · ${pc.count} similar in ${esc(pc.county)}</div>`
-        :pc.pct>0?`<span style="color:#9a6017;font-weight:700">${pc.pct}% above typical</span><div class="area">typical ${fmt(pc.median)} — a lower price may get more contacts</div>`
+        :pc.pct>0?`<span style="color:#9a6017;font-weight:700">${pc.pct}% above typical</span><div class="area">typical ${fmt(pc.median)}, a lower price may get more contacts</div>`
         :`<span style="color:var(--green-dark);font-weight:700">${Math.abs(pc.pct)}% below typical</span><div class="area">typical ${fmt(pc.median)} in ${esc(pc.county)}</div>`;
-      const hint=s2.views>=20&&!(s2.contacts+s2.messages)?'<div class="area" style="color:#9a6017">Lots of views, no contacts — try better photos or a clearer price</div>':"";
+      const hint=s2.views>=20&&!(s2.contacts+s2.messages)?'<div class="area" style="color:#9a6017">Lots of views, no contacts, try better photos or a clearer price</div>':"";
       return `<div class="row" style="${cols}">
         <div><div class="title">${esc(x.title)}</div><div class="area">${esc(x.area)} · <span class="pill ${x.status}">${x.status}</span></div>${hint}</div>
         <div class="leads-badge">${s2.views}</div>
@@ -943,7 +942,7 @@ setInterval(tickUpdated,5000);
 setInterval(()=>{if(token&&$("dashView").style.display!=="none"&&!document.hidden)refresh().catch(()=>{})},30000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&token&&$("dashView").style.display!=="none")refresh().catch(()=>{})});
 function renderInbox(){
-  if(!myInquiries.length){$("inbox").innerHTML=`<div class="inq" style="text-align:center;color:var(--muted)">No messages yet — they'll appear here when tenants and buyers reach out.</div>`;return}
+  if(!myInquiries.length){$("inbox").innerHTML=`<div class="inq" style="text-align:center;color:var(--muted)">No messages yet, they'll appear here when tenants and buyers reach out.</div>`;return}
   const sorted=[...myInquiries].sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt)));
   $("inbox").innerHTML=sorted.map(q=>{
     const msgs=q.messages&&q.messages.length?q.messages:[{sender:"tenant",body:q.message,at:q.createdAt}];
@@ -989,7 +988,7 @@ function renderViewings(){
 }
 async function respondViewing(id,action){
   const m=$("vmsg"+id);
-  try{await api(`/api/viewings/${id}/respond`,{method:"POST",body:JSON.stringify({action,message:m?m.value:""})});toast(action==="confirm"?"Confirmed — the tenant has been told":"The tenant has been told");await refresh()}
+  try{await api(`/api/viewings/${id}/respond`,{method:"POST",body:JSON.stringify({action,message:m?m.value:""})});toast(action==="confirm"?"Confirmed, the tenant has been told":"The tenant has been told");await refresh()}
   catch(e){toast(e.message)}
 }
 async function sendReply(id){
@@ -1003,7 +1002,7 @@ async function sendReply(id){
 }
 function renderTable(){
   const CAT={rent:"Rent",sale:"Sale",shortlet:"Airbnb",land:"Land",commercial:"Commercial"};
-  if(!myListings.length){$("table").innerHTML=`<div class="empty">No listings yet — publish your first one to start receiving leads.</div>`;return}
+  if(!myListings.length){$("table").innerHTML=`<div class="empty">No listings yet, publish your first one to start receiving leads.</div>`;return}
   $("table").innerHTML=
     myListings.map(x=>{
       const rentable=x.category==="rent"||x.category==="shortlet"||(x.category==="land"&&x.landDeal==="lease")||(x.category==="commercial"&&x.deal==="lease");
@@ -1018,9 +1017,9 @@ function renderTable(){
         ?(expiringSoon?`<button class="btn btn-primary btn-sm" onclick="confirmAvailable(${x.id})">✓ Still available</button>`:"")+
           `<button class="btn btn-sm status-action ${nextStatus}" onclick="openStatusConfirm(${x.id},'${nextStatus}')">${closeLabel}</button>`
         :`<button class="btn btn-ghost btn-sm" onclick="openStatusConfirm(${x.id},'active')">Relist</button>`;
-      const statusNote=x.status==="under_review"?"Paused after visitor reports — our team is reviewing it."
-        :x.status==="expired"?"Paused — not confirmed recently. Renew to show it again."
-        :x.status==="active"?(expiringSoon?`<b style="color:#9a6017">Pauses in ${Math.max(daysLeft,0)} day${daysLeft===1?"":"s"}</b> — confirm it's still available`:`Live · confirm again in ${daysLeft} days`)
+      const statusNote=x.status==="under_review"?"Paused after visitor reports, our team is reviewing it."
+        :x.status==="expired"?"Paused, not confirmed recently. Renew to show it again."
+        :x.status==="active"?(expiringSoon?`<b style="color:#9a6017">Pauses in ${Math.max(daysLeft,0)} day${daysLeft===1?"":"s"}</b> confirm it's still available`:`Live · confirm again in ${daysLeft} days`)
         :"Hidden from public search";
       const kind=x.category==="land"?(x.landDeal==="lease"?"Land · lease":"Land · sale"):x.category==="commercial"?(x.deal==="lease"?"Commercial · to let":"Commercial · sale"):(CAT[x.category]||x.category);
       let price,extra="";
@@ -1052,14 +1051,14 @@ function renderTable(){
 }
 function renderHealth(){
   const el=$("healthPanel");if(!el)return;
-  if(!myListings.length){el.innerHTML=`<h3>Listing health</h3><p class="pane-sub">Publish your first property to start receiving a quality score.</p>`;return}
+  if(!myListings.length){el.innerHTML=`<h3>Listing health</h3><p class="pane-sub">Publish a listing to get a score.</p>`;return}
   const checks=myListings.map(x=>{const issues=[];if(!x.title||x.title.length<12)issues.push("clearer title");if(!x.description||x.description.length<60)issues.push("more description");if(!x.photos||!x.photos.length)issues.push("photos");if(x.status!=="active")issues.push("relist");return {x,issues}});
   const needs=checks.filter(c=>c.issues.length),score=Math.round((checks.reduce((s,c)=>s+(c.issues.length?Math.max(35,100-c.issues.length*20):100),0)/checks.length));
-  el.innerHTML=`<div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap"><div><h3 style="margin:0 0 4px">Listing health</h3><p class="pane-sub" style="margin:0">Improve quality to earn more trust and contacts.</p></div><strong style="font-size:1.35rem;color:${score>=80?'var(--green)':score>=60?'#9a6017':'var(--red)'}">${score}%</strong></div><div style="height:8px;background:var(--line);border-radius:99px;margin:14px 0"><i style="display:block;width:${score}%;height:100%;background:var(--green);border-radius:99px"></i></div>${needs.length?`<div class="area">${needs.slice(0,3).map(c=>`<button class="btn btn-ghost btn-sm" style="margin:3px 5px 0 0" onclick="openEdit(${c.x.id})">${esc(c.x.title)} · Add ${c.issues.slice(0,2).join(" + ")}</button>`).join("")}</div>`:`<div style="color:var(--green-dark);font-weight:700;font-size:.84rem">All listings are in good shape.</div>`}`;
+  el.innerHTML=`<div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap"><div><h3 style="margin:0 0 4px">Listing health</h3><p class="pane-sub" style="margin:0">Better listings get more contacts.</p></div><strong style="font-size:1.35rem;color:${score>=80?'var(--green)':score>=60?'#9a6017':'var(--red)'}">${score}%</strong></div><div style="height:8px;background:var(--line);border-radius:99px;margin:14px 0"><i style="display:block;width:${score}%;height:100%;background:var(--green);border-radius:99px"></i></div>${needs.length?`<div class="area">${needs.slice(0,3).map(c=>`<button class="btn btn-ghost btn-sm" style="margin:3px 5px 0 0" onclick="openEdit(${c.x.id})">${esc(c.x.title)} · Add ${c.issues.slice(0,2).join(" + ")}</button>`).join("")}</div>`:`<div style="color:var(--green-dark);font-weight:700;font-size:.84rem">All listings are in good shape.</div>`}`;
 }
 
 async function confirmAvailable(id){
-  try{await api(`/api/listings/${id}/confirm`,{method:"POST"});toast("Thanks — your listing stays live");await refresh()}
+  try{await api(`/api/listings/${id}/confirm`,{method:"POST"});toast("Thanks, your listing stays live");await refresh()}
   catch(e){toast(e.message)}
 }
 function openStatusConfirm(id,status){
@@ -1084,13 +1083,13 @@ async function confirmStatusChange(){
   try{
     await api(`/api/listings/${id}`,{method:"PATCH",body:JSON.stringify({status})});
     hide("statusModal");
-    toast(status==="active"?"Listing relisted — it is live again.":`Listing marked ${status} — it is now hidden from search.`);
+    toast(status==="active"?"Listing relisted, it is live again.":`Listing marked ${status}, it is now hidden from search.`);
     await refresh();
   }catch(e){toast(e.message)}
   finally{btn.disabled=false;pendingStatusAction=null;}
 }
 
-/* ---------- photo uploads (direct to Cloudinary — nothing touches our server) ---------- */
+/* ---------- photo uploads (direct to Cloudinary, nothing touches our server) ---------- */
 let photoIds=[], uploadingCount=0, signCfg=null;
 async function getSignCfg(){
   // fresh signature per batch (Cloudinary signatures expire after 1h)
@@ -1164,7 +1163,7 @@ function sendToCloudinary(cfg,f,u){
       if(x.status>=200&&x.status<300&&d.public_id)resolve(d);
       else reject(new Error((d.error&&d.error.message)||"Upload failed"));
     };
-    x.onerror=()=>reject(new Error("Network error — check your connection"));
+    x.onerror=()=>reject(new Error("Network error, check your connection"));
     x.onabort=()=>reject(new Error("cancelled"));
     x.send(fd);
   });
@@ -1176,7 +1175,7 @@ async function uploadPhotos(files){
   if(files.length>room)toast(`Maximum ${max} photos per listing`);
   const ok=picked.filter(f=>{
     if(!/^image\/(jpeg|png|webp)$/.test(f.type)){toast(f.name+": use JPG, PNG or WebP");return false}
-    if(f.size>maxBytes){toast(f.name+" is over 8 MB — choose a smaller photo");return false}
+    if(f.size>maxBytes){toast(f.name+" is over 8 MB, choose a smaller photo");return false}
     return true;
   });
   if(!ok.length)return;
@@ -1287,7 +1286,7 @@ function pinHere(pre){
   if(!navigator.geolocation){toast("Location isn't available on this device");return}
   $(pre+"PinHint").textContent="Getting your location…";
   navigator.geolocation.getCurrentPosition(p=>{$(pre+"Pin").value=p.coords.latitude.toFixed(6)+", "+p.coords.longitude.toFixed(6);$(pre+"PinHint").textContent="✓ Pin set to where you're standing (±"+Math.round(p.coords.accuracy)+" m)."},
-    ()=>{$(pre+"PinHint").textContent="Couldn't get your location — paste the coordinates instead (Google Maps → long-press → copy)."},{enableHighAccuracy:true,timeout:15000});
+    ()=>{$(pre+"PinHint").textContent="Couldn't get your location, paste the coordinates instead (Google Maps → long-press → copy)."},{enableHighAccuracy:true,timeout:15000});
 }
 function landValues(){
   const pin=($("lPin").value||"").split(/[,\s]+/).filter(Boolean).map(Number);
@@ -1379,7 +1378,7 @@ let ldDocs=[],ldUploading=0,ldListing=null;
 function openLandDocs(id){
   const x=myListings.find(y=>y.id===id);if(!x)return;ldListing=id;ldDocs=[];ldUploading=0;
   $("setErr").textContent="";$("setTitle").textContent="Get documents checked";
-  $("setSub").textContent="Upload the official search (from Ardhisasa) or the title deed. Only our review team sees these — they're never shown publicly.";
+  $("setSub").textContent="Upload the official search (from Ardhisasa) or the title deed. Only our review team sees these, they're never shown publicly.";
   $("setBody").innerHTML=`<label>Title deed / LR number</label><input id="ldRef" value="${esc(x.titleRef||"")}" placeholder="e.g. KITALE MUNICIPALITY/BLOCK 3/123">
     <label>Official search or title photo</label><div id="ldList" class="photo-grid"></div>
     <input type="file" id="ldFile" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="uploadLandDoc(this.files[0]);this.value=''">
@@ -1408,7 +1407,7 @@ async function uploadLandDoc(f){
 async function sendLandDocs(){
   if(ldUploading){$("setErr").textContent="Wait for the upload to finish";return}
   try{await api(`/api/listings/${ldListing}/land-docs`,{method:"POST",body:JSON.stringify({titleRef:$("ldRef").value.trim(),docs:ldDocs})});
-    hide("setModal");toast("Submitted — we'll check the documents and notify you");await refresh()}
+    hide("setModal");toast("Submitted, we'll check the documents and notify you");await refresh()}
   catch(e){$("setErr").textContent=e.message}
 }
 
@@ -1441,9 +1440,9 @@ function cancelVideo(){if(videoUp&&videoUp.xhr)videoUp.xhr.abort();videoUp=null;
 async function uploadVideo(file){
   if(!file)return;
   let cfg;try{cfg=await api("/api/uploads/sign?kind=video")}catch(e){toast(e.message);return}
-  if(file.size>cfg.maxBytes){toast("Video is over 80 MB — trim it or record at a lower quality");return}
+  if(file.size>cfg.maxBytes){toast("Video is over 80 MB, trim it or record at a lower quality");return}
   const secs=await new Promise(r=>{const v=document.createElement("video");v.preload="metadata";v.onloadedmetadata=()=>{r(v.duration);URL.revokeObjectURL(v.src)};v.onerror=()=>r(0);v.src=URL.createObjectURL(file)});
-  if(secs>cfg.maxSeconds+1){toast(`Keep it under ${cfg.maxSeconds} seconds — this one is ${Math.round(secs)}s`);return}
+  if(secs>cfg.maxSeconds+1){toast(`Keep it under ${cfg.maxSeconds} seconds, this one is ${Math.round(secs)}s`);return}
   const fd=new FormData();fd.append("file",file);fd.append("api_key",cfg.apiKey);fd.append("timestamp",cfg.timestamp);fd.append("signature",cfg.signature);fd.append("folder",cfg.folder);
   if(cfg.eager){fd.append("eager",cfg.eager);fd.append("eager_async",cfg.eager_async)}
   const x=new XMLHttpRequest();videoUp={pct:0,xhr:x};renderVideo();setSaveBusy("Uploading video… 0%");
@@ -1451,7 +1450,7 @@ async function uploadVideo(file){
   x.upload.onprogress=e=>{if(e.lengthComputable){videoUp.pct=Math.round(e.loaded/e.total*100);renderVideo();setSaveBusy(`Uploading video… ${videoUp.pct}%`)}};
   x.onload=()=>{let d={};try{d=JSON.parse(x.responseText)}catch{};videoUp=null;setSaveBusy();
     if(x.status>=200&&x.status<300&&d.public_id){videoId=d.public_id;toast("Video added")}else toast("Video upload failed: "+((d.error&&d.error.message)||"try again"));renderVideo()};
-  x.onerror=()=>{videoUp=null;setSaveBusy();toast("Network error — check your connection");renderVideo()};
+  x.onerror=()=>{videoUp=null;setSaveBusy();toast("Network error, check your connection");renderVideo()};
   x.onabort=()=>{videoUp=null;setSaveBusy();renderVideo()};
   x.send(fd);
 }
@@ -1504,7 +1503,7 @@ async function saveListing(){
         areaId:+$("eArea").value,price:+$("ePrice").value,
         bedrooms:$("eBeds").value===""?null:+$("eBeds").value,...photos,...lister
       })});
-      toast("Listing published — it's now live on the site.");
+      toast("Listing published, it's now live on the site.");
     }else{
       await api("/api/listings/"+editId,{method:"PATCH",body:JSON.stringify({
         title:$("eTitle").value,description:$("eDesc").value,price:+$("ePrice").value,
@@ -1573,13 +1572,13 @@ function openSettings(kind){
       inp("sTown","Town / Estate",ME.town)+
       selField("sPref","Preferred contact method",["Call","WhatsApp","Email"],ME.contactPref)+
       inp("sWa","WhatsApp number (if different from phone)",ME.whatsapp)+
-      taField("sBio","About you","A short intro — how long you've been renting out homes, your neighbourhoods, response times…",ME.bio);
+      taField("sBio","About you","A short intro, how long you've been renting out homes, your neighbourhoods, response times…",ME.bio);
     save=()=>saveAccount({name:$("sName").value.trim(),gender:$("sGender").value,contactPref:$("sPref").value,
       dob:$("sDob").value,county:$("sCounty").value.trim(),town:$("sTown").value.trim(),
       whatsapp:$("sWa").value.trim(),bio:$("sBio").value.trim(),
       ...(pendingAvatar?{avatarUrl:pendingAvatar}:{})},"Personal details saved");
   }else if(kind==="business"){
-    title="Business details";sub="For landlords, agents and developers — builds credibility with clients.";
+    title="Business details";sub="For landlords, agents and developers, builds credibility with clients.";
     html=inp("sBiz","Business or company name",ME.businessName)+
       selField("sBizType","Business type",["Individual landlord","Property agency","Developer","Caretaker / Manager","Real estate agent"],ME.businessType)+
       inp("sRole","Your role / title (e.g. Owner, Agent, Manager)",ME.businessRole)+
@@ -1593,7 +1592,7 @@ function openSettings(kind){
     title="Verify my details";
     if(ME.verified){
       $("setTitle").textContent=title;$("setSub").textContent="";
-      body.innerHTML=`<div class="set-row"><span class="sr-k">Status</span><span class="sr-v" style="color:var(--green)">✓ Verified owner</span></div><p style="font-size:.85rem;color:var(--muted);margin-top:10px">Your account is verified — listings show a verified badge.</p>`;
+      body.innerHTML=`<div class="set-row"><span class="sr-k">Status</span><span class="sr-v" style="color:var(--green)">✓ Verified owner</span></div><p style="font-size:.85rem;color:var(--muted);margin-top:10px">Your account is verified, listings show a verified badge.</p>`;
       acts.innerHTML=`<button class="btn btn-ghost" onclick="hide('setModal')" style="flex:1;padding:11px">Close</button>`;show("setModal");return;
     }
     if(ME.verifyStatus==="pending"){
@@ -1603,7 +1602,7 @@ function openSettings(kind){
     }
     sub="Confirm your identity and ownership to earn the verified badge. Your documents are private and used only for verification.";
     vDocIds=[];
-    html=(ME.verifyStatus==="rejected"?`<p style="font-size:.83rem;color:var(--red);background:#faeeed;border-radius:10px;padding:9px 12px;margin-bottom:4px">Your previous request wasn't approved — check your details and try again.</p>`:"")+
+    html=(ME.verifyStatus==="rejected"?`<p style="font-size:.83rem;color:var(--red);background:#faeeed;border-radius:10px;padding:9px 12px;margin-bottom:4px">Your previous request wasn't approved, check your details and try again.</p>`:"")+
       `<div class="np-label" style="padding-left:0">Identity</div>`+
       inp("vLegal","Full legal name (as on your ID)",ME.legalName||ME.name)+
       selField("vType","ID document type",["National ID","Passport","Alien ID"],ME.idType||"National ID")+
@@ -1623,7 +1622,7 @@ function openSettings(kind){
       try{
         const r=await api("/api/account/change-phone",{method:"POST",body:JSON.stringify({phone:$("sPhone").value.trim()})});
         ME=r;paintUser();hide("setModal");
-        // a new number is unverified — send them straight to the code step
+        // a new number is unverified, send them straight to the code step
         if(r.verifyKind==="phone"&&r.verifyTarget&&!r.phoneVerified){toast("Code sent by SMS");setTimeout(()=>openPhoneVerify(r.verifyTarget),350)}
         else toast(ME.phone?"Phone updated":"Phone added");
       }catch(e){$("setErr").textContent=e.message}
@@ -1640,7 +1639,7 @@ function openSettings(kind){
         const county=$("sCounty").value.trim(),town=$("sTown").value.trim();
         if(county||town)ME=await api("/api/account",{method:"PATCH",body:JSON.stringify({county,town})});
         paintUser();hide("setModal");
-        // change-phone sends a code — go straight into verifying it
+        // change-phone sends a code, go straight into verifying it
         if(r.verifyKind==="phone"&&r.verifyTarget){toast("Code sent by SMS");setTimeout(()=>openPhoneVerify(r.verifyTarget),350)}
         else toast("Phone added");
       }catch(e){$("setErr").textContent=e.message}
@@ -1663,7 +1662,7 @@ function openSettings(kind){
       }catch(e){$("setErr").textContent=e.message}
     };
   }else if(kind==="password"){
-    title="Change password";sub=ME.hasPassword?"":"You signed up with Google — set a password to also log in manually.";
+    title="Change password";sub=ME.hasPassword?"":"You signed up with Google, set a password to also log in manually.";
     html=(ME.hasPassword?inp("sCur","Current password","","password"):"")+inp("sNew","New password (min 8 chars)","","password");
     save=()=>saveField("/api/account/change-password",{currentPassword:ME.hasPassword?$("sCur").value:"",newPassword:$("sNew").value},"Password changed",true);
   }else if(kind==="language"){
@@ -1749,7 +1748,7 @@ function openEmailVerify(target){
     resend:()=>api("/api/auth/verify-email/send",{method:"POST"}),
     done:()=>{
       paintUser();hide("setModal");toast("Email verified ✓");
-      // Email-only signups still need a phone before they can post — ask now
+      // Email-only signups still need a phone before they can post, ask now
       // rather than letting them hit the wall at their first listing.
       if(!ME.phone){setTimeout(()=>{toast("Add your phone number to start posting");openSettings("complete")},450)}
       else if(pendingPhoneVerify){const t=pendingPhoneVerify;pendingPhoneVerify=null;setTimeout(()=>openPhoneVerify(t),450)}
@@ -1780,7 +1779,7 @@ async function saveField(path,body,msg,noUser){
 let vDocIds=[],vUploading=0;
 function renderVDocs(){
   const g=$("vDocGrid");if(!g)return;
-  if(!CONFIG||!CONFIG.cloudinary){g.innerHTML="";$("vDocNote").textContent="Document upload isn't available right now — submit your details and our team will contact you to complete verification.";return}
+  if(!CONFIG||!CONFIG.cloudinary){g.innerHTML="";$("vDocNote").textContent="Document upload isn't available right now, submit your details and our team will contact you to complete verification.";return}
   g.innerHTML=vDocIds.map((id,i)=>`<div class="photo-th"><img src="https://res.cloudinary.com/${signCfg&&signCfg.cloudName?signCfg.cloudName:""}/image/upload/c_fill,w_200,h_150,q_auto:eco/${id}" alt="document ${i+1}"><button type="button" class="rm" onclick="vDocIds.splice(${i},1);renderVDocs()">✕</button></div>`).join("")+
     (vUploading?`<div class="photo-th uploading"><div class="spin">Uploading…</div></div>`:"")+
     (vDocIds.length+vUploading<4?`<button type="button" class="photo-add" onclick="$('vFile').click()"><span>+</span>Add document</button>`:"");
@@ -1789,7 +1788,7 @@ async function uploadVerifyDoc(files){
   if(!files.length)return;
   const f=files[0];
   if(!/^image\/(jpeg|png|webp)$/.test(f.type)){toast("Use a JPG, PNG or WebP photo");return}
-  if(f.size>8*1024*1024){toast("Photo is over 8 MB — take a smaller one");return}
+  if(f.size>8*1024*1024){toast("Photo is over 8 MB, take a smaller one");return}
   let cfg;
   try{cfg=await api("/api/uploads/sign?kind=verify");signCfg=signCfg||cfg}
   catch(e){$("setErr").textContent=e.message;return}
@@ -1812,7 +1811,7 @@ async function doVerify(){
       legalName:$("vLegal").value.trim(),idType:$("vType").value,idNumber:$("vId").value.trim(),
       kraPin:$("vKra").value.trim(),docs:vDocIds
     })});
-    paintUser();hide("setModal");toast("Submitted — we'll review and verify you shortly");
+    paintUser();hide("setModal");toast("Submitted, we'll review and verify you shortly");
   }catch(e){$("setErr").textContent=e.message}
 }
 async function doDelete(){

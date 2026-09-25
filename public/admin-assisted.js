@@ -1,21 +1,21 @@
-/* PataHome admin — "Listed for owners": post a listing on behalf of an owner who
+/* PataHome admin: "Listed for owners": post a listing on behalf of an owner who
    can't list themselves. The listing lives on the owner's own account and shows
    nothing about PataHome/admin. Uses helpers from the main admin scripts. */
 (function () {
   const CAT = { rent: "Rent", sale: "Sale", shortlet: "Airbnb", land: "Land", commercial: "Commercial" };
   const HOW = { call: "Phone call", whatsapp: "WhatsApp", sms: "SMS", in_person: "In person", written: "Written / signed" };
-  const when = s => s ? esc(String(s).replace("T", " ").slice(0, 16)) : "—";
+  const when = s => s ? esc(String(s).replace("T", " ").slice(0, 16)) : "-";
   let photos = [], uploading = 0, signCfg = null;
 
   NEW_LOADERS.assisted = async function () {
     const rows = await api("/api/admin/assisted");
     $("panel").innerHTML = `<div class="toolbar"><b>Listed for owners</b>
-        <span class="muted">Listings PataHome posted for owners. Visitors see an ordinary owner listing — nothing mentions PataHome or admin.</span>
+        <span class="muted">Listings PataHome posted for owners. Visitors see an ordinary owner listing, nothing mentions PataHome or admin.</span>
         <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="assistForm()">+ List for an owner</button></div>
       ${rows.length ? `<table><tr><th>Listing</th><th>Owner</th><th>Visitors reach</th><th>Activity</th><th>Status</th><th></th></tr>
       ${rows.map(r => `<tr>
         <td><b>${esc(r.title)}</b> <span class="pill ok">${CAT[r.category] || r.category}</span><div class="muted">#${r.id} · ${esc(r.area)} · ${fmt(r.price)} · <a href="/browse?open=${r.id}" target="_blank" rel="noopener">view ↗</a></div>
-          <div class="muted">Consent: ${esc(HOW[r.consent.how] || r.consent.how || "—")}${r.consent.note ? " — " + esc(r.consent.note) : ""} · by ${esc(r.listedBy)} ${when(r.createdAt)}</div></td>
+          <div class="muted">Consent: ${esc(HOW[r.consent.how] || r.consent.how || "-")}${r.consent.note ? ": " + esc(r.consent.note) : ""} · by ${esc(r.listedBy)} ${when(r.createdAt)}</div></td>
         <td><a href="#" onclick="openUser(${r.owner.id});return false">${esc(r.owner.name)}</a><div class="muted">${esc(r.owner.phone)}${r.owner.managed ? " · account made by us" : ""}</div></td>
         <td>${r.contact.phone ? `<b>${esc(r.contact.name || "Other contact")}</b><div class="muted">${esc(r.contact.phone)}${r.contact.whatsapp && r.contact.whatsapp !== r.contact.phone ? " · WA " + esc(r.contact.whatsapp) : ""}</div>` : '<span class="muted">Owner\'s phone</span>'}
           <div class="muted">Shown as: ${esc(r.contact.role)}${r.relaySms ? " · enquiries by SMS" : ""}${r.relayCopy ? " · copy to you" : ""}</div></td>
@@ -75,8 +75,8 @@
       <div class="sec"><h3>2 · Contact on the listing</h3>${contactFields()}</div>
       <div class="sec"><h3>3 · The property</h3>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <div><label>Category</label><select id="asCat" onchange="asCatFields()">${[["rent", "House / room — for rent"], ["sale", "House — for sale"], ["shortlet", "Airbnb / short stay"], ["land", "Land — sale or lease"], ["commercial", "Commercial property"]].map(([v, l]) => `<option value="${v}">${l}</option>`).join("")}</select></div>
-          <div><label>Area</label><select id="asArea">${ar.map(a => `<option value="${a.id}">${esc(a.name)} — ${esc(a.county)}</option>`).join("")}</select></div>
+          <div><label>Category</label><select id="asCat" onchange="asCatFields()">${[["rent", "House / room, for rent"], ["sale", "House, for sale"], ["shortlet", "Airbnb / short stay"], ["land", "Land, sale or lease"], ["commercial", "Commercial property"]].map(([v, l]) => `<option value="${v}">${l}</option>`).join("")}</select></div>
+          <div><label>Area</label><select id="asArea">${ar.map(a => `<option value="${a.id}">${esc(a.name)}, ${esc(a.county)}</option>`).join("")}</select></div>
         </div>
         <label>Title</label><input id="asTitle" placeholder="e.g. Spacious 2 bedroom near the stage">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
@@ -148,7 +148,7 @@
     const btn = $("asSave"); btn.disabled = true; btn.textContent = "Publishing…";
     try {
       const r = await api("/api/admin/assisted", { method: "POST", body: JSON.stringify(body) });
-      closeModal(); toast(`Listing #${r.listing.id} is live${r.newAccount ? " — owner account created" : ""}`);
+      closeModal(); toast(`Listing #${r.listing.id} is live${r.newAccount ? ", owner account created" : ""}`);
       NEW_LOADERS.assisted();
     } catch (e) { $("asErr").textContent = e.message; btn.disabled = false; btn.textContent = "Publish listing"; }
   };
@@ -188,10 +188,43 @@
       <div class="actions"><button class="btn btn-ghost btn-sm" ${j.running ? "disabled" : ""} onclick="wmExisting()">${j.running ? "Stamping older photos…" : "Watermark older photos"}</button></div>
       <div class="muted" id="wmStatus">${j.total || j.finishedAt ? `${j.done} of ${j.total} done${j.failed ? `, ${j.failed} failed` : ""}${j.finishedAt && !j.running ? " · finished" : ""}` : ""}</div></div>`);
     if (j.running) setTimeout(() => { if (tab === "site") NEW_LOADERS.site(); }, 4000);
+    // Homepage hero photos
+    let st = {}; try { st = await api("/api/admin/settings"); } catch (e) {}
+    heroList = (st.hero_images || "").split("\n").filter(Boolean);
+    grid.insertAdjacentHTML("afterbegin", `<div class="site-card"><h3>🏠 Homepage photos</h3>
+      <div class="muted">Big photos behind the homepage search. Use wide, bright shots (landscape, at least 1600px). Up to 6, they fade from one to the next. Leave empty to use the newest listing photos.</div>
+      <div id="heroGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0"></div>
+      <input type="file" id="heroFile" accept="image/jpeg,image/png,image/webp" multiple style="display:none" onchange="heroUpload(this.files);this.value=''">
+      <div class="actions"><button class="btn btn-ghost btn-sm" onclick="$('heroFile').click()">Upload photos</button><button class="btn btn-primary btn-sm" onclick="heroSave()">Save</button></div></div>`);
+    heroPaint();
+  };
+  let heroList = [], heroBusy = 0;
+  function heroPaint() {
+    const g = $("heroGrid"); if (!g) return;
+    g.innerHTML = heroList.map((u, i) => `<div style="position:relative;aspect-ratio:16/10;border-radius:8px;overflow:hidden;background:#eee"><img src="${esc(u.replace("/upload/", "/upload/c_fill,w_300,h_190/"))}" style="width:100%;height:100%;object-fit:cover"><button class="btn btn-ghost btn-sm" style="position:absolute;top:4px;right:4px;min-height:0;padding:2px 8px" onclick="heroDrop(${i})">✕</button></div>`).join("")
+      + (heroBusy ? `<div class="muted" style="align-self:center">Uploading ${heroBusy}…</div>` : "") + (!heroList.length && !heroBusy ? `<div class="muted">No photos yet.</div>` : "");
+  }
+  window.heroDrop = i => { heroList.splice(i, 1); heroPaint(); };
+  window.heroUpload = async files => {
+    let cfg; try { cfg = await api("/api/uploads/sign?kind=hero"); } catch (e) { return toast(e.message); }
+    const list = [...files].slice(0, 6 - heroList.length).filter(f => /^image\/(jpeg|png|webp)$/.test(f.type) && f.size <= cfg.maxBytes);
+    heroBusy += list.length; heroPaint();
+    await Promise.all(list.map(async f => {
+      const fd = new FormData();
+      fd.append("file", f); fd.append("api_key", cfg.apiKey); fd.append("timestamp", cfg.timestamp); fd.append("signature", cfg.signature);
+      fd.append("folder", cfg.folder); fd.append("transformation", cfg.transformation);
+      try { const r = await fetch(`https://api.cloudinary.com/v1_1/${cfg.cloudName}/image/upload`, { method: "POST", body: fd }); const d = await r.json(); if (d.secure_url) heroList.push(d.secure_url); else toast("A photo failed to upload"); }
+      catch (e) { toast("A photo failed to upload"); }
+      finally { heroBusy--; heroPaint(); }
+    }));
+  };
+  window.heroSave = async () => {
+    try { await api("/api/admin/settings", { method: "PATCH", body: JSON.stringify({ hero_images: heroList.join("\n") }) }); toast("Homepage photos saved"); }
+    catch (e) { toast(e.message); }
   };
   window.wmExisting = async function () {
     if (!confirm("Stamp the PataHome logo on all photos uploaded before watermarking was switched on? This permanently changes those photos.")) return;
-    try { await api("/api/admin/watermark/existing", { method: "POST" }); toast("Started — this can take a few minutes"); NEW_LOADERS.site(); }
+    try { await api("/api/admin/watermark/existing", { method: "POST" }); toast("Started, this can take a few minutes"); NEW_LOADERS.site(); }
     catch (e) { toast(e.message); }
   };
 })();

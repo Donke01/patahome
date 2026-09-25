@@ -1,4 +1,4 @@
-/* PataHome commercial-property helpers — shared by the server, browse page,
+/* PataHome commercial-property helpers, shared by the server, browse page,
    homepage and dashboard. Floor area is stored in the owner's unit AND in
    square feet so buyers/tenants can filter and compare. */
 (function (root) {

@@ -1,4 +1,4 @@
-// PataHome API — zero-dependency Node.js backend (requires Node 22.5+)
+// PataHome API, zero-dependency Node.js backend (requires Node 22.5+)
 // Run: node seed.js && node server.js
 const http = require("node:http");
 const fs = require("node:fs");
@@ -22,9 +22,10 @@ const SETTINGS_DEFAULTS = {
   sms_enabled: () => "1",             // master switch for all outgoing SMS
   announce_on: () => "0", announce_text: () => "", announce_level: () => "info", announce_link: () => "",
   pause_listings: () => "0", pause_signups: () => "0",
-  maintenance_message: () => "We're doing some quick maintenance — please try again in a little while.",
+  maintenance_message: () => "We're doing some quick maintenance, please try again in a little while.",
   watermark_on: () => "1",            // stamp the PataHome logo on new photos and videos
-  watermark_asset: () => ""           // set once the logo is stored in Cloudinary
+  watermark_asset: () => "",          // set once the logo is stored in Cloudinary
+  hero_images: () => ""               // homepage hero photos, one https URL per line (empty = newest listing photos)
 };
 const SETTING_RULES = {
   listing_ttl_days: v => Math.min(365, Math.max(7, Math.round(+v))), max_photos: v => Math.min(20, Math.max(1, Math.round(+v))),
@@ -34,7 +35,8 @@ const SETTING_RULES = {
   announce_level: v => ["info", "warn", "success"].includes(v) ? v : "info", announce_link: v => /^(https?:\/\/|\/)[^\s"<>]{0,300}$/.test(String(v || "")) ? String(v) : "",
   pause_listings: v => (v === true || v === "1" || v === 1) ? "1" : "0", pause_signups: v => (v === true || v === "1" || v === 1) ? "1" : "0",
   maintenance_message: v => String(v || "").trim().slice(0, 240),
-  watermark_on: v => (v === true || v === "1" || v === 1) ? "1" : "0"
+  watermark_on: v => (v === true || v === "1" || v === 1) ? "1" : "0",
+  hero_images: v => String(v || "").split(/[\s,]+/).filter(u => /^https:\/\/[^\s"'<>()]{8,400}$/.test(u)).slice(0, 6).join("\n")
 };
 const settingsCache = new Map();
 function setting(key) {
@@ -51,7 +53,7 @@ const smsConfigured = () => smsConfiguredRaw() && settingOn("sms_enabled");
 process.on("unhandledRejection", (e) => console.error("unhandledRejection:", e));
 process.on("uncaughtException", (e) => console.error("uncaughtException:", e));
 
-/* ================= Cloudinary (photo storage — zero local disk) ================= */
+/* ================= Cloudinary (photo storage, zero local disk) ================= */
 const crypto = require("node:crypto");
 const CLD = {
   cloud: process.env.CLOUDINARY_CLOUD_NAME || "",
@@ -66,7 +68,7 @@ function cldSign(params) {
   const str = Object.keys(params).sort().map(k => `${k}=${params[k]}`).join("&");
   return crypto.createHash("sha1").update(str + CLD.secret).digest("hex");
 }
-// Incoming transformation: cap at 1280px, auto quality — keeps every stored image small
+// Incoming transformation: cap at 1280px, auto quality, keeps every stored image small
 const CLD_TRANSFORM = "c_limit,w_1280,h_1280,q_auto:good";
 /* Watermark: our white logo (public/watermark.png, stored in Cloudinary as
    patahome/brand/watermark) in the bottom-right corner, 18% of the width, 70% opacity.
@@ -78,7 +80,7 @@ const CLD_TRANSFORM_WM = `c_limit,w_1280,h_1280/${WM_LAYER(0.18)}/q_auto:good`;
 const VIDEO_WM_T = `c_limit,w_1280/${WM_LAYER(0.2)}/q_auto,vc_auto`;
 const watermarkOn = () => cldEnabled() && setting("watermark_on") === "1" && setting("watermark_asset") !== "";
 const photoUrl = (id, t) => `https://res.cloudinary.com/${CLD.cloud}/image/upload/${t}/${id}`;
-require("./public/land.js"); // defines globalThis.PH_LAND (units, conversions, labels) — same file the browser uses
+require("./public/land.js"); // defines globalThis.PH_LAND (units, conversions, labels), same file the browser uses
 const LAND = globalThis.PH_LAND;
 require("./public/commercial.js"); // defines globalThis.PH_COMM (types, units, labels)
 const COMM = globalThis.PH_COMM;
@@ -135,7 +137,7 @@ const listingView = (row, userLat, userLng) => ({
     landDeal: row.land_deal || "sale", sizeValue: row.size_value, sizeUnit: row.size_unit, sizeAcres: row.size_acres,
     priceBasis: row.price_basis, pricePerAcre: row.price_per_acre, leaseMin: row.lease_min || "",
     exactPin: !!row.exact_pin, docsChecked: row.docs_status === "checked"
-    // title_ref and land_docs are private — never sent to the public
+    // title_ref and land_docs are private, never sent to the public
   } : {}),
   ...(row.category === "commercial" ? {
     deal: row.land_deal || "sale", commType: row.comm_type, sizeValue: row.size_value, sizeUnit: row.size_unit, areaSqft: row.area_sqft,
@@ -152,7 +154,7 @@ const listingView = (row, userLat, userLng) => ({
   createdAt: row.created_at,
   distanceKm: (userLat != null && userLng != null)
     ? Math.round(km(userLat, userLng, row.lat, row.lng) * 10) / 10 : null
-  // NOTE: owner phone deliberately excluded — request via POST /api/listings/:id/contact
+  // NOTE: owner phone deliberately excluded, request via POST /api/listings/:id/contact
 });
 
 /* ================= sessions =================
@@ -204,14 +206,14 @@ const requireAuth = (req, res) => {
   const u = getUser(req);
   if (!u) {
     const idleH = Math.round(SESSION_IDLE_MS / 3600e3 * 10) / 10;
-    const msg = req._authFail === "idle" ? `You were signed out after ${idleH} hour${idleH === 1 ? "" : "s"} of inactivity — please log in again`
-      : req._authFail === "admin_idle" ? "Admin sessions end after 30 minutes of inactivity — please log in again"
-      : req._authFail ? "Your session has ended — please log in again" : "Login required";
+    const msg = req._authFail === "idle" ? `You were signed out after ${idleH} hour${idleH === 1 ? "" : "s"} of inactivity, please log in again`
+      : req._authFail === "admin_idle" ? "Admin sessions end after 30 minutes of inactivity, please log in again"
+      : req._authFail ? "Your session has ended, please log in again" : "Login required";
     send(res, 401, { error: msg, code: req._authFail ? "SESSION_EXPIRED" : "LOGIN_REQUIRED" });
     return null;
   }
   // "View as user" sessions can look but never change anything
-  if (u.ro && req.method !== "GET") { send(res, 403, { error: "Read-only view — changes are disabled", code: "READ_ONLY" }); return null; }
+  if (u.ro && req.method !== "GET") { send(res, 403, { error: "Read-only view, changes are disabled", code: "READ_ONLY" }); return null; }
   return u;
 };
 function send(res, code, obj) {
@@ -253,7 +255,7 @@ async function sendEmailCode(userId, email) {
   await sendMail({
     to: email,
     subject: "PataHome code",
-    text: `${greeting} ${first}!\n\nYour PataHome verification code is ${code}. It expires in 3 minutes.\n\n— PataHome · patahome.co.ke`, html
+    text: `${greeting} ${first}!\n\nYour PataHome verification code is ${code}. It expires in 3 minutes.\n\nPataHome · patahome.co.ke`, html
   });
   return true;
 }
@@ -261,7 +263,7 @@ function authEmailHtml({greeting,code,kind="verification"}) {
   const intro=kind==="reset"?"Use this code to reset your PataHome password.":"Use this code to verify your PataHome account.";
   return `<!doctype html><html><body style="margin:0;background:#f4faf7;font-family:Arial,sans-serif;color:#17352b"><div style="max-width:560px;margin:28px auto;background:#fff;border:1px solid #d9e9e0;border-radius:18px;overflow:hidden"><div style="padding:24px 28px;background:#063f2e;color:#fff"><img src="https://patahome.co.ke/patahome-logo-transparent.png" alt="PataHome" style="height:54px;width:auto;display:block;background:#fff;border-radius:10px;padding:4px"><p style="margin:16px 0 0;color:#bff3db;font-size:14px;font-weight:700;letter-spacing:.04em">Kwa sababu tunakujali</p></div><div style="padding:30px 28px"><h1 style="font-size:24px;margin:0 0 12px;color:#063f2e">${greeting}</h1><p style="font-size:16px;line-height:1.6;margin:0 0 8px">${intro}</p><p style="font-size:14px;color:#63766d;margin:0 0 22px">This code expires in <b>3 minutes</b>.</p><div style="font-size:36px;letter-spacing:10px;text-align:center;font-weight:800;color:#087b61;background:#e8f8f0;border:1px dashed #73c7a4;border-radius:14px;padding:18px 10px;margin:0 0 22px">${code}</div><p style="font-size:13px;color:#63766d;line-height:1.6">If you didn’t request this email, you can safely ignore it.</p></div><div style="padding:18px 28px;background:#f4faf7;color:#63766d;font-size:12px">Connect with homes that fit your life.<br><b style="color:#087b61">PataHome · patahome.co.ke</b></div></div></body></html>`;
 }
-/* Phone verification can be switched off without touching the Infobip config —
+/* Phone verification can be switched off without touching the Infobip config ,
    useful while a sender ID is still pending operator approval. Set
    PHONE_VERIFY=off in the environment to disable; remove it to re-enable.
    When off: phone signups still work, no codes are sent, and posting a listing
@@ -313,7 +315,7 @@ async function sendStepUpCode(row, action, ch) {
   const what = STEP_UP_ACTIONS[action];
   if (ch.channel === "sms") await sendSms({ to: ch.to, text: `${code} is your PataHome security code to ${what}. Never share it. If this wasn't you, change your password.` });
   else await sendMail({ to: ch.to, subject: `${code} is your PataHome security code`,
-    text: `Hi ${row.name || ""},\n\nSomeone (hopefully you) asked to ${what} on PataHome.\n\nYour security code is: ${code}\n\nIt expires in 10 minutes. If this wasn't you, don't share the code — change your password and contact us at info@patahome.co.ke.\n\n— PataHome · patahome.co.ke` });
+    text: `Hi ${row.name || ""},\n\nSomeone (hopefully you) asked to ${what} on PataHome.\n\nYour security code is: ${code}\n\nIt expires in 10 minutes. If this wasn't you, don't share the code, change your password and contact us at info@patahome.co.ke.\n\nPataHome · patahome.co.ke` });
 }
 // Returns true when the request carries valid proof; otherwise responds and returns false.
 async function requireStepUp(req, res, u, action) {
@@ -329,10 +331,10 @@ async function requireStepUp(req, res, u, action) {
   }
   const pending = db.prepare("SELECT * FROM verify_codes WHERE user_id=? AND kind='stepup'").get(u.id);
   if (b.securityCode) {
-    if (!pending || pending.target !== action) { send(res, 400, { error: "No pending code — tap Resend" }); return false; }
-    if (new Date(pending.expires_at + "Z") < new Date()) { db.prepare("DELETE FROM verify_codes WHERE id=?").run(pending.id); send(res, 400, { error: "Code expired — tap Resend" }); return false; }
-    if (pending.attempts >= 5) { db.prepare("DELETE FROM verify_codes WHERE id=?").run(pending.id); send(res, 400, { error: "Too many attempts — tap Resend for a new code" }); return false; }
-    if (pending.code !== String(b.securityCode).trim()) { db.prepare("UPDATE verify_codes SET attempts=attempts+1 WHERE id=?").run(pending.id); send(res, 400, { error: "Wrong code — check and try again" }); return false; }
+    if (!pending || pending.target !== action) { send(res, 400, { error: "No pending code, tap Resend" }); return false; }
+    if (new Date(pending.expires_at + "Z") < new Date()) { db.prepare("DELETE FROM verify_codes WHERE id=?").run(pending.id); send(res, 400, { error: "Code expired, tap Resend" }); return false; }
+    if (pending.attempts >= 5) { db.prepare("DELETE FROM verify_codes WHERE id=?").run(pending.id); send(res, 400, { error: "Too many attempts, tap Resend for a new code" }); return false; }
+    if (pending.code !== String(b.securityCode).trim()) { db.prepare("UPDATE verify_codes SET attempts=attempts+1 WHERE id=?").run(pending.id); send(res, 400, { error: "Wrong code, check and try again" }); return false; }
     db.prepare("DELETE FROM verify_codes WHERE id=?").run(pending.id);
     return true;
   }
@@ -341,7 +343,7 @@ async function requireStepUp(req, res, u, action) {
   let sent = !!fresh;
   if (!fresh) {
     try { await sendStepUpCode(row, action, ch); sent = true; }
-    catch (e) { console.error("step-up send failed:", e.message); send(res, 400, { error: "Couldn't send your security code — please try again shortly" }); return false; }
+    catch (e) { console.error("step-up send failed:", e.message); send(res, 400, { error: "Couldn't send your security code, please try again shortly" }); return false; }
   }
   send(res, 403, { error: "Confirm it's you", stepUp: { action, channel: ch.channel, target: ch.target, sent } });
   return false;
@@ -359,18 +361,18 @@ router.add("POST", "/api/account/security-code", async (req, res) => {
     if (wait > 0) return send(res, 429, { error: `Please wait ${wait}s before requesting another code`, retryIn: wait });
   }
   try { await sendStepUpCode(row, action, ch); }
-  catch (e) { console.error("step-up send failed:", e.message); return send(res, 400, { error: "Couldn't send the code — try again shortly" }); }
+  catch (e) { console.error("step-up send failed:", e.message); return send(res, 400, { error: "Couldn't send the code, try again shortly" }); }
   send(res, 200, { channel: ch.channel, target: ch.target, sent: true });
 });
 // Best-effort "your account changed" notice to the account email.
 function securityNotice(row, what) {
   if (!row || !row.email || !mailConfigured()) return;
   sendMail({ to: row.email, subject: "PataHome security notice",
-    text: `Hi ${row.name || ""},\n\n${what} on your PataHome account just now.\n\nIf this was you, no action is needed. If it wasn't, reset your password immediately and contact info@patahome.co.ke.\n\n— PataHome · patahome.co.ke` })
+    text: `Hi ${row.name || ""},\n\n${what} on your PataHome account just now.\n\nIf this was you, no action is needed. If it wasn't, reset your password immediately and contact info@patahome.co.ke.\n\nPataHome · patahome.co.ke` })
     .catch(e => console.error("security notice failed:", e.message));
 }
 
-/* Sign up with ONE identifier — either a Kenyan phone or an email.
+/* Sign up with ONE identifier, either a Kenyan phone or an email.
    Whichever they give is the one we verify; the other is added later in
    profile settings. Everything else (birthday, county, town) moved there too. */
 router.add("POST", "/api/auth/register", async (req, res) => {
@@ -387,7 +389,7 @@ router.add("POST", "/api/auth/register", async (req, res) => {
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(identifier))
       return send(res, 400, { error: "Enter a valid email address" });
     if (!mailConfigured())
-      return send(res, 400, { error: "Email sign-up isn't available right now — please use your phone number" });
+      return send(res, 400, { error: "Email sign-up isn't available right now, please use your phone number" });
     email = identifier.toLowerCase();
     // phone is NOT NULL UNIQUE, so park a placeholder until they add a real one.
     // realPhone() rejects it, which is what gates listing creation.
@@ -420,7 +422,7 @@ router.add("POST", "/api/auth/register", async (req, res) => {
   }
 
   // Send the code for whichever identifier they used. A gateway failure must not
-  // lose the signup — the account exists and they can resend from settings.
+  // lose the signup, the account exists and they can resend from settings.
   const willVerify = isEmail || verifyPhone;
   if (willVerify) {
     try {
@@ -457,10 +459,10 @@ router.add("POST", "/api/auth/verify-email/confirm", (req, res) => {
   const u = requireAuth(req, res); if (!u) return;
   const code = String(req.body.code || "").trim();
   const row = db.prepare("SELECT * FROM verify_codes WHERE user_id=? AND kind='email'").get(u.id);
-  if (!row) return send(res, 400, { error: "No pending code — request a new one" });
-  if (new Date(row.expires_at + "Z") < new Date()) { db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id); return send(res, 400, { error: "Code expired — request a new one" }); }
-  if (row.attempts >= 5) { db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id); return send(res, 400, { error: "Too many attempts — request a new code" }); }
-  if (row.code !== code) { db.prepare("UPDATE verify_codes SET attempts=attempts+1 WHERE id=?").run(row.id); return send(res, 400, { error: "Wrong code — check the email and try again" }); }
+  if (!row) return send(res, 400, { error: "No pending code, request a new one" });
+  if (new Date(row.expires_at + "Z") < new Date()) { db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id); return send(res, 400, { error: "Code expired, request a new one" }); }
+  if (row.attempts >= 5) { db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id); return send(res, 400, { error: "Too many attempts, request a new code" }); }
+  if (row.code !== code) { db.prepare("UPDATE verify_codes SET attempts=attempts+1 WHERE id=?").run(row.id); return send(res, 400, { error: "Wrong code, check the email and try again" }); }
   db.prepare("UPDATE users SET email_verified=1 WHERE id=?").run(u.id);
   db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id);
   send(res, 200, publicUser(db.prepare("SELECT * FROM users WHERE id=?").get(u.id)));
@@ -488,10 +490,10 @@ router.add("POST", "/api/auth/verify-phone/confirm", (req, res) => {
   const u = requireAuth(req, res); if (!u) return;
   const code = String(req.body.code || "").trim();
   const row = db.prepare("SELECT * FROM verify_codes WHERE user_id=? AND kind='phone'").get(u.id);
-  if (!row) return send(res, 400, { error: "No pending code — request a new one" });
-  if (new Date(row.expires_at + "Z") < new Date()) { db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id); return send(res, 400, { error: "Code expired — request a new one" }); }
-  if (row.attempts >= 5) { db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id); return send(res, 400, { error: "Too many attempts — request a new code" }); }
-  if (row.code !== code) { db.prepare("UPDATE verify_codes SET attempts=attempts+1 WHERE id=?").run(row.id); return send(res, 400, { error: "Wrong code — check the SMS and try again" }); }
+  if (!row) return send(res, 400, { error: "No pending code, request a new one" });
+  if (new Date(row.expires_at + "Z") < new Date()) { db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id); return send(res, 400, { error: "Code expired, request a new one" }); }
+  if (row.attempts >= 5) { db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id); return send(res, 400, { error: "Too many attempts, request a new code" }); }
+  if (row.code !== code) { db.prepare("UPDATE verify_codes SET attempts=attempts+1 WHERE id=?").run(row.id); return send(res, 400, { error: "Wrong code, check the SMS and try again" }); }
   db.prepare("UPDATE users SET phone_verified=1 WHERE id=?").run(u.id);
   db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id);
   send(res, 200, publicUser(db.prepare("SELECT * FROM users WHERE id=?").get(u.id)));
@@ -514,7 +516,7 @@ async function startAdmin2fa(req, res, user) {
   const ch = user.email && mailConfigured() ? { channel: "email", to: user.email, target: maskEmail(user.email) }
     : realPhone(user.phone) && smsConfigured() ? { channel: "sms", to: user.phone, target: maskPhone(user.phone) } : null;
   if (!ch) {
-    adminAlert("Admin signed in without a second step", `${user.name} (#${user.id}) — add an email to this admin account so logins need a code.`);
+    adminAlert("Admin signed in without a second step", `${user.name} (#${user.id}), add an email to this admin account so logins need a code.`);
     return finishAdminLogin(req, res, user, "password only");
   }
   const code = String(crypto.randomInt(100000, 1000000)), challenge = crypto.randomBytes(18).toString("base64url");
@@ -524,7 +526,7 @@ async function startAdmin2fa(req, res, user) {
     if (ch.channel === "sms") await sendSms({ to: ch.to, text: `${code} is your PataHome admin login code. Never share it.` });
     else await sendMail({ to: ch.to, subject: `${code} is your PataHome admin login code`,
       text: `Your PataHome admin login code is ${code}. It expires in 10 minutes.\n\nIf you didn't just try to sign in, change your password now.\n\nIP: ${clientIp(req)}\nDevice: ${String(req.headers["user-agent"] || "").slice(0, 160)}` });
-  } catch (e) { console.error("admin 2fa send failed:", e.message); return send(res, 400, { error: "Couldn't send your login code — please try again" }); }
+  } catch (e) { console.error("admin 2fa send failed:", e.message); return send(res, 400, { error: "Couldn't send your login code, please try again" }); }
   send(res, 200, { twoFactor: { challenge, channel: ch.channel, target: ch.target } });
 }
 function finishAdminLogin(req, res, user, how) {
@@ -537,9 +539,9 @@ function finishAdminLogin(req, res, user, how) {
 router.add("POST", "/api/auth/login/verify", (req, res) => {
   const b = req.body || {};
   const row = db.prepare("SELECT * FROM verify_codes WHERE kind='admin2fa' AND target=?").get(String(b.challenge || ""));
-  if (!row) return send(res, 400, { error: "This login attempt has expired — log in again" });
-  if (new Date(row.expires_at + "Z") < new Date() || row.attempts >= 5) { db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id); return send(res, 400, { error: "Code expired or too many tries — log in again" }); }
-  if (row.code !== String(b.code || "").trim()) { db.prepare("UPDATE verify_codes SET attempts=attempts+1 WHERE id=?").run(row.id); return send(res, 400, { error: "Wrong code — check and try again" }); }
+  if (!row) return send(res, 400, { error: "This login attempt has expired, log in again" });
+  if (new Date(row.expires_at + "Z") < new Date() || row.attempts >= 5) { db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id); return send(res, 400, { error: "Code expired or too many tries, log in again" }); }
+  if (row.code !== String(b.code || "").trim()) { db.prepare("UPDATE verify_codes SET attempts=attempts+1 WHERE id=?").run(row.id); return send(res, 400, { error: "Wrong code, check and try again" }); }
   db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id);
   const user = db.prepare("SELECT * FROM users WHERE id=?").get(row.user_id);
   if (!user) return send(res, 400, { error: "Account not found" });
@@ -570,9 +572,9 @@ router.add("POST", "/api/auth/reset-password", (req,res) => {
   if(!password||password.length<8)return send(res,400,{error:"Password must be at least 8 characters"});
   const user=db.prepare("SELECT * FROM users WHERE email=? OR phone=?").get(String(identifier||"").toLowerCase(),String(identifier||""));
   const row=user&&db.prepare("SELECT * FROM verify_codes WHERE user_id=? AND kind='password_reset'").get(user.id);
-  if(!row)return send(res,400,{error:"No pending code — request a new one"});
-  if(new Date(row.expires_at+"Z")<new Date()){db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id);return send(res,400,{error:"Code expired — request a new one"});}
-  if(row.attempts>=5)return send(res,400,{error:"Too many attempts — request a new code"});
+  if(!row)return send(res,400,{error:"No pending code, request a new one"});
+  if(new Date(row.expires_at+"Z")<new Date()){db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id);return send(res,400,{error:"Code expired, request a new one"});}
+  if(row.attempts>=5)return send(res,400,{error:"Too many attempts, request a new code"});
   if(String(code||"")!==row.code){db.prepare("UPDATE verify_codes SET attempts=attempts+1 WHERE id=?").run(row.id);return send(res,400,{error:"Wrong code"});}
   db.prepare("UPDATE users SET password_hash=? WHERE id=?").run(hashPassword(password),user.id);db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id);send(res,200,{ok:true});
 });
@@ -605,8 +607,8 @@ router.add("POST", "/api/auth/google", async (req, res) => {
     authResponse(res, 200, user, req);
   } catch (e) {
     console.error("google auth error:", e.message);
-    // 401 (not 502) — Cloudflare replaces 502 responses with its own HTML page
-    send(res, 401, { error: "Could not verify Google sign-in — please try again" });
+    // 401 (not 502): Cloudflare replaces 502 responses with its own HTML page
+    send(res, 401, { error: "Could not verify Google sign-in, please try again" });
   }
 });
 
@@ -666,7 +668,7 @@ router.add("POST", "/api/account/change-phone", async (req, res) => {
   if (db.prepare("SELECT id FROM users WHERE phone=? AND id!=?").get(phone, u.id)) return send(res, 409, { error: "That phone is already registered" });
   if (replacing && !(await requireStepUp(req, res, u, "phone"))) return;
   try {
-    // A new number is unverified until proven — otherwise someone could verify
+    // A new number is unverified until proven, otherwise someone could verify
     // one phone then swap in another and keep the trusted badge.
     db.prepare("UPDATE users SET phone=?, phone_verified=0 WHERE id=?").run(phone, u.id);
   } catch (e) { return send(res, 409, { error: "That phone is already registered" }); }
@@ -693,7 +695,7 @@ router.add("POST", "/api/account/change-email", async (req, res) => {
   const alreadyAuthorised = pendingNew && pendingNew.target === email;
   if (cur && cur.email && cur.email !== email && !alreadyAuthorised && !(await requireStepUp(req, res, u, "email"))) return;
   if (!mailConfigured()) {
-    // no mail provider configured yet — apply directly (legacy behavior)
+    // no mail provider configured yet, apply directly (legacy behavior)
     db.prepare("UPDATE users SET email=? WHERE id=?").run(email, u.id);
     return send(res, 200, publicUser(db.prepare("SELECT * FROM users WHERE id=?").get(u.id)));
   }
@@ -710,7 +712,7 @@ router.add("POST", "/api/account/change-email", async (req, res) => {
     });
   } catch (e) {
     console.error("sendMail failed:", e.message);
-    // 400 (not 502/503) — Cloudflare replaces 5xx responses with its own error page
+    // 400 (not 502/503): Cloudflare replaces 5xx responses with its own error page
     return send(res, 400, { error: "Couldn't send the code (" + String(e.message).slice(0, 90) + ")" });
   }
   send(res, 200, { codeRequired: true, target: email });
@@ -720,18 +722,18 @@ router.add("POST", "/api/account/change-email/confirm", (req, res) => {
   const u = requireAuth(req, res); if (!u) return;
   const code = String(req.body.code || "").trim();
   const row = db.prepare("SELECT * FROM verify_codes WHERE user_id=? AND kind='email'").get(u.id);
-  if (!row) return send(res, 400, { error: "No pending code — request a new one" });
+  if (!row) return send(res, 400, { error: "No pending code, request a new one" });
   if (new Date(row.expires_at + "Z") < new Date()) {
     db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id);
-    return send(res, 400, { error: "Code expired — request a new one" });
+    return send(res, 400, { error: "Code expired, request a new one" });
   }
   if (row.attempts >= 5) {
     db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id);
-    return send(res, 400, { error: "Too many attempts — request a new code" });
+    return send(res, 400, { error: "Too many attempts, request a new code" });
   }
   if (row.code !== code) {
     db.prepare("UPDATE verify_codes SET attempts=attempts+1 WHERE id=?").run(row.id);
-    return send(res, 400, { error: "Wrong code — check the email and try again" });
+    return send(res, 400, { error: "Wrong code, check the email and try again" });
   }
   const prev = db.prepare("SELECT * FROM users WHERE id=?").get(u.id);
   try {
@@ -798,7 +800,8 @@ router.add("GET", "/api/config", (req, res) => {
     sessionIdleMinutes: Math.round(SESSION_IDLE_MS / 60e3), maxPhotos: CLD.maxPhotos,
     announcement: settingOn("announce_on") && setting("announce_text") ? { text: setting("announce_text"), level: setting("announce_level"), link: setting("announce_link") } : null,
     pauseListings: settingOn("pause_listings"), pauseSignups: settingOn("pause_signups"),
-    maintenanceMessage: settingOn("pause_listings") || settingOn("pause_signups") ? setting("maintenance_message") : "" });
+    maintenanceMessage: settingOn("pause_listings") || settingOn("pause_signups") ? setting("maintenance_message") : "",
+    heroImages: setting("hero_images") ? setting("hero_images").split("\n").filter(Boolean) : [] });
 });
 
 /* ================= areas ================= */
@@ -834,7 +837,7 @@ router.add("GET", "/api/listings", (req, res) => {
     "price-desc": (a, b) => b.price - a.price,
     newest: (a, b) => b.id - a.id
   }[sort] || ((a, b) => b.id - a.id);
-  // Featured listings always float to the top — this is the monetization hook
+  // Featured listings always float to the top, this is the monetization hook
   out.sort((a, b) => (b.featured - a.featured) || by(a, b));
 
   const perPage = Math.min(+q.perPage || 20, 100), page = Math.max(+q.page || 1, 1);
@@ -966,7 +969,7 @@ router.add("GET", "/api/search", (req, res) => {
 });
 
 /* Approximate visitor location (city-level) from Cloudflare's visitor-location
-   headers — lets the homepage sort areas nearest-first without a GPS prompt.
+   headers, lets the homepage sort areas nearest-first without a GPS prompt.
    Requires Cloudflare → Rules → Transform Rules → Managed Transforms →
    "Add visitor location headers" to be ON. Returns {} when unavailable.
    Nothing is stored. */
@@ -1022,7 +1025,7 @@ function createListingFor(ownerId, body, res, extra) {
   if (lister.error) return send(res, 400, { error: lister.error });
   if (!title || !areaId || !price) return send(res, 400, { error: "title, areaId and price are required" });
   const area = db.prepare("SELECT * FROM areas WHERE id=?").get(areaId);
-  if (!area) return send(res, 400, { error: "Unknown areaId — see GET /api/areas" });
+  if (!area) return send(res, 400, { error: "Unknown areaId, see GET /api/areas" });
   let lat = area.lat + (Math.random() - 0.5) * 0.01, lng = area.lng + (Math.random() - 0.5) * 0.01, pinned = 0;
   if (land || comm) {
     const pin = exactPin(req.body, area);
@@ -1090,7 +1093,7 @@ function freshnessSweep() {
     db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
       .run(r.owner_id, "listing", "Is your listing still available?", `"${r.title}" will be paused in ${REMIND_DAYS} days unless you confirm it's still available.`);
     if (r.email && mailConfigured()) sendMail({ to: r.email, subject: `Is "${r.title}" still available?`,
-      text: `Hi ${r.owner_name || ""},\n\nYour PataHome listing "${r.title}" has been live for a while. To keep the site accurate for tenants, it will be paused in ${REMIND_DAYS} days unless you confirm it's still available.\n\n✓ Still available — keep it live:\n${yes}\n\n✗ It's taken — mark it rented/sold:\n${taken}\n\n— PataHome · patahome.co.ke` })
+      text: `Hi ${r.owner_name || ""},\n\nYour PataHome listing "${r.title}" has been live for a while. To keep the site accurate for tenants, it will be paused in ${REMIND_DAYS} days unless you confirm it's still available.\n\n✓ Still available, keep it live:\n${yes}\n\n✗ It's taken, mark it rented/sold:\n${taken}\n\nPataHome · patahome.co.ke` })
       .catch(e => console.error("freshness mail failed:", e.message));
     else if (realPhone(r.phone) && phoneVerifyEnabled()) sendSms({ to: r.phone, text: `PataHome: is "${r.title.slice(0, 40)}" still available? Keep it live: ${yes}` })
       .catch(e => console.error("freshness sms failed:", e.message));
@@ -1108,7 +1111,7 @@ function freshnessSweep() {
 setTimeout(() => { try { freshnessSweep(); } catch (e) { console.error("freshness sweep:", e.message); } }, 5000);
 setInterval(() => { try { freshnessSweep(); } catch (e) { console.error("freshness sweep:", e.message); } }, 3600e3);
 
-// Owner taps "Still available" (logged in) — also used to renew a paused listing.
+// Owner taps "Still available" (logged in), also used to renew a paused listing.
 router.add("POST", "/api/listings/:id/confirm", (req, res, p) => {
   const u = requireAuth(req, res); if (!u) return;
   const row = db.prepare("SELECT * FROM listings WHERE id=?").get(p.id);
@@ -1123,7 +1126,7 @@ router.add("GET", "/api/listings/:id/fresh", (req, res, p) => {
   const row = db.prepare("SELECT * FROM listings WHERE id=?").get(p.id);
   const a = req.query.a === "taken" ? "taken" : "yes";
   const redirect = (msg) => { res.writeHead(302, { Location: "/dashboard?notice=" + encodeURIComponent(msg) }); res.end(); };
-  if (!row || !req.query.t || req.query.t !== freshToken(row, a)) return redirect("That link has expired — manage the listing from your dashboard.");
+  if (!row || !req.query.t || req.query.t !== freshToken(row, a)) return redirect("That link has expired, manage the listing from your dashboard.");
   if (a === "yes") {
     if (!["active", "expired"].includes(row.status)) return redirect("This listing is no longer live.");
     db.prepare("UPDATE listings SET confirmed_at=datetime('now'), reminded_at=NULL, status='active', status_changed_at=CASE WHEN status='active' THEN status_changed_at ELSE datetime('now') END WHERE id=?").run(row.id);
@@ -1147,7 +1150,7 @@ function addFlag(listingId, kind, detail) {
   db.prepare("INSERT INTO listing_flags (listing_id,kind,detail) VALUES (?,?,?)").run(listingId, kind, String(detail).slice(0, 300));
   console.log(`[trust] flag ${kind} on listing #${listingId}: ${detail}`);
   const n = db.prepare("SELECT COUNT(*) n FROM listing_flags WHERE listing_id=? AND resolved=0").get(listingId).n;
-  if (n === 2) adminAlert("Listing looks like a scam", `Listing #${listingId} now has ${n} automatic scam flags (latest: ${kind} — ${detail}). Review it: ${SITE()}/admin`);
+  if (n === 2) adminAlert("Listing looks like a scam", `Listing #${listingId} now has ${n} automatic scam flags (latest: ${kind}: ${detail}). Review it: ${SITE()}/admin`);
   return true;
 }
 function evaluateReports(listingId) {
@@ -1162,7 +1165,7 @@ function evaluateReports(listingId) {
   if (serious >= (flagged ? 2 : 3) || all >= (flagged ? 3 : 5)) {
     db.prepare("UPDATE listings SET status='under_review', status_changed_at=datetime('now') WHERE id=?").run(listingId);
     db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
-      .run(l.owner_id, "listing", "Listing under review", `"${l.title}" was paused after several reports from visitors. Our team will review it shortly — reply to info@patahome.co.ke if you think this is a mistake.`);
+      .run(l.owner_id, "listing", "Listing under review", `"${l.title}" was paused after several reports from visitors. Our team will review it shortly, reply to info@patahome.co.ke if you think this is a mistake.`);
     console.log(`[trust] listing #${listingId} paused for review (${all} reporters, ${serious} serious)`);
   } else if (takenCount >= 2) {
     db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
@@ -1177,7 +1180,7 @@ router.add("POST", "/api/listings/:id/report", (req, res, p) => {
   if (!l || l.status !== "active") return send(res, 404, { error: "Listing not found" });
   const ip = clientIp(req);
   const recent = db.prepare("SELECT COUNT(*) n FROM reports WHERE ip=? AND created_at > datetime('now','-1 hour')").get(ip).n;
-  if (ip && recent >= 10) return send(res, 429, { error: "Too many reports — please try again later" });
+  if (ip && recent >= 10) return send(res, 429, { error: "Too many reports, please try again later" });
   if (ip && db.prepare("SELECT 1 FROM reports WHERE ip=? AND listing_id=? AND created_at > datetime('now','-1 day')").get(ip, l.id))
     return send(res, 200, { ok: true, duplicate: true });
   db.prepare("INSERT INTO reports (listing_id,reason,details,contact,ip) VALUES (?,?,?,?,?)")
@@ -1188,7 +1191,7 @@ router.add("POST", "/api/listings/:id/report", (req, res, p) => {
   send(res, 201, { ok: true });
 });
 
-// Cloudinary's etag is an MD5 of the uploaded file — identical photos share it.
+// Cloudinary's etag is an MD5 of the uploaded file, identical photos share it.
 async function photoEtag(publicId) {
   if (!cldEnabled()) return null;
   const r = await fetch(`https://api.cloudinary.com/v1_1/${CLD.cloud}/resources/image/upload/${publicId.split("/").map(encodeURIComponent).join("/")}`,
@@ -1279,7 +1282,7 @@ function landFields(b, existing) {
   const sizeUnit = b.sizeUnit !== undefined ? String(b.sizeUnit) : e.size_unit;
   if (!(sizeValue > 0) || !LAND.UNITS[sizeUnit]) return { error: "Enter the land size and pick a unit (acres, plots, hectares…)" };
   const sizeAcres = LAND.acres(sizeValue, sizeUnit);
-  if (sizeAcres > 1e6) return { error: "That land size looks too large — check the unit" };
+  if (sizeAcres > 1e6) return { error: "That land size looks too large, check the unit" };
   const basis = b.priceBasis !== undefined ? String(b.priceBasis) : (e.price_basis || (deal === "lease" ? "acre_year" : "total"));
   if (!LAND.BASIS[deal][basis]) return { error: "Choose how the price is quoted (total, per acre, per year…)" };
   const price = b.price !== undefined ? +b.price : e.price;
@@ -1306,7 +1309,7 @@ function cleanLandFeatures(f) {
 function exactPin(b, area) {
   const lat = +b.pinLat, lng = +b.pinLng;
   if (!Number.isFinite(lat) || !Number.isFinite(lng) || !b.pinLat) return null;
-  if (km(area.lat, area.lng, lat, lng) > 40) return { error: "That map pin is far from the area you chose — check the area or move the pin" };
+  if (km(area.lat, area.lng, lat, lng) > 40) return { error: "That map pin is far from the area you chose, check the area or move the pin" };
   return { lat, lng };
 }
 
@@ -1324,7 +1327,7 @@ function commFields(b, existing) {
   const sizeUnit = b.sizeUnit !== undefined ? String(b.sizeUnit) : (e.size_unit || "sqft");
   if (sizeValue != null && (!(sizeValue > 0) || !COMM.UNITS[sizeUnit])) return { error: "Enter the floor area and pick sq ft or m²" };
   const areaSqft = sizeValue ? COMM.sqft(sizeValue, sizeUnit) : null;
-  if (areaSqft > 5e7) return { error: "That floor area looks too large — check the unit" };
+  if (areaSqft > 5e7) return { error: "That floor area looks too large, check the unit" };
   const basis = b.priceBasis !== undefined ? String(b.priceBasis) : (e.price_basis && COMM.BASIS[deal][e.price_basis] ? e.price_basis : (deal === "lease" ? "month" : "total"));
   if (!COMM.BASIS[deal][basis]) return { error: "Choose how the price is quoted (per month, per sq ft…)" };
   if (basis === "sqft_month" && !areaSqft) return { error: "Enter the floor area to quote a price per sq ft" };
@@ -1386,7 +1389,7 @@ router.add("POST", "/api/admin/land-docs/:id", (req, res, p) => {
 });
 
 /* Agents and caretakers may post for owners, but tenants must always see who
-   they're dealing with — and an agent must state their fee up front. */
+   they're dealing with, and an agent must state their fee up front. */
 function listerFields(body) {
   const role = body.listerRole === undefined ? "owner" : String(body.listerRole);
   if (!["owner", "agent", "caretaker"].includes(role)) return { error: "Choose who is posting: owner, agent or caretaker" };
@@ -1519,6 +1522,13 @@ router.add("GET", "/api/uploads/sign", (req, res) => {
     return send(res, 200, { cloudName: CLD.cloud, apiKey: CLD.key, timestamp, folder, ...extra,
       signature: cldSign({ folder, timestamp, ...extra }), maxBytes: 80 * 1024 * 1024, maxSeconds: 90 });
   }
+  if (req.query.kind === "hero") {
+    // homepage hero photos: admins only, large, no watermark
+    if (!can(u, "super")) return send(res, 403, { error: "Admins only" });
+    const timestamp = Math.floor(Date.now() / 1000), folder = "patahome/hero", transformation = "c_limit,w_2400,h_2400,q_auto:good";
+    return send(res, 200, { cloudName: CLD.cloud, apiKey: CLD.key, timestamp, folder, transformation,
+      signature: cldSign({ folder, timestamp, transformation }), maxBytes: 15 * 1024 * 1024 });
+  }
   const folder = req.query.kind === "verify" ? "patahome/verify" : CLD.folder;
   const timestamp = Math.floor(Date.now() / 1000);
   const wm = folder === CLD.folder && watermarkOn();
@@ -1581,7 +1591,7 @@ async function notifyFollowers(ownerId, title, body) {
       sendSms({to:follower.follower_phone,text:`PataHome: ${title}. ${body}`}).catch(e=>console.error("follower SMS failed:",e.message));
     }
     if (mailConfigured() && follower.follower_email) {
-      sendMail({to:follower.follower_email,subject:`PataHome — ${title}`,text:body}).catch(e=>console.error("follower email failed:",e.message));
+      sendMail({to:follower.follower_email,subject:`PataHome: ${title}`,text:body}).catch(e=>console.error("follower email failed:",e.message));
     }
   }
 }
@@ -1613,9 +1623,9 @@ router.add("POST", "/api/owners/:id/follow/start", async (req, res, p) => {
 router.add("POST", "/api/owners/:id/follow/confirm", (req, res, p) => {
   const {challenge,code}=req.body||{};
   const row=db.prepare("SELECT * FROM follower_codes WHERE challenge=? AND owner_id=?").get(challenge,p.id);
-  if(!row)return send(res,400,{error:"Follow request expired — start again"});
-  if(new Date(row.expires_at+"Z")<new Date()) { db.prepare("DELETE FROM follower_codes WHERE id=?").run(row.id); return send(res,400,{error:"Code expired — start again"}); }
-  if(row.attempts>=5)return send(res,400,{error:"Too many attempts — request a new code"});
+  if(!row)return send(res,400,{error:"Follow request expired, start again"});
+  if(new Date(row.expires_at+"Z")<new Date()) { db.prepare("DELETE FROM follower_codes WHERE id=?").run(row.id); return send(res,400,{error:"Code expired, start again"}); }
+  if(row.attempts>=5)return send(res,400,{error:"Too many attempts, request a new code"});
   if(String(code||"")!==row.code){db.prepare("UPDATE follower_codes SET attempts=attempts+1 WHERE id=?").run(row.id);return send(res,400,{error:"Incorrect code"});}
   const viewer=getUser(req);
   db.prepare("INSERT INTO followers (owner_id,follower_name,follower_phone,follower_email,follower_user_id,verified) VALUES (?,?,?,?,?,1) ON CONFLICT(owner_id,follower_phone) DO UPDATE SET follower_name=excluded.follower_name,follower_email=excluded.follower_email,follower_user_id=excluded.follower_user_id,verified=1")
@@ -1635,7 +1645,7 @@ router.add("POST", "/api/owners/:id/follow", (req, res, p) => {
       .run(owner.id, String(name).trim(), String(phone).trim());
     db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
       .run(owner.id, "follower", "New follower", `${String(name).trim()} is now following your listings.`);
-  } catch (e) { /* UNIQUE: already following — treat as success */ }
+  } catch (e) { /* UNIQUE: already following, treat as success */ }
   send(res, 200, { ok: true, following: owner.name });
 });
 
@@ -1670,7 +1680,7 @@ router.add("POST", "/api/chat", (req, res) => {
   const { name, phone, message } = req.body || {};
   if (!name || !phone || !message) return send(res, 400, { error: "name, phone and message are required" });
   db.prepare("INSERT INTO support_tickets (user_id,subject,message) VALUES (NULL,?,?)")
-    .run(`Live chat — ${String(name).trim().slice(0, 80)} (${String(phone).trim().slice(0, 20)})`, String(message).slice(0, 2000));
+    .run(`Live chat: ${String(name).trim().slice(0, 80)} (${String(phone).trim().slice(0, 20)})`, String(message).slice(0, 2000));
   send(res, 201, { ok: true });
 });
 
@@ -1936,7 +1946,7 @@ async function tellTenant(v, subject, text) {
 async function tellOwner(ownerId, title, body) {
   db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)").run(ownerId, "viewing", title, body);
   const o = db.prepare("SELECT email, email_verified, phone FROM users WHERE id=?").get(ownerId);
-  if (o && o.email && mailConfigured()) sendMail({ to: o.email, subject: `PataHome — ${title}`, text: `${body}\n\nManage it from your dashboard: ${SITE()}/dashboard\n\n— PataHome` })
+  if (o && o.email && mailConfigured()) sendMail({ to: o.email, subject: `PataHome: ${title}`, text: `${body}\n\nManage it from your dashboard: ${SITE()}/dashboard\n\nPataHome` })
     .catch(e => console.error("owner mail:", e.message));
 }
 router.add("POST", "/api/listings/:id/viewings", async (req, res, p) => {
@@ -1953,15 +1963,15 @@ router.add("POST", "/api/listings/:id/viewings", async (req, res, p) => {
   if (isNaN(slot) || slot < Date.now() + 30 * 60e3 || slot > Date.now() + 31 * 86400e3) return send(res, 400, { error: "Pick a time from 30 minutes to 30 days from now" });
   if (hr < 7 || hr > 18) return send(res, 400, { error: "Viewings can be booked between 7am and 7pm" });
   if (db.prepare("SELECT 1 FROM viewings WHERE listing_id=? AND phone=? AND status IN ('requested','confirmed') AND slot_at > ?").get(l.id, phone, new Date().toISOString()))
-    return send(res, 409, { error: "You already have a viewing request for this home — check your messages or cancel it first" });
+    return send(res, 409, { error: "You already have a viewing request for this home, check your messages or cancel it first" });
   const token = crypto.randomBytes(18).toString("base64url");
   const info = db.prepare("INSERT INTO viewings (listing_id,name,phone,email,slot_at,note,token) VALUES (?,?,?,?,?,?,?)")
     .run(l.id, name, phone, email, slot.toISOString(), String(b.note || "").trim().slice(0, 500), token);
   db.prepare("INSERT INTO leads (listing_id,user_id) VALUES (?,NULL)").run(l.id);
   tellOwner(l.owner_id, "New viewing request", `${name} (${phone}) would like to view "${l.title}" on ${eatLabel(slot)}.${b.note ? ` Note: "${String(b.note).slice(0, 200)}"` : ""} Confirm or decline it in your dashboard.`);
   assistedRelay(l.id, `PataHome: ${name} (${phone}) wants to view "${l.title}" on ${eatLabel(slot)}. Call them to confirm.`);
-  if (email) tellTenant({ email, phone }, `Viewing requested — ${l.title}`,
-    `Hi ${name},\n\nYour request to view "${l.title}" on ${eatLabel(slot)} has been sent to the owner. We'll let you know when they confirm.\n\nSee or cancel your request: ${SITE()}/viewing?t=${token}\n\nStay safe: never pay before you've seen the house and met the owner.\n\n— PataHome`);
+  if (email) tellTenant({ email, phone }, `Viewing requested: ${l.title}`,
+    `Hi ${name},\n\nYour request to view "${l.title}" on ${eatLabel(slot)} has been sent to the owner. We'll let you know when they confirm.\n\nSee or cancel your request: ${SITE()}/viewing?t=${token}\n\nStay safe: never pay before you've seen the house and met the owner.\n\nPataHome`);
   send(res, 201, { ok: true, id: info.lastInsertRowid, token, manageUrl: `/viewing?t=${token}` });
 });
 router.add("GET", "/api/viewings/:token", (req, res, p) => {
@@ -1997,10 +2007,10 @@ router.add("POST", "/api/viewings/:id/respond", async (req, res, p) => {
   const status = action === "confirm" ? "confirmed" : "declined";
   db.prepare("UPDATE viewings SET status=? WHERE id=?").run(status, v.id);
   const owner = db.prepare("SELECT name, phone FROM users WHERE id=?").get(v.owner_id);
-  await tellTenant(v, status === "confirmed" ? `Viewing confirmed — ${v.title}` : `Viewing not available — ${v.title}`,
+  await tellTenant(v, status === "confirmed" ? `Viewing confirmed: ${v.title}` : `Viewing not available: ${v.title}`,
     status === "confirmed"
-      ? `Hi ${v.name},\n\n${owner.name} confirmed your viewing of "${v.title}" on ${eatLabel(v.slot_at)}.${msg ? `\n\nMessage from the owner: "${msg}"` : ""}\n\nOwner's phone: ${realPhone(owner.phone) || "shared on the day"}\nDetails or cancel: ${SITE()}/viewing?t=${v.token}\n\nStay safe: never pay before you've seen the house and met the owner.\n\n— PataHome`
-      : `Hi ${v.name},\n\nSorry — the owner can't do ${eatLabel(v.slot_at)} for "${v.title}".${msg ? `\n\nMessage from the owner: "${msg}"` : ""}\n\nYou can pick another time on PataHome: ${SITE()}/browse?open=${v.listing_id}\n\n— PataHome`);
+      ? `Hi ${v.name},\n\n${owner.name} confirmed your viewing of "${v.title}" on ${eatLabel(v.slot_at)}.${msg ? `\n\nMessage from the owner: "${msg}"` : ""}\n\nOwner's phone: ${realPhone(owner.phone) || "shared on the day"}\nDetails or cancel: ${SITE()}/viewing?t=${v.token}\n\nStay safe: never pay before you've seen the house and met the owner.\n\nPataHome`
+      : `Hi ${v.name},\n\nSorry, the owner can't do ${eatLabel(v.slot_at)} for "${v.title}".${msg ? `\n\nMessage from the owner: "${msg}"` : ""}\n\nYou can pick another time on PataHome: ${SITE()}/browse?open=${v.listing_id}\n\nPataHome`);
   send(res, 200, { ok: true, status });
 });
 async function viewingReminders() {
@@ -2008,7 +2018,7 @@ async function viewingReminders() {
     WHERE v.status='confirmed' AND v.reminded=0 AND v.slot_at > ? AND v.slot_at <= ?`).all(new Date().toISOString(), new Date(Date.now() + 26 * 3600e3).toISOString());
   for (const v of due) {
     db.prepare("UPDATE viewings SET reminded=1 WHERE id=?").run(v.id);
-    tellTenant(v, `Reminder: viewing ${eatLabel(v.slot_at)}`, `Hi ${v.name},\n\nA reminder that you're viewing "${v.title}" on ${eatLabel(v.slot_at)}.\n\nDetails or cancel: ${SITE()}/viewing?t=${v.token}\n\n— PataHome`);
+    tellTenant(v, `Reminder: viewing ${eatLabel(v.slot_at)}`, `Hi ${v.name},\n\nA reminder that you're viewing "${v.title}" on ${eatLabel(v.slot_at)}.\n\nDetails or cancel: ${SITE()}/viewing?t=${v.token}\n\nPataHome`);
     db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)").run(v.owner_id, "viewing", "Viewing coming up", `${v.name} (${v.phone}) is viewing "${v.title}" on ${eatLabel(v.slot_at)}.`);
   }
 }
@@ -2028,7 +2038,7 @@ async function notifyTenantOfReply(inquiryId) {
   if (!i.thread_token) { i.thread_token = crypto.randomBytes(18).toString("base64url"); db.prepare("UPDATE inquiries SET thread_token=? WHERE id=?").run(i.thread_token, i.id); }
   const link = `${SITE()}/messages?t=${i.thread_token}`;
   if (i.from_email && mailConfigured())
-    return sendMail({ to: i.from_email, subject: `Reply about "${i.title}"`, text: `Hi ${i.from_name},\n\nThe owner replied to your message about "${i.title}":\n\n"${i.owner_reply}"\n\nReply here: ${link}\n\n— PataHome` });
+    return sendMail({ to: i.from_email, subject: `Reply about "${i.title}"`, text: `Hi ${i.from_name},\n\nThe owner replied to your message about "${i.title}":\n\n"${i.owner_reply}"\n\nReply here: ${link}\n\nPataHome` });
   if (realPhone(i.from_phone) && smsConfigured())
     return sendSms({ to: i.from_phone, text: `PataHome: the owner replied about "${i.title.slice(0, 40)}". Read & reply: ${link}` });
 }
@@ -2047,7 +2057,7 @@ router.add("POST", "/api/threads/:token", (req, res, p) => {
   if (!body) return send(res, 400, { error: "Write a message" });
   if (body.length > 2000) return send(res, 400, { error: "Message too long" });
   const recent = db.prepare("SELECT COUNT(*) n FROM messages WHERE inquiry_id=? AND sender='tenant' AND created_at > datetime('now','-1 hour')").get(i.id).n;
-  if (recent >= 20) return send(res, 429, { error: "Too many messages — please wait a bit" });
+  if (recent >= 20) return send(res, 429, { error: "Too many messages, please wait a bit" });
   db.prepare("INSERT INTO messages (inquiry_id,sender,body) VALUES (?,?,?)").run(i.id, "tenant", body);
   db.prepare("UPDATE inquiries SET owner_unread=1, updated_at=datetime('now') WHERE id=?").run(i.id);
   db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)").run(i.owner_id, "inquiry", "New message", `${i.from_name} replied about "${i.title}".`);
@@ -2082,20 +2092,20 @@ router.add("POST", "/api/alerts", async (req, res) => {
   const useEmail = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email), usePhone = /^0[17]\d{8}$/.test(phone);
   if (!useEmail && !usePhone) return send(res, 400, { error: "Enter your email (or phone) for alerts" });
   if (useEmail && !mailConfigured()) return send(res, 400, { error: "Email alerts aren't available yet" });
-  if (!useEmail && !smsConfigured()) return send(res, 400, { error: "SMS alerts aren't available yet — use your email" });
+  if (!useEmail && !smsConfigured()) return send(res, 400, { error: "SMS alerts aren't available yet, use your email" });
   const c = b.criteria || {};
   const criteria = { cat: ["rent", "sale", "shortlet", "land", "commercial"].includes(c.cat) ? c.cat : "all", q: String(c.q || "").trim().slice(0, 80),
     price: /^\d+-\d+$/.test(c.price || "") ? c.price : "", beds: ["0", "1", "2", "3"].includes(String(c.beds)) ? String(c.beds) : "", direct: !!c.direct };
   const who = useEmail ? email : phone;
   if (db.prepare(`SELECT COUNT(*) n FROM saved_searches WHERE ${useEmail ? "email" : "phone"}=?`).get(who).n >= 10)
-    return send(res, 400, { error: "You already have 10 alerts — remove one first (link in any alert email)" });
+    return send(res, 400, { error: "You already have 10 alerts, remove one first (link in any alert email)" });
   const token = crypto.randomBytes(18).toString("base64url"), label = describeAlert(criteria);
   db.prepare("INSERT INTO saved_searches (email,phone,criteria,label,token) VALUES (?,?,?,?,?)").run(useEmail ? email : "", useEmail ? "" : phone, JSON.stringify(criteria), label, token);
   const confirm = `${SITE()}/api/alerts/${token}/confirm`;
   try {
-    if (useEmail) await sendMail({ to: email, subject: "Confirm your PataHome alert", text: `Karibu!\n\nConfirm you'd like an email when new listings match:\n\n${label}\n\nConfirm alert: ${confirm}\n\nIf you didn't ask for this, ignore this email — nothing will be sent.\n\n— PataHome` });
+    if (useEmail) await sendMail({ to: email, subject: "Confirm your PataHome alert", text: `Karibu!\n\nConfirm you'd like an email when new listings match:\n\n${label}\n\nConfirm alert: ${confirm}\n\nIf you didn't ask for this, ignore this email, nothing will be sent.\n\nPataHome` });
     else await sendSms({ to: phone, text: `PataHome: confirm alerts for "${label.slice(0, 60)}": ${confirm}` });
-  } catch (e) { console.error("alert confirm send:", e.message); return send(res, 400, { error: "Couldn't send the confirmation — try again shortly" }); }
+  } catch (e) { console.error("alert confirm send:", e.message); return send(res, 400, { error: "Couldn't send the confirmation, try again shortly" }); }
   send(res, 201, { ok: true, label, pendingConfirm: true });
 });
 const noticeRedirect = (res, msg, to = "/browse") => { res.writeHead(302, { Location: `${to}?notice=${encodeURIComponent(msg)}` }); res.end(); };
@@ -2107,7 +2117,7 @@ router.add("GET", "/api/alerts/:token/confirm", (req, res, p) => {
 });
 router.add("GET", "/api/alerts/:token/unsubscribe", (req, res, p) => {
   db.prepare("DELETE FROM saved_searches WHERE token=?").run(p.token);
-  noticeRedirect(res, "Alert removed — you won't get these emails any more.");
+  noticeRedirect(res, "Alert removed, you won't get these emails any more.");
 });
 function matchAlerts(listingId) {
   if (!settingOn("alerts_enabled")) return;
@@ -2123,8 +2133,8 @@ function matchAlerts(listingId) {
     if (sent >= 5) continue; // daily cap per alert
     db.prepare("UPDATE saved_searches SET sent_day=?, sent_today=? WHERE id=?").run(today, sent + 1, a.id);
     const off = `${SITE()}/api/alerts/${a.token}/unsubscribe`;
-    if (a.email && mailConfigured()) sendMail({ to: a.email, subject: `New on PataHome: ${r.title} — ${priceText(r)}`,
-      text: `A new listing matches your alert (${a.label}):\n\n${r.title}\n${priceText(r)} · ${r.area_name}, ${r.county}${r.bedrooms != null ? ` · ${r.bedrooms === 0 ? "Bedsitter" : r.bedrooms + " bedroom"}` : ""}\n\nSee it: ${url}\n\nStay safe: never pay before you've seen the house and met the owner.\n\nStop this alert: ${off}\n\n— PataHome` })
+    if (a.email && mailConfigured()) sendMail({ to: a.email, subject: `New on PataHome: ${r.title}, ${priceText(r)}`,
+      text: `A new listing matches your alert (${a.label}):\n\n${r.title}\n${priceText(r)} · ${r.area_name}, ${r.county}${r.bedrooms != null ? ` · ${r.bedrooms === 0 ? "Bedsitter" : r.bedrooms + " bedroom"}` : ""}\n\nSee it: ${url}\n\nStay safe: never pay before you've seen the house and met the owner.\n\nStop this alert: ${off}\n\nPataHome` })
       .catch(e => console.error("alert mail:", e.message));
     else if (a.phone && smsConfigured()) sendSms({ to: a.phone, text: `PataHome: new ${r.title.slice(0, 40)} ${priceText(r)} in ${r.area_name}. ${url} Stop: ${off}` })
       .catch(e => console.error("alert sms:", e.message));
@@ -2241,7 +2251,7 @@ router.add("POST", "/api/admin/backups", async (req, res) => {
 router.add("GET", "/api/admin/backups/latest", (req, res) => {
   const a = requireAdmin(req, res, "super"); if (!a) return; auditOnSuccess(req, res, a, "backup_download", "backup", null, null);
   const files = fs.existsSync(BACKUP_DIR) ? fs.readdirSync(BACKUP_DIR).filter(f => /^patahome-.*\.db\.gz$/.test(f)).sort() : [];
-  if (!files.length) return send(res, 404, { error: "No backup yet — run one first" });
+  if (!files.length) return send(res, 404, { error: "No backup yet, run one first" });
   const f = files[files.length - 1];
   res.writeHead(200, { "Content-Type": "application/gzip", "Content-Disposition": `attachment; filename="${f}"`, "Cache-Control": "no-store" });
   res.end(fs.readFileSync(path.join(BACKUP_DIR, f)));
@@ -2343,7 +2353,7 @@ function onListingPublished(userId, listingId) {
   if (u.featured_credits > 0) {
     featureFor(listingId, FEATURE_WEEK);
     db.prepare("UPDATE users SET featured_credits=featured_credits-1 WHERE id=?").run(u.id);
-    db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)").run(u.id, "system", "Featured for a week ★", "Your invite reward was used — this listing is featured at the top of search for 7 days.");
+    db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)").run(u.id, "system", "Featured for a week ★", "Your invite reward was used, this listing is featured at the top of search for 7 days.");
   }
   if (!u.referred_by || u.referral_rewarded) return;
   const n = db.prepare("SELECT COUNT(*) n FROM listings WHERE owner_id=?").get(u.id).n;
@@ -2354,7 +2364,7 @@ function onListingPublished(userId, listingId) {
   const inviterListing = db.prepare("SELECT id FROM listings WHERE owner_id=? AND status='active' ORDER BY id DESC LIMIT 1").get(u.referred_by);
   if (inviterListing) {
     featureFor(inviterListing.id, FEATURE_WEEK);
-    db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)").run(u.referred_by, "system", "Thanks for the invite ★", `${u.name} posted their first listing — your newest listing is featured for 7 days.`);
+    db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)").run(u.referred_by, "system", "Thanks for the invite ★", `${u.name} posted their first listing, your newest listing is featured for 7 days.`);
   } else {
     db.prepare("UPDATE users SET featured_credits=featured_credits+1 WHERE id=?").run(u.referred_by);
     db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)").run(u.referred_by, "system", "You earned a featured week ★", `${u.name} posted their first listing. Your next listing will be featured for 7 days.`);
@@ -2455,7 +2465,7 @@ function auditOnSuccess(req, res, a, action, type, id, detail) {
 const smsAlertSeen = new Map();
 function adminAlert(subject, detail) {
   alertAdmin(subject, detail);
-  audit(null, null, "alert", null, null, subject + (detail ? " — " + String(detail).slice(0, 300) : ""));
+  audit(null, null, "alert", null, null, subject + (detail ? ": " + String(detail).slice(0, 300) : ""));
   const to = process.env.ADMIN_ALERT_PHONE;
   if (to && smsConfigured() && process.env.NODE_ENV !== "test" && (smsAlertSeen.get(subject) || 0) < Date.now() - 30 * 60e3) {
     smsAlertSeen.set(subject, Date.now());
@@ -2481,7 +2491,7 @@ function banMessage(row) {
   if (!isBanned(row)) return "";
   return row.banned_until === "forever"
     ? "This account has been closed for breaking PataHome's rules. Contact info@patahome.co.ke if you think this is a mistake."
-    : `This account is suspended until ${new Date(row.banned_until).toLocaleString("en-KE", { dateStyle: "medium", timeStyle: "short", timeZone: "Africa/Nairobi" })}${row.ban_reason ? " — " + row.ban_reason : ""}.`;
+    : `This account is suspended until ${new Date(row.banned_until).toLocaleString("en-KE", { dateStyle: "medium", timeStyle: "short", timeZone: "Africa/Nairobi" })}${row.ban_reason ? ": " + row.ban_reason : ""}.`;
 }
 function banUser(userId, until, reason, blockIds, adminU, req) {
   const u = db.prepare("SELECT * FROM users WHERE id=?").get(userId);
@@ -2622,7 +2632,7 @@ router.add("POST", "/api/admin/verifications/:id", (req, res, p) => {
   if (approve) {
     db.prepare("UPDATE users SET verified=1, verify_status='verified' WHERE id=?").run(u.id);
     db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
-      .run(u.id, "verify", "You are verified ✓", "Your account passed verification — your listings now show the trusted badge.");
+      .run(u.id, "verify", "You are verified ✓", "Your account passed verification, your listings now show the trusted badge.");
   } else {
     db.prepare("UPDATE users SET verified=0, verify_status='rejected' WHERE id=?").run(u.id);
     db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
@@ -2712,16 +2722,16 @@ router.add("GET", "/api/admin/support", (req, res) => {
   send(res, 200, rows.map(r => ({
     id: r.id, subject: r.subject, message: r.message, status: r.status,
     createdAt: r.created_at,
-    // Anonymous live-chat submissions store name+phone in the subject as "Live chat — Name (Phone)"
+    // Anonymous live-chat submissions store name+phone in the subject as "Live chat: Name (Phone)"
     source: r.user_id ? "user" : "live-chat",
     from: r.user_id ? { id: r.user_id, name: r.user_name, phone: realPhone(r.user_phone), email: r.user_email }
                     : parseChatSubject(r.subject)
   })));
 });
 
-// Parse the "Live chat — Name (Phone)" subject to surface name/phone in the UI.
+// Parse the "Live chat: Name (Phone)" subject to surface name/phone in the UI.
 function parseChatSubject(s) {
-  const m = String(s || "").match(/^Live chat\s*[—-]\s*(.+?)\s*\((.+?)\)\s*$/);
+  const m = String(s || "").match(/^Live chat\s*[—:-]\s*(.+?)\s*\((.+?)\)\s*$/);
   return m ? { id: null, name: m[1], phone: m[2], email: "" } : { id: null, name: "Anonymous", phone: "", email: "" };
 }
 
@@ -2781,7 +2791,7 @@ router.add("POST", "/api/admin/users/:id/ban", (req, res, p) => {
   if (!u) return send(res, 404, { error: "User not found" });
   if (u.role === "admin") return send(res, 400, { error: "Remove their admin role first" });
   const b = req.body || {}, reason = String(b.reason || "").trim().slice(0, 200);
-  if (!reason) return send(res, 400, { error: "Give a reason — the user sees it" });
+  if (!reason) return send(res, 400, { error: "Give a reason, the user sees it" });
   const days = +b.days;
   const until = b.forever ? "forever" : days > 0 ? new Date(Date.now() + Math.min(days, 3650) * 86400e3).toISOString() : null;
   if (!until) return send(res, 400, { error: "Choose how long (days) or ban permanently" });
@@ -2795,7 +2805,7 @@ router.add("POST", "/api/admin/users/:id/unban", (req, res, p) => {
   if (!u) return send(res, 404, { error: "User not found" });
   if (u.banned_until === "forever" && !can(a, "super")) return send(res, 403, { error: "Only the super admin can lift a permanent ban" });
   const shown = unbanUser(u.id, a, req, String((req.body || {}).note || "").slice(0, 200) || null);
-  db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)").run(u.id, "system", "Your account is active again", "Welcome back — your listings are visible again.");
+  db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)").run(u.id, "system", "Your account is active again", "Welcome back, your listings are visible again.");
   send(res, 200, { ok: true, listingsShown: shown });
 });
 router.add("POST", "/api/admin/users/:id/signout", (req, res, p) => {
@@ -3006,7 +3016,7 @@ function areaInput(b, e) {
   const county = String(b.county ?? (e && e.county) ?? "").trim().slice(0, 40);
   const lat = b.lat !== undefined ? +b.lat : e && e.lat, lng = b.lng !== undefined ? +b.lng : e && e.lng;
   if (name.length < 2 || !county) return { error: "Enter the area name and county" };
-  if (!(lat > -5.2 && lat < 5.5 && lng > 33.5 && lng < 42.2)) return { error: "Those coordinates aren't in Kenya — check the pin (lat, lng)" };
+  if (!(lat > -5.2 && lat < 5.5 && lng > 33.5 && lng < 42.2)) return { error: "Those coordinates aren't in Kenya, check the pin (lat, lng)" };
   return { name, county, lat, lng };
 }
 router.add("POST", "/api/admin/areas", (req, res) => {
@@ -3123,7 +3133,7 @@ router.add("POST", "/api/admin/broadcast", async (req, res) => {
     sms: ch.has("sms") && smsConfigured() ? people.filter(u => realPhone(u.phone)).length : 0 };
   if (b.dryRun) return send(res, 200, { dryRun: true, reach });
   if (!people.length) return send(res, 400, { error: "Nobody matches that audience" });
-  if (reach.sms > 1000) return send(res, 400, { error: "SMS is limited to 1,000 people per message — narrow the audience" });
+  if (reach.sms > 1000) return send(res, 400, { error: "SMS is limited to 1,000 people per message, narrow the audience" });
   const note = db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)");
   if (reach.notification) for (const u of people) note.run(u.id, "system", title, body);
   audit(req, a, "broadcast", t.type === "user" ? "user" : "audience", t.type === "user" ? t.id : JSON.stringify(t), { title, channels: [...ch], reach });
@@ -3132,7 +3142,7 @@ router.add("POST", "/api/admin/broadcast", async (req, res) => {
   (async () => {
     for (const u of people) {
       try {
-        if (reach.email && u.email) await sendMail({ to: u.email, subject: title, text: `Hi ${String(u.name || "").split(" ")[0] || "there"},\n\n${body}\n\n— PataHome · patahome.co.ke` });
+        if (reach.email && u.email) await sendMail({ to: u.email, subject: title, text: `Hi ${String(u.name || "").split(" ")[0] || "there"},\n\n${body}\n\nPataHome · patahome.co.ke` });
         if (reach.sms && realPhone(u.phone)) await sendSms({ to: u.phone, text: `PataHome: ${body}`.slice(0, 300) });
       } catch (e) { console.error("broadcast send failed:", e.message); }
     }
@@ -3141,7 +3151,7 @@ router.add("POST", "/api/admin/broadcast", async (req, res) => {
 
 /* ================= assisted listings: PataHome lists for an owner =================
    The listing belongs to the owner's own account (created quietly if needed) and
-   looks exactly like any owner listing — nothing public mentions PataHome or admin.
+   looks exactly like any owner listing, nothing public mentions PataHome or admin.
    The admin chooses which number visitors reach (owner, caretaker, relative, our
    line…), whether enquiries are also sent to that number by SMS, and records the
    owner's consent to be listed. */
@@ -3166,7 +3176,7 @@ function assistedRelay(listingId, text) {
 function assistedContact(b) {
   const c = b.contact || {};
   const phone = c.phone ? cleanAnyPhone(c.phone) : "";
-  if (phone === null) return { error: "The contact number doesn't look right — use digits, e.g. 0712345678 or +254712345678" };
+  if (phone === null) return { error: "The contact number doesn't look right, use digits, e.g. 0712345678 or +254712345678" };
   const wa = c.whatsapp ? cleanAnyPhone(c.whatsapp) : "";
   if (wa === null) return { error: "The WhatsApp number doesn't look right" };
   return { name: String(c.name || "").trim().slice(0, 60) || null, phone: phone || null, whatsapp: wa || null,
@@ -3311,7 +3321,7 @@ router.add("GET", "/api/admin/watermark", (req, res) => {
 router.add("POST", "/api/admin/watermark/existing", async (req, res) => {
   const a = requireAdmin(req, res, "super"); if (!a) return;
   if (!cldEnabled()) return send(res, 400, { error: "Cloudinary isn't configured" });
-  if (setting("watermark_asset") === "") { await ensureWatermark(); if (setting("watermark_asset") === "") return send(res, 400, { error: "Couldn't store the watermark in Cloudinary yet — try again shortly" }); }
+  if (setting("watermark_asset") === "") { await ensureWatermark(); if (setting("watermark_asset") === "") return send(res, 400, { error: "Couldn't store the watermark in Cloudinary yet, try again shortly" }); }
   if (wmJob.running) return send(res, 200, { started: false, job: wmJob });
   Object.assign(wmJob, { running: true, done: 0, failed: 0, total: 0, finishedAt: null });
   audit(req, a, "watermark_existing", "photos", null, null);
@@ -3448,14 +3458,14 @@ function sendHtml(res, code, html) {
 function listingPage(req, res, p) {
   const row = db.prepare(`${LISTING_SQL} WHERE l.id=? AND l.status='active'`).get(p.id);
   if (!row) return sendHtml(res, 404, pageShell({
-    title: "Listing not found — PataHome", description: "This listing is no longer available.",
+    title: "Listing not found | PataHome", description: "This listing is no longer available.",
     canonical: `${BASE_URL}/`, bodyHtml: `<h1>Listing not found</h1><p>It may have been rented or sold. <a href="/">Browse current listings</a>.</p>` }));
   const catSlug = catSlugOf(row);
   const unit = row.category === "rent" ? "/month" : row.category === "shortlet" ? "/night" : "";
   const isLand = row.category === "land" || row.category === "commercial";
   const landSize = row.category === "land" ? LAND.sizeLabel(row.size_value, row.size_unit, row.size_acres) : row.category === "commercial" ? commSize(row) : "";
   const canonical = `${BASE_URL}/listing/${row.id}/${slugify(row.title)}`;
-  const desc = `${row.title} in ${row.area_name}, ${row.county} County — ${isLand ? landSize + ", " + priceText(row) : fmtKes(row.price) + unit}. ${(row.lister_role || "owner") === "owner" ? "Contact the owner directly on PataHome — no agent, no viewing fees." : row.lister_role === "agent" ? `Listed by an agent${row.agent_fee ? ` (fee: ${row.agent_fee})` : ""} — every fee shown upfront on PataHome.` : "Listed by the caretaker — every fee shown upfront on PataHome."}`;
+  const desc = `${row.title} in ${row.area_name}, ${row.county} County: ${isLand ? landSize + ", " + priceText(row) : fmtKes(row.price) + unit}. ${(row.lister_role || "owner") === "owner" ? "Contact the owner directly on PataHome, no agent, no viewing fees." : row.lister_role === "agent" ? `Listed by an agent${row.agent_fee ? ` (fee: ${row.agent_fee})` : ""}, every fee shown upfront on PataHome.` : "Listed by the caretaker, every fee shown upfront on PataHome."}`;
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -3486,7 +3496,7 @@ function listingPage(req, res, p) {
     </div>
     <p><a href="/${catSlug}/${slugify(row.area_name)}">More ${escapeHtml(CATS[catSlug].label.toLowerCase())} in ${escapeHtml(row.area_name)} →</a></p>
     ${areaLinksHtml()}`;
-  sendHtml(res, 200, pageShell({ title: `${shareTitle} — ${row.title} | PataHome`, description: desc, canonical, jsonLd, bodyHtml, image, imageAlt: row.title }));
+  sendHtml(res, 200, pageShell({ title: `${shareTitle}: ${row.title} | PataHome`, description: desc, canonical, jsonLd, bodyHtml, image, imageAlt: row.title }));
 }
 router.add("GET", "/listing/:id", listingPage);
 router.add("GET", "/listing/:id/:slug", listingPage);
@@ -3510,7 +3520,7 @@ function landingPage(req, res, p) {
   const minPrice = rows.length ? Math.min(...rows.map((r) => r.price)) : null;
   const title = `${what} in ${area.name}, ${area.county}${minPrice ? ` from ${fmtKes(minPrice)}` : ""} | PataHome`;
   const desc = rows.length
-    ? `${rows.length} ${what.toLowerCase()} in ${area.name}, ${area.county} County from ${fmtKes(minPrice)}${cat.unit}. Photos, prices and direct contact with verified owners — no viewing fees.`
+    ? `${rows.length} ${what.toLowerCase()} in ${area.name}, ${area.county} County from ${fmtKes(minPrice)}${cat.unit}. Photos, prices and direct contact with verified owners, no viewing fees.`
     : `Find ${what.toLowerCase()} in ${area.name}, ${area.county} County on PataHome. Get an alert when new homes are listed.`;
   const jsonLd = { "@context": "https://schema.org", "@type": "ItemList", name: title,
     itemListElement: rows.map((r, i) => ({ "@type": "ListItem", position: i + 1, url: `${BASE_URL}/listing/${r.id}/${slugify(r.title)}` })) };
@@ -3550,7 +3560,7 @@ router.add("GET", "/browse", (req, res) => {
 router.add("GET", "/areas", (req, res) => {
   sendHtml(res, 200, pageShell({
     title: "Browse Houses by Area | PataHome",
-    description: "Browse rentals and houses for sale across Kenyan counties on PataHome — direct from verified owners.",
+    description: "Browse rentals and houses for sale across Kenyan counties on PataHome, direct from verified owners.",
     canonical: `${BASE_URL}/areas`,
     bodyHtml: `<h1>Browse by area</h1>${areaLinksHtml()}`
   }));
