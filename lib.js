@@ -92,7 +92,7 @@ async function sendMail({ to, subject, text, html }) {
     }
     return true;
   }
-  return smtpSend({ to, subject, text });
+  return smtpSend({ to, subject, text, html });
 }
 
 /* ---------- SMS via Infobip HTTPS API ----------
@@ -153,7 +153,7 @@ async function sendSms({ to, text }) {
   return { messageId, group };
 }
 
-function smtpSend({ to, subject, text }) {
+function smtpSend({ to, subject, text, html }) {
   return new Promise((resolve, reject) => {
     if (!mailConfigured()) return reject(new Error("mail not configured"));
     const host = process.env.SMTP_HOST, port = +(process.env.SMTP_PORT || 587);
@@ -182,12 +182,18 @@ function smtpSend({ to, subject, text }) {
       { expect: /^250/, send: () => write(`RCPT TO:<${to}>`) },
       { expect: /^250/, send: () => write("DATA") },
       { expect: /^354/, send: () => {
+          const boundary = `patahome_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+          const body = html ? [
+            `Content-Type: multipart/alternative; boundary="${boundary}"`, "",
+            `--${boundary}`, "Content-Type: text/plain; charset=utf-8", "Content-Transfer-Encoding: 8bit", "", text || "",
+            `--${boundary}`, "Content-Type: text/html; charset=utf-8", "Content-Transfer-Encoding: 8bit", "", html,
+            `--${boundary}--`
+          ].join("\r\n") : ["Content-Type: text/plain; charset=utf-8", "", text || ""].join("\r\n");
           const msg = [
             `From: PataHome <${from}>`, `To: <${to}>`, `Subject: ${subject}`,
             `Date: ${new Date().toUTCString()}`,
             `Message-ID: <${Date.now()}.${Math.random().toString(36).slice(2)}@patahome.co.ke>`,
-            "MIME-Version: 1.0", "Content-Type: text/plain; charset=utf-8", "",
-            text, "."
+            "MIME-Version: 1.0", body, "."
           ].join("\r\n");
           sock.write(msg + "\r\n");
         } },
