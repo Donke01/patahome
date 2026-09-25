@@ -172,8 +172,11 @@ const revokeSessions = (userId, keepSid) => keepSid
 // returns the token payload, or null; sets req._authFail to explain why
 function getUser(req) {
   const h = req.headers.authorization || "";
-  if (!h.startsWith("Bearer ")) return null;
-  const p = verifyToken(h.slice(7));
+  const cookieHeader = req.headers.cookie || "";
+  const cookies = Object.fromEntries(cookieHeader.split(";").map(x=>x.trim().split("=")).filter(x=>x.length===2).map(([k,...v])=>[k,decodeURIComponent(v.join("="))]));
+  const raw = h.startsWith("Bearer ") ? h.slice(7) : cookies.ph_session;
+  if (!raw) return null;
+  const p = verifyToken(raw);
   if (!p || !p.sid) { req._authFail = "expired"; return null; }
   const row = db.prepare("SELECT * FROM sessions WHERE id=? AND user_id=?").get(p.sid, p.id);
   const now = Date.now();
@@ -201,7 +204,7 @@ const requireAuth = (req, res) => {
 };
 function send(res, code, obj) {
   const body = JSON.stringify(obj);
-  res.writeHead(code, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
+  res.writeHead(code, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Credentials": "true" });
   res.end(body);
 }
 
@@ -268,8 +271,11 @@ async function sendPhoneCode(userId, phone) {
   return true;
 }
 const age = (dob) => { const d = new Date(dob); return isNaN(d) ? null : Math.floor((Date.now() - d.getTime()) / 31557600000); };
-const authResponse = (res, code, u, req) =>
-  send(res, code, { token: createSession(u, req), user: publicUser(u) });
+const authResponse = (res, code, u, req) => {
+  const token=createSession(u,req);
+  res.setHeader("Set-Cookie", `ph_session=${encodeURIComponent(token)}; Path=/; Max-Age=${Math.ceil(SESSION_MAX_MS/1000)}; HttpOnly; SameSite=Lax${req.headers["x-forwarded-proto"] === "https" || req.socket.encrypted ? "; Secure" : ""}`);
+  send(res, code, { token, user: publicUser(u) });
+};
 
 /* ================= step-up confirmation for critical actions =================
    Changing phone/email/password or deleting the account needs a fresh 6-digit
@@ -588,6 +594,7 @@ router.add("POST", "/api/auth/google", async (req, res) => {
 router.add("POST", "/api/auth/logout", (req, res) => {
   const u = getUser(req);
   if (u && u.sid) db.prepare("DELETE FROM sessions WHERE id=?").run(u.sid);
+  res.setHeader("Set-Cookie", "ph_session=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax");
   send(res, 200, { ok: true });
 });
 router.add("POST", "/api/auth/logout-all", (req, res) => {
@@ -3377,7 +3384,8 @@ const server = http.createServer((req, res) => {
     res.writeHead(204, {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type,Authorization"
+      "Access-Control-Allow-Headers": "Content-Type,Authorization",
+      "Access-Control-Allow-Credentials": "true"
     });
     return res.end();
   }

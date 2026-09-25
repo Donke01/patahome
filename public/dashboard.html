@@ -775,6 +775,7 @@ function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt
 async function api(path, opts = {}, _stepUpRetry) {
   const res = await fetch(API + path, {
     ...opts,
+    credentials: "include",
     headers: { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}), ...(opts.headers || {}) }
   });
   const data = await res.json().catch(() => ({}));
