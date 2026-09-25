@@ -433,6 +433,7 @@
       <h2>My Listings</h2>
       <button class="btn btn-primary" onclick="openAdd()">+ New Listing</button>
     </div>
+    <div class="chart-card" id="healthPanel" style="margin-bottom:16px"></div>
     <div class="table" id="table"></div>
   </section>
 
@@ -1020,6 +1021,7 @@ async function refresh(){
   if(stats){renderStats(stats);if($("oWeek"))$("oWeek").textContent=stats.thisWeek}
   lastUpdated=Date.now();tickUpdated();
   renderTable();
+  renderHealth();
   renderInbox();
   renderPerfTable();
 }
@@ -1302,6 +1304,13 @@ function renderTable(){
       </div>
     </div>`;
     }).join("");
+}
+function renderHealth(){
+  const el=$("healthPanel");if(!el)return;
+  if(!myListings.length){el.innerHTML=`<h3>Listing health</h3><p class="pane-sub">Publish your first property to start receiving a quality score.</p>`;return}
+  const checks=myListings.map(x=>{const issues=[];if(!x.title||x.title.length<12)issues.push("clearer title");if(!x.description||x.description.length<60)issues.push("more description");if(!x.photos||!x.photos.length)issues.push("photos");if(x.status!=="active")issues.push("relist");return {x,issues}});
+  const needs=checks.filter(c=>c.issues.length),score=Math.round((checks.reduce((s,c)=>s+(c.issues.length?Math.max(35,100-c.issues.length*20):100),0)/checks.length));
+  el.innerHTML=`<div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap"><div><h3 style="margin:0 0 4px">Listing health</h3><p class="pane-sub" style="margin:0">Improve quality to earn more trust and contacts.</p></div><strong style="font-size:1.35rem;color:${score>=80?'var(--green)':score>=60?'#9a6017':'var(--red)'}">${score}%</strong></div><div style="height:8px;background:var(--line);border-radius:99px;margin:14px 0"><i style="display:block;width:${score}%;height:100%;background:var(--green);border-radius:99px"></i></div>${needs.length?`<div class="area">${needs.slice(0,3).map(c=>`<button class="btn btn-ghost btn-sm" style="margin:3px 5px 0 0" onclick="openEdit(${c.x.id})">${esc(c.x.title)} · Add ${c.issues.slice(0,2).join(" + ")}</button>`).join("")}</div>`:`<div style="color:var(--green-dark);font-weight:700;font-size:.84rem">All listings are in good shape.</div>`}`;
 }
 
 async function confirmAvailable(id){
