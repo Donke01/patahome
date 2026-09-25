@@ -78,12 +78,12 @@ const mailConfigured = () =>
      (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS)));
 
 /* Preferred path: Resend HTTPS API (works on hosts that block SMTP ports) */
-async function sendMail({ to, subject, text }) {
+async function sendMail({ to, subject, text, html }) {
   if (process.env.RESEND_API_KEY) {
     const r = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: "Bearer " + process.env.RESEND_API_KEY, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: `PataHome <${process.env.MAIL_FROM}>`, to: [to], subject, text }),
+      body: JSON.stringify({ from: `PataHome <${process.env.MAIL_FROM}>`, to: [to], subject, text, ...(html ? { html } : {}) }),
       signal: AbortSignal.timeout(15000)
     });
     if (!r.ok) {

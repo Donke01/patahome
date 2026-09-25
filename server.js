@@ -178,14 +178,22 @@ const publicUser = (u) => ({
 async function sendEmailCode(userId, email) {
   const code = String(Math.floor(100000 + Math.random() * 900000));
   db.prepare("DELETE FROM verify_codes WHERE user_id=? AND kind='email'").run(userId);
-  db.prepare("INSERT INTO verify_codes (user_id,kind,target,code,expires_at) VALUES (?,?,?,?,datetime('now','+15 minutes'))")
+  db.prepare("INSERT INTO verify_codes (user_id,kind,target,code,expires_at) VALUES (?,?,?,?,datetime('now','+3 minutes'))")
     .run(userId, "email", email, code);
+  const user=db.prepare("SELECT name FROM users WHERE id=?").get(userId);
+  const first=String(user?.name||"there").trim().split(/\s+/)[0];
+  const hour=new Date().getHours(), greeting=hour<12?"Good morning":hour<18?"Good afternoon":"Good evening";
+  const html=authEmailHtml({greeting:`${greeting} ${first}!`,code,kind:"verification"});
   await sendMail({
     to: email,
-    subject: `${code} is your PataHome verification code`,
-    text: `Karibu!\n\nYour PataHome verification code is: ${code}\n\nEnter it to confirm your email address. The code expires in 15 minutes.\n\nIf you didn't request this, you can ignore this email.\n\n— PataHome · patahome.co.ke`
+    subject: "PataHome code",
+    text: `${greeting} ${first}!\n\nYour PataHome verification code is ${code}. It expires in 3 minutes.\n\n— PataHome · patahome.co.ke`, html
   });
   return true;
+}
+function authEmailHtml({greeting,code,kind="verification"}) {
+  const intro=kind==="reset"?"Use this code to reset your PataHome password.":"Use this code to verify your PataHome account.";
+  return `<!doctype html><html><body style="margin:0;background:#f4faf7;font-family:Arial,sans-serif;color:#17352b"><div style="max-width:560px;margin:28px auto;background:#fff;border:1px solid #d9e9e0;border-radius:18px;overflow:hidden"><div style="padding:24px 28px;background:#063f2e;color:#fff"><img src="https://patahome.co.ke/patahome-logo-transparent.png" alt="PataHome" style="height:54px;width:auto;display:block;background:#fff;border-radius:10px;padding:4px"><p style="margin:16px 0 0;color:#bff3db;font-size:14px;font-weight:700;letter-spacing:.04em">Kwa sababu tunakujali</p></div><div style="padding:30px 28px"><h1 style="font-size:24px;margin:0 0 12px;color:#063f2e">${greeting}</h1><p style="font-size:16px;line-height:1.6;margin:0 0 8px">${intro}</p><p style="font-size:14px;color:#63766d;margin:0 0 22px">This code expires in <b>3 minutes</b>.</p><div style="font-size:36px;letter-spacing:10px;text-align:center;font-weight:800;color:#087b61;background:#e8f8f0;border:1px dashed #73c7a4;border-radius:14px;padding:18px 10px;margin:0 0 22px">${code}</div><p style="font-size:13px;color:#63766d;line-height:1.6">If you didn’t request this email, you can safely ignore it.</p></div><div style="padding:18px 28px;background:#f4faf7;color:#63766d;font-size:12px">Connect with homes that fit your life.<br><b style="color:#087b61">PataHome · patahome.co.ke</b></div></div></body></html>`;
 }
 /* Phone verification can be switched off without touching the Infobip config —
    useful while a sender ID is still pending operator approval. Set
@@ -200,7 +208,7 @@ const phoneVerifyEnabled = () =>
 async function sendPhoneCode(userId, phone) {
   const code = String(Math.floor(100000 + Math.random() * 900000));
   db.prepare("DELETE FROM verify_codes WHERE user_id=? AND kind='phone'").run(userId);
-  db.prepare("INSERT INTO verify_codes (user_id,kind,target,code,expires_at) VALUES (?,?,?,?,datetime('now','+15 minutes'))")
+  db.prepare("INSERT INTO verify_codes (user_id,kind,target,code,expires_at) VALUES (?,?,?,?,datetime('now','+3 minutes'))")
     .run(userId, "phone", phone, code);
   await sendSms({
     to: phone,
@@ -426,6 +434,29 @@ router.add("POST", "/api/auth/login", (req, res) => {
   authResponse(res, 200, user, req);
 });
 
+router.add("POST", "/api/auth/forgot-password", async (req, res) => {
+  const id=String(req.body?.identifier||"").trim();
+  const user=db.prepare("SELECT * FROM users WHERE email=? OR phone=?").get(id.toLowerCase(),id);
+  // Always return the same response so the endpoint cannot reveal whether an account exists.
+  if(!user||!user.email)return send(res,200,{ok:true});
+  const code=String(Math.floor(100000+Math.random()*900000));
+  db.prepare("DELETE FROM verify_codes WHERE user_id=? AND kind='password_reset'").run(user.id);
+  db.prepare("INSERT INTO verify_codes (user_id,kind,target,code,expires_at) VALUES (?,?,?,?,datetime('now','+3 minutes'))").run(user.id,"password_reset",user.email,code);
+  try{await sendMail({to:user.email,subject:"PataHome code",text:`Your PataHome password reset code is ${code}. It expires in 3 minutes.`,html:authEmailHtml({greeting:`Good day ${String(user.name||"there").split(/\s+/)[0]}!`,code,kind:"reset"})});}catch(e){console.error("password reset email failed:",e.message)}
+  send(res,200,{ok:true});
+});
+router.add("POST", "/api/auth/reset-password", (req,res) => {
+  const {identifier,code,password}=req.body||{};
+  if(!password||password.length<8)return send(res,400,{error:"Password must be at least 8 characters"});
+  const user=db.prepare("SELECT * FROM users WHERE email=? OR phone=?").get(String(identifier||"").toLowerCase(),String(identifier||""));
+  const row=user&&db.prepare("SELECT * FROM verify_codes WHERE user_id=? AND kind='password_reset'").get(user.id);
+  if(!row)return send(res,400,{error:"No pending code — request a new one"});
+  if(new Date(row.expires_at+"Z")<new Date()){db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id);return send(res,400,{error:"Code expired — request a new one"});}
+  if(row.attempts>=5)return send(res,400,{error:"Too many attempts — request a new code"});
+  if(String(code||"")!==row.code){db.prepare("UPDATE verify_codes SET attempts=attempts+1 WHERE id=?").run(row.id);return send(res,400,{error:"Wrong code"});}
+  db.prepare("UPDATE users SET password_hash=? WHERE id=?").run(hashPassword(password),user.id);db.prepare("DELETE FROM verify_codes WHERE id=?").run(row.id);send(res,200,{ok:true});
+});
+
 /* Google Sign-In: browser sends the Google ID token; we verify it via Google's tokeninfo. */
 router.add("POST", "/api/auth/google", async (req, res) => {
   if (!GOOGLE_CLIENT_ID) return send(res, 503, { error: "Google sign-in is not configured yet" });
@@ -541,13 +572,14 @@ router.add("POST", "/api/account/change-email", async (req, res) => {
   }
   const code = String(Math.floor(100000 + Math.random() * 900000));
   db.prepare("DELETE FROM verify_codes WHERE user_id=? AND kind='email'").run(u.id);
-  db.prepare("INSERT INTO verify_codes (user_id,kind,target,code,expires_at) VALUES (?,?,?,?,datetime('now','+15 minutes'))")
+  db.prepare("INSERT INTO verify_codes (user_id,kind,target,code,expires_at) VALUES (?,?,?,?,datetime('now','+3 minutes'))")
     .run(u.id, "email", email, code);
   try {
     await sendMail({
       to: email,
-      subject: `${code} is your PataHome verification code`,
-      text: `Karibu!\n\nYour PataHome verification code is: ${code}\n\nEnter it to confirm your email address. The code expires in 15 minutes.\n\nIf you didn't request this, you can ignore this email.\n\n— PataHome · patahome.co.ke`
+      subject: "PataHome code",
+      text: `Your PataHome verification code is ${code}. It expires in 3 minutes.`,
+      html: authEmailHtml({greeting:`Good day ${String(u.name||"there").trim().split(/\s+/)[0]}!`,code})
     });
   } catch (e) {
     console.error("sendMail failed:", e.message);
