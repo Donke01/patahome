@@ -400,6 +400,17 @@ test("admin powers: roles, bans, sign-out, view-as, listing controls, blocklist,
   r = await call("POST", "/api/admin/broadcast", { audience: { type: "user", id: uid }, channels: ["notification"], title: "Hello", body: "Test message", dryRun: true }, sup);
   assert.equal(r.body.reach.total, 1);
 
+  // move a wrongly-categorised listing: "bedsitter" that is really land
+  const wrong = (await call("POST", "/api/listings", { category: "rent", title: "Plot near the road", areaId: areaId("Ruaka"), price: 1200000, bedrooms: 0 }, t3)).body;
+  assert.equal((await call("PATCH", `/api/admin/listings/${wrong.id}`, { category: "land" }, mod)).status, 400, "land needs a size");
+  r = await call("PATCH", `/api/admin/listings/${wrong.id}`, { category: "land", landDeal: "sale", sizeValue: 2, sizeUnit: "acre", priceBasis: "total" }, mod);
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.equal(r.body.category, "land"); assert.equal(r.body.bedrooms, null); assert.equal(r.body.sizeAcres, 2); assert.equal(r.body.pricePerAcre, 600000);
+  r = await call("PATCH", `/api/admin/listings/${wrong.id}`, { category: "commercial", commType: "plot", deal: "sale" }, mod);
+  assert.equal(r.body.category, "commercial"); assert.equal(r.body.commType, "plot"); assert.equal(r.body.sizeAcres, undefined);
+  r = await call("PATCH", `/api/admin/listings/${wrong.id}`, { category: "rent", bedrooms: 1, price: 15000 }, mod);
+  assert.equal(r.body.category, "rent"); assert.equal(r.body.bedrooms, 1); assert.equal(r.body.price, 15000);
+
   // the audit log saw it all and can't be rewritten
   const log = (await call("GET", "/api/admin/audit", null, sup)).body.map(x => x.action);
   for (const a of ["set_role", "edit_listing", "feature", "view_as", "suspend", "unban", "force_signout", "blocklist_add", "bulk_remove", "settings", "area_add", "area_merge", "export"])

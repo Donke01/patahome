@@ -77,12 +77,16 @@
     const x = (cache.listings || []).find(y => y.id === id); if (!x) return;
     const ar = await areas();
     openModal(`<h2>Edit listing #${x.id}</h2><div class="muted">${esc(x.ownerName)} · the owner is told when you change the title, price, description or area.</div>
+      <label>Category</label>
+      <select id="eC" onchange="catFields('${x.category}')">${[["rent", "House / room — for rent"], ["sale", "House — for sale"], ["shortlet", "Airbnb / short stay"], ["land", "Land — sale or lease"], ["commercial", "Commercial property"]]
+        .map(([v, l]) => `<option value="${v}"${v === x.category ? " selected" : ""}>${l}</option>`).join("")}</select>
+      <div id="eCatBox"></div>
       <label>Title</label><input id="eT" value="${esc(x.title)}">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div><label>Price (KES)</label><input id="eP" type="number" value="${x.price}"></div>
         <div><label>Area</label><select id="eA">${ar.map(a => `<option value="${a.id}"${a.id === x.areaId ? " selected" : ""}>${esc(a.name)} — ${esc(a.county)}</option>`).join("")}</select></div>
       </div>
-      ${["rent", "sale", "shortlet"].includes(x.category) ? `<label>Bedrooms</label><select id="eB"><option value="">N/A</option>${[0, 1, 2, 3, 4, 5, 6].map(n => `<option value="${n}"${x.bedrooms === n ? " selected" : ""}>${n === 0 ? "Bedsitter" : n}</option>`).join("")}</select>` : ""}
+      ${["rent", "sale", "shortlet"].includes(x.category) ? `<div id="eBWrap"><label>Bedrooms</label><select id="eB"><option value="">N/A</option>${[0, 1, 2, 3, 4, 5, 6].map(n => `<option value="${n}"${x.bedrooms === n ? " selected" : ""}>${n === 0 ? "Bedsitter" : n}</option>`).join("")}</select></div>` : ""}
       <label>Description</label><textarea id="eD" rows="4">${esc(x.description || "")}</textarea>
       <label>Warning banner on the listing <span class="muted">(shown in red to visitors — leave empty for none)</span></label>
       <input id="eBn" list="bnList" value="${esc(x.adminBanner || "")}" placeholder="e.g. Under investigation — do not pay"><datalist id="bnList">${BANNERS.map(b => `<option value="${esc(b)}">`).join("")}</datalist>
@@ -91,12 +95,45 @@
       <div class="err" id="eErr"></div>
       <div class="actions"><button class="btn btn-primary" onclick="saveListingEdit(${x.id})">Save changes</button><button class="btn btn-ghost" onclick="closeModal()">Cancel</button></div>`);
   };
+  const opts = (o, sel) => Object.entries(o).map(([k, v]) => `<option value="${k}"${k === sel ? " selected" : ""}>${esc(typeof v === "string" ? v : v.many)}</option>`).join("");
+  // extra fields needed when a listing moves category (size for land, type for commercial, bedrooms for houses)
+  window.catFields = from => {
+    const c = $("eC").value, box = $("eCatBox"), bw = $("eBWrap");
+    if (bw) bw.style.display = ["rent", "sale", "shortlet"].includes(c) ? "" : "none";
+    if (c === from) { box.innerHTML = ""; return; }
+    const L = window.PH_LAND, C = window.PH_COMM;
+    box.innerHTML = c === "land" ? `<div class="site-card" style="margin-top:8px"><b>Land details</b>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div><label>Deal</label><select id="cxDeal" onchange="cxBasis()"><option value="sale">For sale</option><option value="lease">For lease</option></select></div>
+          <div><label>Price is</label><select id="cxBasis"></select></div>
+          <div><label>Size</label><input id="cxSize" type="number" step="any" min="0" placeholder="e.g. 2"></div>
+          <div><label>Unit</label><select id="cxUnit">${opts(L.UNITS, "acre")}</select></div></div></div>`
+      : c === "commercial" ? `<div class="site-card" style="margin-top:8px"><b>Commercial details</b>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div><label>Type</label><select id="cxType">${opts(C.TYPES, "shop")}</select></div>
+          <div><label>Deal</label><select id="cxDeal" onchange="cxBasis()"><option value="sale">For sale</option><option value="lease">To let</option></select></div>
+          <div><label>Price is</label><select id="cxBasis"></select></div>
+          <div><label>Floor area (optional)</label><div style="display:flex;gap:6px"><input id="cxSize" type="number" step="any" min="0"><select id="cxUnit" style="width:auto">${opts(C.UNITS, "sqft")}</select></div></div></div></div>`
+      : ["rent", "sale", "shortlet"].includes(c) && !bw ? `<label>Bedrooms</label><select id="eB"><option value="">N/A</option>${[0, 1, 2, 3, 4, 5, 6].map(n => `<option value="${n}">${n === 0 ? "Bedsitter" : n}</option>`).join("")}</select>` : "";
+    if (c === "land" || c === "commercial") cxBasis();
+  };
+  window.cxBasis = () => {
+    const c = $("eC").value, B = (c === "land" ? PH_LAND : PH_COMM).BASIS[$("cxDeal").value];
+    $("cxBasis").innerHTML = Object.entries(B).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join("");
+  };
   window.saveListingEdit = async id => {
     const x = (cache.listings || []).find(y => y.id === id), b = {};
+    const c = $("eC").value;
+    if (c !== x.category) {
+      b.category = c;
+      if (c === "land") Object.assign(b, { landDeal: $("cxDeal").value, priceBasis: $("cxBasis").value, sizeValue: +$("cxSize").value, sizeUnit: $("cxUnit").value });
+      if (c === "commercial") Object.assign(b, { commType: $("cxType").value, deal: $("cxDeal").value, priceBasis: $("cxBasis").value, sizeValue: $("cxSize").value === "" ? "" : +$("cxSize").value, sizeUnit: $("cxUnit").value });
+      if (c === "land" && !(b.sizeValue > 0)) { $("eErr").textContent = "Enter the land size"; return; }
+    }
     if ($("eT").value.trim() !== x.title) b.title = $("eT").value.trim();
     if (+$("eP").value !== x.price) b.price = +$("eP").value;
     if (+$("eA").value !== x.areaId) b.areaId = +$("eA").value;
-    if ($("eB") && $("eB").value !== (x.bedrooms == null ? "" : String(x.bedrooms))) b.bedrooms = $("eB").value;
+    if ($("eB") && ["rent", "sale", "shortlet"].includes(c) && (b.category || $("eB").value !== (x.bedrooms == null ? "" : String(x.bedrooms)))) b.bedrooms = $("eB").value;
     if ($("eD").value !== (x.description || "")) b.description = $("eD").value;
     if ($("eBn").value.trim() !== (x.adminBanner || "")) b.adminBanner = $("eBn").value.trim();
     if (!Object.keys(b).length) return closeModal();

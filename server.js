@@ -2799,9 +2799,39 @@ router.add("PATCH", "/api/admin/listings/:id", (req, res, p) => {
   const l = adminListing(p.id);
   if (!l) return send(res, 404, { error: "Listing not found" });
   const b = req.body || {}, sets = [], params = [], changed = {};
+  // Move to another category (e.g. land that was posted as a bedsitter)
+  const newCat = b.category !== undefined && b.category !== l.category ? String(b.category) : null;
+  if (newCat) {
+    if (!["rent", "sale", "shortlet", "land", "commercial"].includes(newCat)) return send(res, 400, { error: "Unknown category" });
+    const price = b.price !== undefined ? Math.round(+b.price) : l.price;
+    const blank = { land_deal: null, size_value: null, size_unit: null, price_basis: null, lease_min: null };
+    const clear = ["land_deal=NULL", "size_value=NULL", "size_unit=NULL", "size_acres=NULL", "price_basis=NULL", "price_per_acre=NULL", "lease_min=NULL",
+      "comm_type=NULL", "area_sqft=NULL", "price_per_sqft=NULL", "income_month=NULL"];
+    const oldF = parseJson(l.features, {});
+    sets.push("category=?", ...clear); params.push(newCat);
+    if (newCat === "land") {
+      const f = landFields({ ...b, price }, blank);
+      if (f.error) return send(res, 400, { error: f.error });
+      sets.push("bedrooms=NULL", "land_deal=?", "size_value=?", "size_unit=?", "size_acres=?", "price_basis=?", "price_per_acre=?", "lease_min=?", "features=?");
+      params.push(f.deal, f.sizeValue, f.sizeUnit, f.sizeAcres, f.basis, f.perAcre, f.leaseMin, JSON.stringify(cleanLandFeatures(oldF)));
+    } else if (newCat === "commercial") {
+      const f = commFields({ ...b, price }, blank);
+      if (f.error) return send(res, 400, { error: f.error });
+      sets.push("bedrooms=NULL", "land_deal=?", "comm_type=?", "size_value=?", "size_unit=?", "area_sqft=?", "price_basis=?", "price_per_sqft=?", "lease_min=?", "income_month=?", "features=?");
+      params.push(f.deal, f.type, f.sizeValue, f.sizeUnit, f.areaSqft, f.basis, f.perSqft, f.leaseMin, f.income, JSON.stringify(cleanCommFeatures(oldF)));
+    } else {
+      const beds = b.bedrooms !== undefined ? (b.bedrooms === "" || b.bedrooms === null ? null : Math.max(0, Math.min(20, parseInt(b.bedrooms, 10) || 0)))
+        : (["rent", "sale", "shortlet"].includes(l.category) ? l.bedrooms : null);
+      sets.push("bedrooms=?", "features=?"); params.push(beds, JSON.stringify(cleanFeatures(oldF)));
+    }
+    // a let listing that becomes a sale (or the other way) can't keep a rented/sold status
+    if (["rented", "sold"].includes(l.status)) sets.push("status='active'");
+    changed.category = `${l.category} → ${newCat}`;
+    delete b.bedrooms;
+  }
   if (b.title !== undefined) { const t = String(b.title).trim().slice(0, 140); if (!t) return send(res, 400, { error: "Title can't be empty" }); sets.push("title=?"); params.push(t); changed.title = t; }
   if (b.description !== undefined) { sets.push("description=?"); params.push(String(b.description).slice(0, 5000)); changed.description = "edited"; }
-  if (b.bedrooms !== undefined && ["rent", "sale", "shortlet"].includes(l.category)) { const v = b.bedrooms === "" || b.bedrooms === null ? null : Math.max(0, Math.min(20, parseInt(b.bedrooms, 10) || 0)); sets.push("bedrooms=?"); params.push(v); changed.bedrooms = v; }
+  if (b.bedrooms !== undefined && ["rent", "sale", "shortlet"].includes(newCat || l.category)) { const v = b.bedrooms === "" || b.bedrooms === null ? null : Math.max(0, Math.min(20, parseInt(b.bedrooms, 10) || 0)); sets.push("bedrooms=?"); params.push(v); changed.bedrooms = v; }
   if (b.areaId !== undefined) {
     const area = db.prepare("SELECT * FROM areas WHERE id=?").get(b.areaId);
     if (!area) return send(res, 400, { error: "Unknown area" });
@@ -2811,16 +2841,18 @@ router.add("PATCH", "/api/admin/listings/:id", (req, res, p) => {
   if (b.price !== undefined) {
     const price = Math.round(+b.price); if (!(price > 0)) return send(res, 400, { error: "Enter a price" });
     sets.push("price=?"); params.push(price); changed.price = `${l.price} → ${price}`;
-    if (l.category === "land") { const f = landFields({ price }, l); if (!f.error) { sets.push("price_per_acre=?"); params.push(f.perAcre); } }
+    if (newCat) {} else if (l.category === "land") { const f = landFields({ price }, l); if (!f.error) { sets.push("price_per_acre=?"); params.push(f.perAcre); } }
     if (l.category === "commercial") { const f = commFields({ price }, l); if (!f.error) { sets.push("price_per_sqft=?"); params.push(f.perSqft); } }
   }
   if (b.adminBanner !== undefined) { const t = String(b.adminBanner || "").trim().slice(0, 160); sets.push("admin_banner=?"); params.push(t || null); changed.banner = t || "(removed)"; }
   if (!sets.length) return send(res, 400, { error: "Nothing to change" });
   db.prepare(`UPDATE listings SET ${sets.join(",")} WHERE id=?`).run(...params, l.id);
   audit(req, a, "edit_listing", "listing", l.id, changed);
-  if (b.notifyOwner !== false && (changed.title || changed.price || changed.description || changed.area))
+  if (b.notifyOwner !== false && (changed.title || changed.price || changed.description || changed.area || changed.category)) {
+    const CAT_NAME = { rent: "Houses for rent", sale: "Houses for sale", shortlet: "Airbnb / short stays", land: "Land", commercial: "Commercial property" };
     db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)").run(l.owner_id, "listing", "We updated your listing",
-      `Our team corrected details on "${l.title}"${b.note ? ": " + String(b.note).slice(0, 200) : "."}`);
+      `Our team corrected details on "${l.title}"${newCat ? ` and moved it to ${CAT_NAME[newCat]}` : ""}${b.note ? ": " + String(b.note).slice(0, 200) : "."}`);
+  }
   send(res, 200, listingView(db.prepare(`${LISTING_SQL} WHERE l.id=?`).get(l.id)));
 });
 function setListingStatus(l, status, a, req, why) {
