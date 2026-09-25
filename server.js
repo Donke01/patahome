@@ -985,7 +985,7 @@ router.add("POST", "/api/listings/:id/confirm", (req, res, p) => {
 router.add("GET", "/api/listings/:id/fresh", (req, res, p) => {
   const row = db.prepare("SELECT * FROM listings WHERE id=?").get(p.id);
   const a = req.query.a === "taken" ? "taken" : "yes";
-  const redirect = (msg) => { res.writeHead(302, { Location: "/dashboard.html?notice=" + encodeURIComponent(msg) }); res.end(); };
+  const redirect = (msg) => { res.writeHead(302, { Location: "/dashboard?notice=" + encodeURIComponent(msg) }); res.end(); };
   if (!row || !req.query.t || req.query.t !== freshToken(row, a)) return redirect("That link has expired — manage the listing from your dashboard.");
   if (a === "yes") {
     if (!["active", "expired"].includes(row.status)) return redirect("This listing is no longer live.");
@@ -1416,7 +1416,7 @@ router.add("POST", "/api/listings/:id/inquire", (req, res, p) => {
   db.prepare("INSERT INTO leads (listing_id,user_id) VALUES (?,?)").run(row.id, u ? u.id : null);
   db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
     .run(row.owner_id, "inquiry", "New message", `${String(name).trim()} asked about "${row.title}".`);
-  send(res, 201, { ok: true, inquiryId: info.lastInsertRowid, threadToken, threadUrl: `/messages.html?t=${threadToken}` });
+  send(res, 201, { ok: true, inquiryId: info.lastInsertRowid, threadToken, threadUrl: `/messages?t=${threadToken}` });
 });
 
 /* -------- followers: renters/buyers follow an owner for updates -------- */
@@ -1784,7 +1784,7 @@ async function tellTenant(v, subject, text) {
 async function tellOwner(ownerId, title, body) {
   db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)").run(ownerId, "viewing", title, body);
   const o = db.prepare("SELECT email, email_verified, phone FROM users WHERE id=?").get(ownerId);
-  if (o && o.email && mailConfigured()) sendMail({ to: o.email, subject: `PataHome — ${title}`, text: `${body}\n\nManage it from your dashboard: ${SITE()}/dashboard.html\n\n— PataHome` })
+  if (o && o.email && mailConfigured()) sendMail({ to: o.email, subject: `PataHome — ${title}`, text: `${body}\n\nManage it from your dashboard: ${SITE()}/dashboard\n\n— PataHome` })
     .catch(e => console.error("owner mail:", e.message));
 }
 router.add("POST", "/api/listings/:id/viewings", async (req, res, p) => {
@@ -1808,8 +1808,8 @@ router.add("POST", "/api/listings/:id/viewings", async (req, res, p) => {
   db.prepare("INSERT INTO leads (listing_id,user_id) VALUES (?,NULL)").run(l.id);
   tellOwner(l.owner_id, "New viewing request", `${name} (${phone}) would like to view "${l.title}" on ${eatLabel(slot)}.${b.note ? ` Note: "${String(b.note).slice(0, 200)}"` : ""} Confirm or decline it in your dashboard.`);
   if (email) tellTenant({ email, phone }, `Viewing requested — ${l.title}`,
-    `Hi ${name},\n\nYour request to view "${l.title}" on ${eatLabel(slot)} has been sent to the owner. We'll let you know when they confirm.\n\nSee or cancel your request: ${SITE()}/viewing.html?t=${token}\n\nStay safe: never pay before you've seen the house and met the owner.\n\n— PataHome`);
-  send(res, 201, { ok: true, id: info.lastInsertRowid, token, manageUrl: `/viewing.html?t=${token}` });
+    `Hi ${name},\n\nYour request to view "${l.title}" on ${eatLabel(slot)} has been sent to the owner. We'll let you know when they confirm.\n\nSee or cancel your request: ${SITE()}/viewing?t=${token}\n\nStay safe: never pay before you've seen the house and met the owner.\n\n— PataHome`);
+  send(res, 201, { ok: true, id: info.lastInsertRowid, token, manageUrl: `/viewing?t=${token}` });
 });
 router.add("GET", "/api/viewings/:token", (req, res, p) => {
   const v = db.prepare(`SELECT v.*, l.title, l.price, l.category, a.name area, a.county, u.name owner_name FROM viewings v
@@ -1846,8 +1846,8 @@ router.add("POST", "/api/viewings/:id/respond", async (req, res, p) => {
   const owner = db.prepare("SELECT name, phone FROM users WHERE id=?").get(v.owner_id);
   await tellTenant(v, status === "confirmed" ? `Viewing confirmed — ${v.title}` : `Viewing not available — ${v.title}`,
     status === "confirmed"
-      ? `Hi ${v.name},\n\n${owner.name} confirmed your viewing of "${v.title}" on ${eatLabel(v.slot_at)}.${msg ? `\n\nMessage from the owner: "${msg}"` : ""}\n\nOwner's phone: ${realPhone(owner.phone) || "shared on the day"}\nDetails or cancel: ${SITE()}/viewing.html?t=${v.token}\n\nStay safe: never pay before you've seen the house and met the owner.\n\n— PataHome`
-      : `Hi ${v.name},\n\nSorry — the owner can't do ${eatLabel(v.slot_at)} for "${v.title}".${msg ? `\n\nMessage from the owner: "${msg}"` : ""}\n\nYou can pick another time on PataHome: ${SITE()}/browse.html?open=${v.listing_id}\n\n— PataHome`);
+      ? `Hi ${v.name},\n\n${owner.name} confirmed your viewing of "${v.title}" on ${eatLabel(v.slot_at)}.${msg ? `\n\nMessage from the owner: "${msg}"` : ""}\n\nOwner's phone: ${realPhone(owner.phone) || "shared on the day"}\nDetails or cancel: ${SITE()}/viewing?t=${v.token}\n\nStay safe: never pay before you've seen the house and met the owner.\n\n— PataHome`
+      : `Hi ${v.name},\n\nSorry — the owner can't do ${eatLabel(v.slot_at)} for "${v.title}".${msg ? `\n\nMessage from the owner: "${msg}"` : ""}\n\nYou can pick another time on PataHome: ${SITE()}/browse?open=${v.listing_id}\n\n— PataHome`);
   send(res, 200, { ok: true, status });
 });
 async function viewingReminders() {
@@ -1855,7 +1855,7 @@ async function viewingReminders() {
     WHERE v.status='confirmed' AND v.reminded=0 AND v.slot_at > ? AND v.slot_at <= ?`).all(new Date().toISOString(), new Date(Date.now() + 26 * 3600e3).toISOString());
   for (const v of due) {
     db.prepare("UPDATE viewings SET reminded=1 WHERE id=?").run(v.id);
-    tellTenant(v, `Reminder: viewing ${eatLabel(v.slot_at)}`, `Hi ${v.name},\n\nA reminder that you're viewing "${v.title}" on ${eatLabel(v.slot_at)}.\n\nDetails or cancel: ${SITE()}/viewing.html?t=${v.token}\n\n— PataHome`);
+    tellTenant(v, `Reminder: viewing ${eatLabel(v.slot_at)}`, `Hi ${v.name},\n\nA reminder that you're viewing "${v.title}" on ${eatLabel(v.slot_at)}.\n\nDetails or cancel: ${SITE()}/viewing?t=${v.token}\n\n— PataHome`);
     db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)").run(v.owner_id, "viewing", "Viewing coming up", `${v.name} (${v.phone}) is viewing "${v.title}" on ${eatLabel(v.slot_at)}.`);
   }
 }
@@ -1873,7 +1873,7 @@ async function notifyTenantOfReply(inquiryId) {
   const i = db.prepare("SELECT i.*, l.title FROM inquiries i JOIN listings l ON l.id=i.listing_id WHERE i.id=?").get(inquiryId);
   if (!i) return;
   if (!i.thread_token) { i.thread_token = crypto.randomBytes(18).toString("base64url"); db.prepare("UPDATE inquiries SET thread_token=? WHERE id=?").run(i.thread_token, i.id); }
-  const link = `${SITE()}/messages.html?t=${i.thread_token}`;
+  const link = `${SITE()}/messages?t=${i.thread_token}`;
   if (i.from_email && mailConfigured())
     return sendMail({ to: i.from_email, subject: `Reply about "${i.title}"`, text: `Hi ${i.from_name},\n\nThe owner replied to your message about "${i.title}":\n\n"${i.owner_reply}"\n\nReply here: ${link}\n\n— PataHome` });
   if (realPhone(i.from_phone) && smsConfigured())
@@ -1945,7 +1945,7 @@ router.add("POST", "/api/alerts", async (req, res) => {
   } catch (e) { console.error("alert confirm send:", e.message); return send(res, 400, { error: "Couldn't send the confirmation — try again shortly" }); }
   send(res, 201, { ok: true, label, pendingConfirm: true });
 });
-const noticeRedirect = (res, msg, to = "/browse.html") => { res.writeHead(302, { Location: `${to}?notice=${encodeURIComponent(msg)}` }); res.end(); };
+const noticeRedirect = (res, msg, to = "/browse") => { res.writeHead(302, { Location: `${to}?notice=${encodeURIComponent(msg)}` }); res.end(); };
 router.add("GET", "/api/alerts/:token/confirm", (req, res, p) => {
   const a = db.prepare("SELECT * FROM saved_searches WHERE token=?").get(p.token);
   if (!a) return noticeRedirect(res, "That alert link has expired.");
@@ -2217,7 +2217,7 @@ router.add("GET", "/api/my/referral", (req, res) => {
 });
 router.add("GET", "/r/:code", (req, res, p) => {
   const code = String(p.code || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12);
-  res.writeHead(302, { Location: `/dashboard.html?ref=${code}&signup=1`, "Cache-Control": "no-store" });
+  res.writeHead(302, { Location: `/dashboard?ref=${code}&signup=1`, "Cache-Control": "no-store" });
   res.end();
 });
 
@@ -2598,7 +2598,7 @@ function listingPage(req, res, p) {
         ${row.bedrooms != null ? ` · 🛏 ${row.bedrooms === 0 ? "Bedsitter" : row.bedrooms + " bedroom(s)"}` : ""}
         · Listed by ${escapeHtml(row.owner_name)}${row.owner_verified ? " ✓ verified owner" : ""}</div>
       ${row.description ? `<p>${escapeHtml(row.description)}</p>` : ""}
-      <a class="cta" href="/browse.html?open=${row.id}">See photos &amp; contact the ${row.lister_role === "agent" ? "agent" : "owner"}</a>
+      <a class="cta" href="/browse?open=${row.id}">See photos &amp; contact the ${row.lister_role === "agent" ? "agent" : "owner"}</a>
     </div>
     <p><a href="/${catSlug}/${slugify(row.area_name)}">More ${escapeHtml(CATS[catSlug].label.toLowerCase())} in ${escapeHtml(row.area_name)} →</a></p>
     ${areaLinksHtml()}`;
@@ -2632,7 +2632,7 @@ function landingPage(req, res, p) {
     itemListElement: rows.map((r, i) => ({ "@type": "ListItem", position: i + 1, url: `${BASE_URL}/listing/${r.id}/${slugify(r.title)}` })) };
   const chip = (slug, label) => `<a class="${(bedSlug || "") === slug ? "on" : ""}" href="/${p.catSlug}/${p.areaSlug}${slug ? "/" + slug : ""}">${label}</a>`;
   const nearby = db.prepare("SELECT * FROM areas WHERE county=? AND id!=? LIMIT 12").all(area.county, area.id);
-  const browseQ = `/browse.html?q=${encodeURIComponent(area.name)}&cat=${cat.db}${beds !== null ? "&beds=" + beds : ""}${cat.deal ? (cat.db === "land" ? "&landDeal=" : "&deal=") + cat.deal : ""}`;
+  const browseQ = `/browse?q=${encodeURIComponent(area.name)}&cat=${cat.db}${beds !== null ? "&beds=" + beds : ""}${cat.deal ? (cat.db === "land" ? "&landDeal=" : "&deal=") + cat.deal : ""}`;
   const bodyHtml = `
     <h1>${escapeHtml(what)} in ${escapeHtml(area.name)}, ${escapeHtml(area.county)} County</h1>
     <p class="meta">${rows.length} listing${rows.length === 1 ? "" : "s"}${minPrice ? ` · from ${fmtKes(minPrice)}${cat.unit}` : ""} · direct from owners · updated daily</p>
@@ -2704,8 +2704,8 @@ Allow: /api/areas
 Allow: /api/listings
 Allow: /api/config
 Allow: /api/insights
-Disallow: /dashboard.html
-Disallow: /admin.html
+Disallow: /dashboard
+Disallow: /admin
 Disallow: /api/
 
 Sitemap: ${BASE_URL}/sitemap.xml
@@ -2752,6 +2752,12 @@ const server = http.createServer((req, res) => {
       if (m) { const r = m.handler(req, res, m.params); if (r && typeof r.catch === "function") r.catch(fail); return; }
       // static files from ./public (put patahome.html there as index.html)
       if (req.method === "GET") {
+        // old .html addresses redirect permanently to the clean ones (/dashboard.html → /dashboard)
+        const htmlName = url.pathname.match(/^\/([a-z0-9-]+)\.html$/);
+        if (htmlName && htmlName[1] !== "offline" && fs.existsSync(path.join(__dirname, "public", htmlName[1] + ".html"))) {
+          res.writeHead(301, { Location: (htmlName[1] === "index" ? "/" : "/" + htmlName[1]) + url.search, "Cache-Control": "public, max-age=86400" });
+          return res.end();
+        }
         let file = path.join(__dirname, "public", url.pathname === "/" ? "index.html" : url.pathname);
         // clean URLs: /admin serves admin.html, /browse serves browse.html, …
         if (!path.extname(file) && fs.existsSync(file + ".html")) file += ".html";

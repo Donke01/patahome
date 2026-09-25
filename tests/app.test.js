@@ -174,7 +174,7 @@ test("referral gives both a featured week", async () => {
 });
 
 test("traffic stats are recorded without cookies", async () => {
-  await call("POST", "/api/pv", { path: "/browse.html", ref: "https://www.google.com/search" }, null, { "user-agent": "Mozilla/5.0 test" });
+  await call("POST", "/api/pv", { path: "/browse", ref: "https://www.google.com/search" }, null, { "user-agent": "Mozilla/5.0 test" });
   await call("POST", "/api/pv", { path: "/" }, null, { "user-agent": "Googlebot/2.1" }); // bots ignored
   await call("GET", "/api/search?q=zzznothing");
   const admin = (await call("POST", "/api/auth/login", { phone: "0700000001", password: "adminpass123" })).body.token;
@@ -200,9 +200,15 @@ test("SEO pages, share cards, legal pages and app files", async () => {
   assert.equal((await call("GET", "/for-sale/ruaka/bedsitters")).status, 404);
   const sm = await call("GET", "/sitemap.xml");
   assert.match(sm.body.html, /rentals\/ruaka\/bedsitters/);
-  for (const f of ["/privacy.html", "/terms.html", "/manifest.webmanifest", "/sw.js", "/offline.html", "/i18n.js", "/app.js"])
+  for (const f of ["/privacy", "/terms", "/manifest.webmanifest", "/sw.js", "/offline.html", "/i18n.js", "/app.js"])
     assert.equal((await call("GET", f)).status, 200, f);
   for (const f of ["/admin", "/browse", "/dashboard"]) assert.match((await call("GET", f)).body.html, /<html/i, f);
+  // old .html links redirect to the clean address, keeping the query string
+  let rd = await call("GET", "/dashboard.html?notice=hi");
+  assert.equal(rd.status, 301); assert.equal(rd.location, "/dashboard?notice=hi");
+  rd = await call("GET", "/index.html"); assert.equal(rd.status, 301); assert.equal(rd.location, "/");
+  assert.equal((await call("GET", "/browse.html?open=5")).location, "/browse?open=5");
+  assert.equal((await call("GET", "/nope.html")).status, 404);
 });
 
 test("land: units, price per acre, lease, filters, pages and document checks", async () => {

@@ -31,7 +31,7 @@
 <meta name="theme-color" content="#0B5D3B">
 </head>
 <body>
-<header><a class="logo" href="/">Pata<b>Home</b></a><a class="back" href="/messages.html">My messages</a></header>
+<header><a class="logo" href="/">Pata<b>Home</b></a><a class="back" href="/messages">My messages</a></header>
 <div class="wrap" id="app">Loading…</div>
 <script>
 const $=id=>document.getElementById(id);
@@ -39,7 +39,7 @@ const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&g
 const token=new URLSearchParams(location.search).get("t");
 const TXT={requested:"Waiting for the owner to confirm",confirmed:"Confirmed — see you there",declined:"The owner can't make this time",cancelled:"You cancelled this viewing"};
 async function load(){
-  if(!token){$("app").innerHTML='<div class="card">No viewing selected. <a href="/messages.html">See your viewings</a>.</div>';return}
+  if(!token){$("app").innerHTML='<div class="card">No viewing selected. <a href="/messages">See your viewings</a>.</div>';return}
   const r=await fetch("/api/viewings/"+token);const v=await r.json().catch(()=>({}));
   if(!r.ok){$("app").innerHTML=`<div class="card">${esc(v.error||"Viewing not found")}.</div>`;return}
   try{const a=JSON.parse(localStorage.getItem("ph_viewings")||"[]").filter(x=>x.t!==token);a.unshift({t:token,title:v.title,at:Date.now()});localStorage.setItem("ph_viewings",JSON.stringify(a.slice(0,30)))}catch(e){}
@@ -51,7 +51,7 @@ async function load(){
     <div class="when">📅 ${esc(v.slotLabel)}</div>
     <div class="muted">${TXT[v.status]||""}</div>
     <div class="row">
-      <a class="btn" href="/browse.html?open=${v.listingId}">View the listing</a>
+      <a class="btn" href="/browse?open=${v.listingId}">View the listing</a>
       ${open?`<button onclick="cancelIt()">Cancel viewing</button>`:""}
     </div>
     <div class="safe"><b>Stay safe:</b> viewings are free. Never pay a deposit, rent or "viewing fee" before you've seen the house and met the owner.</div>

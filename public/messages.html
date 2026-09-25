@@ -41,7 +41,7 @@
 <meta name="theme-color" content="#0B5D3B">
 </head>
 <body>
-<header><a class="logo" href="/">Pata<b>Home</b></a><a class="back" href="/browse.html">← Browse homes</a></header>
+<header><a class="logo" href="/">Pata<b>Home</b></a><a class="back" href="/browse">← Browse homes</a></header>
 <div class="wrap" id="app"><div class="empty">Loading…</div></div>
 <script>
 const $=id=>document.getElementById(id);
@@ -59,18 +59,18 @@ async function list(){
   const vs=await Promise.all(views.map(v=>api("/api/viewings/"+v.t).then(d=>({...d,t:v.t})).catch(()=>null)));
   const ts=await Promise.all(threads.map(v=>api("/api/threads/"+v.t).then(d=>({...d,t:v.t})).catch(()=>null)));
   const vv=vs.filter(Boolean),tt=ts.filter(Boolean);
-  if(vv.length)html+=`<h3>Viewings</h3>`+vv.map(v=>`<a class="card item" href="/viewing.html?t=${v.t}"><div><b>${esc(v.title)}</b><br><small>📅 ${esc(v.slotLabel)} · ${esc(v.area)}</small></div><span class="pill ${v.status==="confirmed"?"":v.status==="requested"?"warn":"off"}">${esc(v.status)}</span></a>`).join("");
-  if(tt.length)html+=`<h3>Conversations</h3>`+tt.map(c=>{const last=c.messages[c.messages.length-1];return `<a class="card item" href="/messages.html?t=${c.t}"><div><b>${esc(c.listing.title)}</b><br><small>${last.sender==="owner"?"Owner: ":"You: "}${esc(last.body.slice(0,70))}</small></div>${last.sender==="owner"?'<span class="pill">new reply</span>':""}</a>`}).join("");
+  if(vv.length)html+=`<h3>Viewings</h3>`+vv.map(v=>`<a class="card item" href="/viewing?t=${v.t}"><div><b>${esc(v.title)}</b><br><small>📅 ${esc(v.slotLabel)} · ${esc(v.area)}</small></div><span class="pill ${v.status==="confirmed"?"":v.status==="requested"?"warn":"off"}">${esc(v.status)}</span></a>`).join("");
+  if(tt.length)html+=`<h3>Conversations</h3>`+tt.map(c=>{const last=c.messages[c.messages.length-1];return `<a class="card item" href="/messages?t=${c.t}"><div><b>${esc(c.listing.title)}</b><br><small>${last.sender==="owner"?"Owner: ":"You: "}${esc(last.body.slice(0,70))}</small></div>${last.sender==="owner"?'<span class="pill">new reply</span>':""}</a>`}).join("");
   $("app").innerHTML=html;
 }
 async function thread(){
   let d;
-  try{d=await api("/api/threads/"+token)}catch(e){$("app").innerHTML=`<div class="card empty">${esc(e.message)}. <a href="/messages.html">See your saved conversations</a>.</div>`;return}
+  try{d=await api("/api/threads/"+token)}catch(e){$("app").innerHTML=`<div class="card empty">${esc(e.message)}. <a href="/messages">See your saved conversations</a>.</div>`;return}
   remember(token,d.listing.title);
   const unit=d.listing.category==="rent"?"/month":d.listing.category==="shortlet"?"/night":"";
   $("app").innerHTML=`
     <div class="card listing"><div><b>${esc(d.listing.title)}</b><div class="sub" style="margin:2px 0 0">${fmt(d.listing.price)}${unit} · ${esc(d.listing.area)}${d.listing.live?"":" · no longer listed"}</div></div>
-      ${d.listing.live?`<a href="/browse.html?open=${d.listing.id}">View listing →</a>`:""}</div>
+      ${d.listing.live?`<a href="/browse?open=${d.listing.id}">View listing →</a>`:""}</div>
     <h1>Chat with ${esc(d.ownerName)}${d.ownerVerified?' <span class="pill">✓ verified</span>':""}</h1>
     <div class="bubbles" id="bubbles">${d.messages.map(m=>`<div class="bub ${m.sender}"><div>${esc(m.body)}</div><span>${m.sender==="tenant"?"You":esc(d.ownerName)} · ${esc(m.at||"")}</span></div>`).join("")}</div>
     <div class="safe"><b>Stay safe:</b> never pay a deposit, rent or "viewing fee" before you've seen the house and met the owner.</div>

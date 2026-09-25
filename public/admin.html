@@ -317,7 +317,7 @@ function renderTab(){
       <div class="muted" style="margin:0 0 10px">Compare the title / LR number with the official search. Approve only if the registered owner matches the account and there are no cautions or charges you weren't told about.</div>
       <table><tr><th>Property</th><th>Title / LR no.</th><th>Documents</th><th></th></tr>`+
       ld.map(x=>`<tr>
-        <td><b>${esc(x.title)}</b><div class="muted">${esc(x.area)} · ${esc(x.size)} · ${esc(x.price)}</div><div class="muted">Owner: ${esc(x.owner)} · <a href="/browse.html?open=${x.id}" target="_blank" rel="noopener">#${x.id} ↗</a></div></td>
+        <td><b>${esc(x.title)}</b><div class="muted">${esc(x.area)} · ${esc(x.size)} · ${esc(x.price)}</div><div class="muted">Owner: ${esc(x.owner)} · <a href="/browse?open=${x.id}" target="_blank" rel="noopener">#${x.id} ↗</a></div></td>
         <td><b>${esc(x.titleRef||"—")}</b></td>
         <td>${x.docs.length?x.docs.map((d,i)=>`<a href="${esc(d)}" target="_blank" rel="noopener" class="pill ok" style="margin-right:4px;text-decoration:none">Doc ${i+1} ↗</a>`).join(""):'<span class="muted">none</span>'}</td>
         <td style="white-space:nowrap">
@@ -353,7 +353,7 @@ function renderTab(){
       m.map(x=>`<tr>
         <td><b>${esc(x.title)}</b> ${x.status==="under_review"?'<span class="pill warn">paused for review</span>':`<span class="pill ok">${esc(x.status)}</span>`}
           <div class="muted">#${x.id} · ${esc(x.area)}, ${esc(x.county)} · ${fmt(x.price)}${x.listerRole!=="owner"?" · "+esc(x.listerRole):""}</div>
-          <a class="muted" href="/browse.html?open=${x.id}" target="_blank" rel="noopener">View listing ↗</a></td>
+          <a class="muted" href="/browse?open=${x.id}" target="_blank" rel="noopener">View listing ↗</a></td>
         <td style="white-space:normal;max-width:460px">
           ${x.flags.map(f=>`<div style="margin-bottom:6px"><span class="pill feat">${esc(FLAG[f.kind]||f.kind)}</span> <span class="muted">${esc(f.detail)}</span></div>`).join("")}
           ${x.reports.length?`<div style="margin-top:4px"><b>${x.reports.length} report${x.reports.length===1?"":"s"}</b></div>`+x.reports.map(r=>`<div class="muted" style="margin-top:4px">• <b>${esc(r.reason)}</b>${r.details?" — “"+esc(r.details)+"”":""}${r.contact?` <span style="white-space:nowrap">(${esc(r.contact)})</span>`:""} <span style="opacity:.7">${esc(r.at)}</span></div>`).join(""):""}
@@ -420,7 +420,7 @@ async function loadExtra(t){
       const ph=await api("/api/admin/photos");
       $("panel").innerHTML=ph.length?`<div class="muted" style="margin:0 0 10px">Newest listing photos. Remove anything that isn't the actual property, is offensive, or shows people/contact details. The owner is notified.</div>
         <div class="ph-wall">${ph.map(p=>`<div class="ph-item"><a href="${esc(p.full)}" target="_blank" rel="noopener"><img src="${esc(p.thumb)}" loading="lazy" alt=""></a>
-          <div class="ph-cap"><a href="/browse.html?open=${p.listingId}" target="_blank" rel="noopener">${esc(p.title)}</a><span>${esc(p.owner)}${p.status!=="active"?" · "+esc(p.status):""}</span></div>
+          <div class="ph-cap"><a href="/browse?open=${p.listingId}" target="_blank" rel="noopener">${esc(p.title)}</a><span>${esc(p.owner)}${p.status!=="active"?" · "+esc(p.status):""}</span></div>
           <button class="btn btn-danger btn-sm" onclick="removePhoto(${p.listingId},'${esc(p.publicId)}')">Remove</button></div>`).join("")}</div>`
         :'<div style="padding:34px;text-align:center;color:var(--muted)">No listing photos yet.</div>';
     }else if(t==="backups"){
