@@ -454,7 +454,7 @@
   }
 </style>
   <link rel="stylesheet" href="/refresh.css?v=20260925-1">
-<link rel="stylesheet" href="/dark.css?v=2">
+<link rel="stylesheet" href="/dark.css?v=3">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#0B5D3B">
 </head>
@@ -912,7 +912,7 @@ const toItem=x=>({
   posted:timeAgo(x.createdAt),owner:x.ownerName,ownerId:x.ownerId,verified:x.ownerVerified,
   role:x.listerRole||"owner",fee:x.agentFee||"",
   features:x.features||{},video:x.video||null,nearby:x.nearby||null,featured:!!x.featured,
-  adminBanner:x.adminBanner||"",deal:x.deal,commType:x.commType,areaSqft:x.areaSqft,pricePerSqft:x.pricePerSqft,incomeMonth:x.incomeMonth,
+  notice:x.notice||"",deal:x.deal,commType:x.commType,areaSqft:x.areaSqft,pricePerSqft:x.pricePerSqft,incomeMonth:x.incomeMonth,
   landDeal:x.landDeal,sizeValue:x.sizeValue,sizeUnit:x.sizeUnit,sizeAcres:x.sizeAcres,priceBasis:x.priceBasis,pricePerAcre:x.pricePerAcre,
   leaseMin:x.leaseMin,exactPin:!!x.exactPin,docsChecked:!!x.docsChecked,
   photos:x.photoUrls||[]
@@ -1436,11 +1436,11 @@ function openDetail(id){
   document.getElementById("dCat").className="dm-cat "+c.badge;
   document.getElementById("dPlace").textContent=x.area;
   document.getElementById("dPrice").innerHTML=priceHTML(x);
-  let ab=document.getElementById("dAdminBanner");
-  if(!ab){ab=document.createElement("div");ab.id="dAdminBanner";ab.setAttribute("role","alert");
+  let ab=document.getElementById("dNotice");
+  if(!ab){ab=document.createElement("div");ab.id="dNotice";ab.setAttribute("role","alert");
     ab.style.cssText="background:#fdecea;border:1.5px solid #e7a9a2;color:#8a2319;border-radius:12px;padding:10px 12px;font-weight:700;font-size:.9rem;margin:8px 0";
     const pr=document.getElementById("dPrice");pr.parentNode.insertBefore(ab,pr.nextSibling)}
-  ab.textContent=x.adminBanner?"⚠️ "+x.adminBanner:"";ab.style.display=x.adminBanner?"":"none";
+  ab.textContent=x.notice?"⚠️ "+x.notice:"";ab.style.display=x.notice?"":"none";
   const isLand=x.cat==="land",isComm=x.cat==="commercial";
   const facts=[];
   if(isComm&&window.PH_COMM){
@@ -1711,7 +1711,7 @@ async function openContact(id){
   try{
     const r=await api(`/api/listings/${id}/contact`,{method:"POST"});
     document.getElementById("cPhone").textContent=r.ownerPhone;
-    const digits=r.ownerPhone.replace(/\D/g,"");
+    const digits=String(r.whatsapp||r.ownerPhone).replace(/\D/g,"");
     const intl=digits.startsWith("0")?"254"+digits.slice(1):digits;
     document.getElementById("cWhatsApp").href="https://wa.me/"+intl+"?text="+encodeURIComponent("Hi! I found your listing '"+x.title+"' on PataHome. Is it still available?");
     document.getElementById("cCall").href="tel:"+r.ownerPhone.replace(/\s/g,"");

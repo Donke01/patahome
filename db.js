@@ -404,6 +404,13 @@ for (const [table, col] of [
   ["listings", "admin_banner TEXT"],       // e.g. "Under investigation — do not pay"
   ["sessions", "readonly INTEGER NOT NULL DEFAULT 0"], ["sessions", "viewer_id INTEGER"]
 ]) { try { db.exec(`ALTER TABLE ${table} ADD COLUMN ${col}`); } catch (e) { /* exists */ } }
+for (const [table, col] of [
+  ["users", "managed INTEGER NOT NULL DEFAULT 0"],        // account PataHome created for an owner who can't list themselves
+  ["listings", "assisted INTEGER NOT NULL DEFAULT 0"], ["listings", "assisted_by INTEGER"],
+  ["listings", "contact_name TEXT"], ["listings", "contact_phone TEXT"], ["listings", "contact_whatsapp TEXT"],
+  ["listings", "relay_sms INTEGER NOT NULL DEFAULT 0"], ["listings", "relay_copy INTEGER NOT NULL DEFAULT 0"],
+  ["listings", "consent_how TEXT"], ["listings", "consent_note TEXT"], ["listings", "consent_at TEXT"]
+]) { try { db.exec(`ALTER TABLE ${table} ADD COLUMN ${col}`); } catch (e) { /* exists */ } }
 db.exec("UPDATE users SET admin_role='super' WHERE role='admin' AND admin_role IS NULL");
 db.exec(`
 CREATE TABLE IF NOT EXISTS admin_audit (

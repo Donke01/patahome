@@ -130,9 +130,9 @@ const listingView = (row, userLat, userLng) => ({
     priceBasis: row.price_basis, pricePerSqft: row.price_per_sqft, leaseMin: row.lease_min || "", incomeMonth: row.income_month || null,
     exactPin: !!row.exact_pin, docsChecked: row.docs_status === "checked"
   } : {}),
-  adminBanner: row.admin_banner || "",
+  notice: row.admin_banner || "",
   ownerId: row.owner_id,
-  ownerName: row.owner_name,
+  ownerName: row.contact_name || row.owner_name,
   ownerVerified: !!row.owner_verified,
   listerRole: row.lister_role || "owner",
   expiresAt: row.status === "active" ? expiryOf(row) : null,
@@ -539,6 +539,13 @@ router.add("POST", "/api/auth/forgot-password", async (req, res) => {
   const id=String(req.body?.identifier||"").trim();
   const user=db.prepare("SELECT * FROM users WHERE email=? OR phone=?").get(id.toLowerCase(),id);
   // Always return the same response so the endpoint cannot reveal whether an account exists.
+  if(user&&!user.email&&realPhone(user.phone)&&smsConfigured()){
+    const code=String(crypto.randomInt(100000,1000000));
+    db.prepare("DELETE FROM verify_codes WHERE user_id=? AND kind='password_reset'").run(user.id);
+    db.prepare("INSERT INTO verify_codes (user_id,kind,target,code,expires_at) VALUES (?,?,?,?,datetime('now','+10 minutes'))").run(user.id,"password_reset",user.phone,code);
+    try{await sendSms({to:user.phone,text:`${code} is your PataHome code to set a new password. It expires in 10 minutes.`})}catch(e){console.error("password reset sms failed:",e.message)}
+    return send(res,200,{ok:true});
+  }
   if(!user||!user.email)return send(res,200,{ok:true});
   const code=String(Math.floor(100000+Math.random()*900000));
   db.prepare("DELETE FROM verify_codes WHERE user_id=? AND kind='password_reset'").run(user.id);
@@ -982,6 +989,16 @@ router.add("POST", "/api/listings", (req, res) => {
   if (mailConfigured() && me.email && !me.email_verified)
     return send(res, 400, { error: "Verify your email first (account menu → Verify email) before posting" });
   if (settingOn("pause_listings")) return send(res, 400, { error: "Posting new listings is paused for a short while. " + setting("maintenance_message") });
+  const row = createListingFor(u.id, req.body || {}, res);
+  if (!row) return;
+  send(res, 201, listingView(row));
+});
+
+// Validates and creates a listing for ownerId. On a validation problem it answers
+// the request itself and returns null; otherwise returns the new listing row.
+function createListingFor(ownerId, body, res, extra) {
+  const req = { body };
+  const u = { id: ownerId };
   const { category, title, description, areaId, price, bedrooms } = req.body || {};
   if (!["rent", "sale", "shortlet", "land", "commercial"].includes(category)) return send(res, 400, { error: "Invalid category" });
   const land = category === "land" ? landFields(req.body) : null;
@@ -1022,6 +1039,7 @@ router.add("POST", "/api/listings", (req, res) => {
       .run(comm.deal, comm.type, comm.sizeValue, comm.sizeUnit, comm.areaSqft, comm.basis, comm.perSqft, comm.leaseMin, comm.income, pinned,
            String(req.body.titleRef || "").trim().slice(0, 60) || null, info.lastInsertRowid);
   }
+  if (extra) extra(info.lastInsertRowid);
   checkBlocklist(info.lastInsertRowid);
   const row = db.prepare(`${LISTING_SQL} WHERE l.id=?`).get(info.lastInsertRowid);
   notifyFollowers(u.id, "New listing from an owner you follow", `${row.title} is now live in ${row.area_name}.`).catch(e=>console.error("follower notification failed:",e.message));
@@ -1029,8 +1047,8 @@ router.add("POST", "/api/listings", (req, res) => {
   try { onListingPublished(u.id, row.id); } catch (e) { console.error("referral reward failed:", e.message); }
   fetchNearby(row.id).catch(e => console.error("nearby failed:", e.message));
   setTimeout(() => matchAlerts(row.id), 0);
-  send(res, 201, listingView(row));
-});
+  return row;
+}
 
 /* ================= listing freshness =================
    A listing stays live for LISTING_TTL_DAYS (default 60) after the owner last
@@ -1508,8 +1526,11 @@ router.add("POST", "/api/listings/:id/contact", (req, res, p) => {
   const requester = u ? `${u.name || "A signed-in user"}${realPhone(u.phone) ? ` (${realPhone(u.phone)})` : ""}` : "A visitor";
   db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
     .run(row.owner_id, "lead", "New contact request", `${requester} requested your contact for "${row.title}".`);
-  const owner = db.prepare("SELECT name, phone, verified FROM users WHERE id=?").get(row.owner_id);
-  send(res, 200, { ownerName: owner.name, ownerPhone: owner.phone, ownerVerified: !!owner.verified });
+  const owner = db.prepare("SELECT name, phone, whatsapp, verified FROM users WHERE id=?").get(row.owner_id);
+  // listings PataHome posts for an owner may use a different contact number (caretaker, relative, our line…)
+  const phone = row.contact_phone || owner.phone;
+  send(res, 200, { ownerName: row.contact_name || owner.name, ownerPhone: phone,
+    whatsapp: row.contact_phone ? (row.contact_whatsapp || row.contact_phone) : (owner.whatsapp || owner.phone), ownerVerified: !!owner.verified });
 });
 
 /* -------- inquiries: tenant/buyer feedback to the owner -------- */
@@ -1529,6 +1550,7 @@ router.add("POST", "/api/listings/:id/inquire", (req, res, p) => {
   db.prepare("INSERT INTO leads (listing_id,user_id) VALUES (?,?)").run(row.id, u ? u.id : null);
   db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)")
     .run(row.owner_id, "inquiry", "New message", `${String(name).trim()} asked about "${row.title}".`);
+  assistedRelay(row.id, `PataHome: ${String(name).trim()} (${String(phone).trim()}) asked about "${row.title}": "${String(message).trim().slice(0, 140)}"`);
   send(res, 201, { ok: true, inquiryId: info.lastInsertRowid, threadToken, threadUrl: `/messages?t=${threadToken}` });
 });
 
@@ -1920,12 +1942,13 @@ router.add("POST", "/api/listings/:id/viewings", async (req, res, p) => {
     .run(l.id, name, phone, email, slot.toISOString(), String(b.note || "").trim().slice(0, 500), token);
   db.prepare("INSERT INTO leads (listing_id,user_id) VALUES (?,NULL)").run(l.id);
   tellOwner(l.owner_id, "New viewing request", `${name} (${phone}) would like to view "${l.title}" on ${eatLabel(slot)}.${b.note ? ` Note: "${String(b.note).slice(0, 200)}"` : ""} Confirm or decline it in your dashboard.`);
+  assistedRelay(l.id, `PataHome: ${name} (${phone}) wants to view "${l.title}" on ${eatLabel(slot)}. Call them to confirm.`);
   if (email) tellTenant({ email, phone }, `Viewing requested — ${l.title}`,
     `Hi ${name},\n\nYour request to view "${l.title}" on ${eatLabel(slot)} has been sent to the owner. We'll let you know when they confirm.\n\nSee or cancel your request: ${SITE()}/viewing?t=${token}\n\nStay safe: never pay before you've seen the house and met the owner.\n\n— PataHome`);
   send(res, 201, { ok: true, id: info.lastInsertRowid, token, manageUrl: `/viewing?t=${token}` });
 });
 router.add("GET", "/api/viewings/:token", (req, res, p) => {
-  const v = db.prepare(`SELECT v.*, l.title, l.price, l.category, a.name area, a.county, u.name owner_name FROM viewings v
+  const v = db.prepare(`SELECT v.*, l.title, l.price, l.category, a.name area, a.county, COALESCE(l.contact_name, u.name) owner_name FROM viewings v
     JOIN listings l ON l.id=v.listing_id JOIN areas a ON a.id=l.area_id JOIN users u ON u.id=l.owner_id WHERE v.token=?`).get(p.token);
   if (!v) return send(res, 404, { error: "Viewing not found" });
   send(res, 200, { listingId: v.listing_id, title: v.title, area: `${v.area}, ${v.county}`, price: v.price, category: v.category,
@@ -1993,7 +2016,7 @@ async function notifyTenantOfReply(inquiryId) {
     return sendSms({ to: i.from_phone, text: `PataHome: the owner replied about "${i.title.slice(0, 40)}". Read & reply: ${link}` });
 }
 router.add("GET", "/api/threads/:token", (req, res, p) => {
-  const i = db.prepare(`SELECT i.*, l.title, l.price, l.category, l.status lstatus, a.name area, a.county, u.name owner_name, u.verified owner_verified
+  const i = db.prepare(`SELECT i.*, l.title, l.price, l.category, l.status lstatus, a.name area, a.county, COALESCE(l.contact_name, u.name) owner_name, u.verified owner_verified
     FROM inquiries i JOIN listings l ON l.id=i.listing_id JOIN areas a ON a.id=l.area_id JOIN users u ON u.id=l.owner_id WHERE i.thread_token=?`).get(p.token);
   if (!i) return send(res, 404, { error: "Conversation not found" });
   db.prepare("UPDATE inquiries SET tenant_unread=0 WHERE id=?").run(i.id);
@@ -3099,6 +3122,123 @@ router.add("POST", "/api/admin/broadcast", async (req, res) => {
   })().catch(() => {});
 });
 
+/* ================= assisted listings: PataHome lists for an owner =================
+   The listing belongs to the owner's own account (created quietly if needed) and
+   looks exactly like any owner listing — nothing public mentions PataHome or admin.
+   The admin chooses which number visitors reach (owner, caretaker, relative, our
+   line…), whether enquiries are also sent to that number by SMS, and records the
+   owner's consent to be listed. */
+const cleanAnyPhone = (v) => {
+  const t = String(v || "").trim();
+  if (!t) return "";
+  const d = t.replace(/[^\d+]/g, "");
+  return /^\+?\d{9,15}$/.test(d) ? d : null;
+};
+function assistedRelay(listingId, text) {
+  try {
+    const l = db.prepare("SELECT l.*, u.phone AS owner_phone FROM listings l JOIN users u ON u.id=l.owner_id WHERE l.id=?").get(listingId);
+    if (!l || !l.assisted) return;
+    const to = l.contact_phone || realPhone(l.owner_phone);
+    if (l.relay_sms && to && smsConfigured()) sendSms({ to, text: text.slice(0, 300) }).catch(e => console.error("assisted relay sms:", e.message));
+    if (l.relay_copy) {
+      const a = db.prepare("SELECT email FROM users WHERE id=?").get(l.assisted_by);
+      if (a && a.email && mailConfigured()) sendMail({ to: a.email, subject: `Enquiry for assisted listing #${l.id}`, text: `${text}\n\nListing: ${SITE()}/browse?open=${l.id}\nOwner account #${l.owner_id}` }).catch(() => {});
+    }
+  } catch (e) { console.error("assisted relay:", e.message); }
+}
+function assistedContact(b) {
+  const c = b.contact || {};
+  const phone = c.phone ? cleanAnyPhone(c.phone) : "";
+  if (phone === null) return { error: "The contact number doesn't look right — use digits, e.g. 0712345678 or +254712345678" };
+  const wa = c.whatsapp ? cleanAnyPhone(c.whatsapp) : "";
+  if (wa === null) return { error: "The WhatsApp number doesn't look right" };
+  return { name: String(c.name || "").trim().slice(0, 60) || null, phone: phone || null, whatsapp: wa || null,
+    relaySms: !!b.relaySms, relayCopy: !!b.relayCopy };
+}
+router.add("POST", "/api/admin/assisted", async (req, res) => {
+  const a = requireAdmin(req, res, "moderate"); if (!a) return;
+  const b = req.body || {}, o = b.owner || {};
+  const name = String(o.name || "").trim().slice(0, 80);
+  const phone = String(o.phone || "").trim().replace(/\s/g, "");
+  if (!name) return send(res, 400, { error: "Enter the owner's name" });
+  if (!/^0[17]\d{8}$/.test(phone)) return send(res, 400, { error: "Enter the owner's Kenyan phone, e.g. 0712345678" });
+  const email = String(o.email || "").trim().toLowerCase();
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return send(res, 400, { error: "The owner's email doesn't look right" });
+  const consentHow = String((b.consent || {}).how || "").trim();
+  if (!["call", "whatsapp", "sms", "in_person", "written"].includes(consentHow)) return send(res, 400, { error: "Record how the owner agreed to be listed" });
+  const contact = assistedContact(b);
+  if (contact.error) return send(res, 400, contact);
+  if (isBlockedIdentifier("phone", phone)) return send(res, 403, { error: "That owner's number is blocked on PataHome" });
+  // find or quietly create the owner's account
+  let owner = db.prepare("SELECT * FROM users WHERE phone=?").get(phone), created = false;
+  if (owner && owner.role === "admin") return send(res, 400, { error: "That number belongs to an admin account" });
+  if (owner && isBanned(owner)) return send(res, 400, { error: "That owner's account is suspended" });
+  if (!owner) {
+    if (email && db.prepare("SELECT 1 FROM users WHERE email=?").get(email)) return send(res, 409, { error: "That email already belongs to another account" });
+    const info = db.prepare("INSERT INTO users (name,phone,email,password_hash,country,managed,phone_verified,email_verified,whatsapp) VALUES (?,?,?,?,?,1,1,?,?)")
+      .run(name, phone, email || null, hashPassword(crypto.randomBytes(24).toString("hex")), "Kenya", email ? 1 : 0, cleanAnyPhone(o.whatsapp) || null);
+    owner = db.prepare("SELECT * FROM users WHERE id=?").get(info.lastInsertRowid);
+    created = true;
+  }
+  const listing = b.listing || {};
+  const row = createListingFor(owner.id, listing, res, (id) => {
+    db.prepare(`UPDATE listings SET assisted=1, assisted_by=?, contact_name=?, contact_phone=?, contact_whatsapp=?, relay_sms=?, relay_copy=?,
+        consent_how=?, consent_note=?, consent_at=datetime('now') WHERE id=?`)
+      .run(a.id, contact.name, contact.phone, contact.whatsapp, contact.relaySms ? 1 : 0, contact.relayCopy ? 1 : 0,
+           consentHow, String((b.consent || {}).note || "").trim().slice(0, 300) || null, id);
+  });
+  if (!row) { if (created) db.prepare("DELETE FROM users WHERE id=? AND managed=1").run(owner.id); return; }
+  audit(req, a, "assisted_create", "listing", row.id, { owner: owner.id, newAccount: created, consent: consentHow, contact: contact.phone ? "custom" : "owner" });
+  if (b.textOwner && smsConfigured())
+    sendSms({ to: phone, text: `Hi ${name.split(" ")[0]}, your ${row.title.slice(0, 40)} is now live on PataHome: ${SITE()}/listing/${row.id}. To manage it yourself, log in at ${SITE()}/dashboard with this number (tap "Forgot password" to set one).` })
+      .catch(e => console.error("assisted owner sms:", e.message));
+  send(res, 201, { listing: listingView(row), ownerId: owner.id, newAccount: created });
+});
+router.add("GET", "/api/admin/assisted", (req, res) => {
+  const a = requireAdmin(req, res, "moderate"); if (!a) return;
+  const contacts = can(a, "super") || can(a, "support");
+  const rows = db.prepare(`SELECT l.*, a.name area, u.name owner_name, u.phone owner_phone, u.managed, x.name by_name,
+      (SELECT COUNT(*) FROM leads WHERE listing_id=l.id) leads, (SELECT COUNT(*) FROM inquiries WHERE listing_id=l.id) inquiries,
+      (SELECT COUNT(*) FROM viewings WHERE listing_id=l.id) viewings
+    FROM listings l JOIN areas a ON a.id=l.area_id JOIN users u ON u.id=l.owner_id LEFT JOIN users x ON x.id=l.assisted_by
+    WHERE l.assisted=1 ORDER BY l.id DESC`).all();
+  const mask = (p) => !p ? "" : contacts ? p : maskPhone(p);
+  send(res, 200, rows.map(r => ({ id: r.id, title: r.title, category: r.category, status: r.status, price: r.price, area: r.area,
+    owner: { id: r.owner_id, name: r.owner_name, phone: mask(realPhone(r.owner_phone)), managed: !!r.managed },
+    contact: { name: r.contact_name || "", phone: mask(r.contact_phone), whatsapp: mask(r.contact_whatsapp), role: r.lister_role || "owner" },
+    relaySms: !!r.relay_sms, relayCopy: !!r.relay_copy, consent: { how: r.consent_how, note: r.consent_note || "", at: r.consent_at },
+    listedBy: r.by_name || "", leads: r.leads, inquiries: r.inquiries, viewings: r.viewings, createdAt: r.created_at })));
+});
+router.add("PATCH", "/api/admin/assisted/:id", (req, res, p) => {
+  const a = requireAdmin(req, res, "moderate"); if (!a) return;
+  const l = db.prepare("SELECT * FROM listings WHERE id=? AND assisted=1").get(p.id);
+  if (!l) return send(res, 404, { error: "Assisted listing not found" });
+  const b = req.body || {}, sets = [], params = [];
+  if (b.contact !== undefined || b.relaySms !== undefined || b.relayCopy !== undefined) {
+    const c = assistedContact({ contact: b.contact !== undefined ? b.contact : { name: l.contact_name, phone: l.contact_phone, whatsapp: l.contact_whatsapp },
+      relaySms: b.relaySms !== undefined ? b.relaySms : l.relay_sms, relayCopy: b.relayCopy !== undefined ? b.relayCopy : l.relay_copy });
+    if (c.error) return send(res, 400, c);
+    sets.push("contact_name=?", "contact_phone=?", "contact_whatsapp=?", "relay_sms=?", "relay_copy=?");
+    params.push(c.name, c.phone, c.whatsapp, c.relaySms ? 1 : 0, c.relayCopy ? 1 : 0);
+  }
+  if (b.listerRole !== undefined || b.agentFee !== undefined) {
+    const lister = listerFields({ listerRole: b.listerRole ?? l.lister_role, agentFee: b.agentFee ?? l.agent_fee });
+    if (lister.error) return send(res, 400, { error: lister.error });
+    sets.push("lister_role=?", "agent_fee=?"); params.push(lister.role, lister.fee);
+  }
+  if (b.status !== undefined) {
+    const st = String(b.status);
+    if (!["active", "rented", "sold", "under_review"].includes(st)) return send(res, 400, { error: "Unknown status" });
+    sets.push("status=?", "status_changed_at=datetime('now')"); params.push(st);
+    if (st === "active") sets.push("confirmed_at=datetime('now')", "reminded_at=NULL");
+  }
+  if (b.renew) sets.push("confirmed_at=datetime('now')", "reminded_at=NULL");
+  if (!sets.length) return send(res, 400, { error: "Nothing to change" });
+  db.prepare(`UPDATE listings SET ${sets.join(",")} WHERE id=?`).run(...params, l.id);
+  audit(req, a, "assisted_edit", "listing", l.id, b);
+  send(res, 200, { ok: true });
+});
+
 applySettings();
 
 router.add("GET", "/api/health", (req, res) => {
@@ -3259,7 +3399,7 @@ function listingPage(req, res, p) {
       ${isLand ? `<div class="meta">📐 ${escapeHtml(landSize)}</div><p style="background:#fff8ec;border:1px solid #f3dfb8;border-radius:10px;padding:10px 12px;color:#6b4712;font-size:.9rem"><b>Before paying anything:</b> ${row.category === "commercial" && row.land_deal === "lease" ? "view the premises and confirm the landlord owns or manages it" : "do an official search on Ardhisasa and visit the property with the owner"}.</p>` : ""}
       <div class="meta">📍 ${escapeHtml(row.area_name)}, ${escapeHtml(row.county)} County
         ${row.bedrooms != null ? ` · 🛏 ${row.bedrooms === 0 ? "Bedsitter" : row.bedrooms + " bedroom(s)"}` : ""}
-        · Listed by ${escapeHtml(row.owner_name)}${row.owner_verified ? " ✓ verified owner" : ""}</div>
+        · Listed by ${escapeHtml(row.contact_name || row.owner_name)}${row.owner_verified ? " ✓ verified owner" : ""}</div>
       ${row.description ? `<p>${escapeHtml(row.description)}</p>` : ""}
       <a class="cta" href="/browse?open=${row.id}">See photos &amp; contact the ${row.lister_role === "agent" ? "agent" : "owner"}</a>
     </div>

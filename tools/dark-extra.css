@@ -19,7 +19,7 @@ html.dark body.dark .leaflet-popup-content-wrapper,html.dark body.dark .leaflet-
 /* elements whose colours are set inline by scripts */
 html.dark body.dark #phInstall{background:#13231e!important;border-color:#2c453b!important;color:#e6f1ec!important}
 html.dark body.dark #phInstall span,html.dark body.dark #phInstall .phi-x{color:#9fb7ad!important}
-html.dark body.dark #dAdminBanner{background:#3a1512!important;border-color:#7a2c24!important;color:#ffc9c2!important}
+html.dark body.dark #dNotice{background:#3a1512!important;border-color:#7a2c24!important;color:#ffc9c2!important}
 html.dark body.dark .lang-btn{background:#13231e!important;border-color:#2c453b!important}
 html.dark body.dark .lang-btn span{color:#9fb7ad}
 html.dark body.dark .lang-btn span.on{background:#3fa982;color:#06140f}

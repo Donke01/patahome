@@ -345,7 +345,7 @@ test("admin powers: roles, bans, sign-out, view-as, listing controls, blocklist,
 
   // edit, banner, feature
   let r = await call("PATCH", `/api/admin/listings/${l.id}`, { price: 3500, adminBanner: "Under investigation — do not pay" }, mod);
-  assert.equal(r.status, 200); assert.equal(r.body.adminBanner, "Under investigation — do not pay"); assert.equal(r.body.price, 3500);
+  assert.equal(r.status, 200); assert.equal(r.body.notice, "Under investigation — do not pay"); assert.equal(r.body.price, 3500);
   assert.equal((await call("POST", `/api/admin/listings/${l.id}/feature`, { days: 3 }, mod)).status, 200);
   assert.equal((await call("GET", "/api/listings/" + l.id)).body.featured, true);
 
@@ -417,4 +417,44 @@ test("admin powers: roles, bans, sign-out, view-as, listing controls, blocklist,
     assert.ok(log.includes(a), "audit has " + a);
   assert.equal((await call("GET", "/api/admin/audit", null, mod)).status, 403);
   assert.throws(() => db.prepare("DELETE FROM admin_audit").run());
+});
+
+test("assisted listings: PataHome lists for an owner, nothing public mentions admin", async () => {
+  const sup = (await call("POST", "/api/auth/login", { phone: "0700000001", password: "adminpass123" })).body.token;
+  const base = { owner: { name: "Grace Atieno", phone: "0722555444" }, consent: { how: "call", note: "Called on 26 Sep" },
+    listing: { category: "rent", areaId: areaId("Ruaka"), title: "Quiet 2BR near the stage", price: 18000, bedrooms: 2 } };
+  assert.equal((await call("POST", "/api/admin/assisted", { ...base, consent: {} }, sup)).status, 400, "consent is required");
+  assert.equal((await call("POST", "/api/admin/assisted", { ...base, contact: { phone: "12ab" } }, sup)).status, 400);
+
+  let r = await call("POST", "/api/admin/assisted", { ...base, contact: { name: "Mama Wanjiru", phone: "+254 711 000 222" }, relaySms: true }, sup);
+  assert.equal(r.status, 201, JSON.stringify(r.body));
+  assert.equal(r.body.newAccount, true);
+  const id = r.body.listing.id;
+
+  // the public sees an ordinary listing
+  const pub = await call("GET", "/api/listings/" + id);
+  assert.equal(pub.body.ownerName, "Mama Wanjiru");
+  assert.doesNotMatch(JSON.stringify(pub.body), /assist|admin|consent|contact_phone|relay/i);
+  const page = (await call("GET", "/listing/" + id)).body.html;
+  assert.match(page, /Mama Wanjiru/); assert.doesNotMatch(page, /admin|assisted/i);
+  const found = (await call("GET", "/api/search?q=quiet%202br")).body.listings.find(x => x.id === id);
+  assert.ok(found); assert.doesNotMatch(JSON.stringify(found), /assist|admin/i);
+
+  // visitors reach the chosen number
+  const c = await call("POST", `/api/listings/${id}/contact`);
+  assert.equal(c.body.ownerPhone, "+254711000222"); assert.equal(c.body.whatsapp, "+254711000222");
+
+  // the owner's account is theirs: a second assisted listing attaches to it
+  r = await call("POST", "/api/admin/assisted", { ...base, listing: { ...base.listing, title: "Bedsitter at the back", price: 6000, bedrooms: 0 } }, sup);
+  assert.equal(r.body.newAccount, false);
+  assert.equal((await call("POST", `/api/listings/${r.body.listing.id}/contact`)).body.ownerPhone, "0722555444", "owner's phone by default");
+
+  // admin list, contact change, mark let
+  const list = (await call("GET", "/api/admin/assisted", null, sup)).body;
+  assert.equal(list.length, 2); assert.equal(list.find(x => x.id === id).consent.how, "call");
+  assert.equal((await call("PATCH", `/api/admin/assisted/${id}`, { contact: { name: "", phone: "0733111222" }, listerRole: "caretaker" }, sup)).status, 200);
+  assert.equal((await call("POST", `/api/listings/${id}/contact`)).body.ownerPhone, "0733111222");
+  assert.equal((await call("GET", "/api/listings/" + id)).body.listerRole, "caretaker");
+  assert.equal((await call("PATCH", `/api/admin/assisted/${id}`, { status: "rented" }, sup)).status, 200);
+  assert.ok((await call("GET", "/api/admin/audit?action=assisted_create", null, sup)).body.length >= 2);
 });

@@ -210,6 +210,7 @@
     <button class="tab" data-tab="users" data-cap="view" onclick="setTab('users')">People</button>
     <button class="tab" data-tab="verifs" data-cap="moderate" onclick="setTab('verifs')">Verifications <span id="vCount" style="background:var(--red);color:#fff;border-radius:999px;padding:1px 8px;font-size:.7rem;display:none"></span></button>
     <button class="tab" data-tab="reports" data-cap="moderate" onclick="setTab('reports')">Reports &amp; flags <span id="rCount" style="background:var(--red);color:#fff;border-radius:999px;padding:1px 8px;font-size:.7rem;display:none"></span></button>
+    <button class="tab" data-tab="assisted" data-cap="moderate" onclick="setTab('assisted')">Listed for owners</button>
     <button class="tab" data-tab="support" data-cap="support" onclick="setTab('support')">Support <span id="sCount" style="background:var(--red);color:#fff;border-radius:999px;padding:1px 8px;font-size:.7rem;display:none"></span></button>
     <button class="tab" data-tab="growth" data-cap="view" onclick="setTab('growth')">Growth</button>
     <button class="tab" data-tab="traffic" data-cap="view" onclick="setTab('traffic')">Traffic</button>
@@ -348,7 +349,7 @@ function tickUpdated(){
 setInterval(tickUpdated,5000);
 setInterval(()=>{if(token&&$("dash").style.display!=="none"&&!document.hidden)refresh().catch(()=>{})},30000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&token&&$("dash").style.display!=="none")refresh().catch(()=>{})});
-const EXTRA_TABS=["traffic","photos","backups","growth","site","audit","message"];
+const EXTRA_TABS=["traffic","photos","backups","growth","site","audit","message","assisted"];
 function setTab(t){
   tab=t;
   document.querySelectorAll(".tab[data-tab]").forEach(b=>b.classList.toggle("on",b.dataset.tab===t));
@@ -537,5 +538,6 @@ async function reviewVerif(id,approve){
 <script src="/land.js?v=1"></script>
 <script src="/commercial.js?v=1"></script>
 <script src="/admin-powers.js?v=2"></script>
+<script src="/admin-assisted.js?v=1"></script>
 </body>
 </html>
