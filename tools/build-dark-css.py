@@ -14,7 +14,7 @@ import colorsys, os, re, sys
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "public")
 PAGES = [  # (file, body class)
-    ("dashboard.html", "page-dashboard"),
+    
     ("messages.html", "page-messages"), ("viewing.html", "page-viewing"), ("privacy.html", "page-legal"),
     ("terms.html", "page-legal"), ("owner.html", "page-owner"), ("offline.html", "page-offline"),
 ]
