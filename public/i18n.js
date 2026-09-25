@@ -75,6 +75,11 @@
     "Land details": "Maelezo ya ardhi", "Title": "Hati", "Land use": "Matumizi ya ardhi", "Road": "Barabara", "Terrain": "Hali ya ardhi",
     "Fenced": "Imezungushiwa ua", "Beacons in place": "Mawe ya mipaka yapo", "Surveyed": "Imepimwa", "Can be subdivided": "Inaweza kugawanywa",
     "Before paying anything:": "Kabla ya kulipa chochote:",
+    "Commercial": "Biashara", "Shops & offices": "Maduka na ofisi", "Commercial property": "Majengo ya biashara",
+    "Sale or to let": "Kuuza au kupangisha", "To let": "Ya kupangisha", "Any type": "Aina yoyote", "Any floor area": "Ukubwa wowote",
+    "Price per sq ft: low → high": "Bei kwa futi mraba: chini → juu", "Frontage": "Upande wa barabara", "Fit-out": "Umaliziaji",
+    "Occupancy": "Wapangaji", "Floors": "Ghorofa", "Parking slots": "Nafasi za maegesho",
+    "Before paying a deposit:": "Kabla ya kulipa amana:",
     "My messages & viewings ": "Jumbe na ziara zangu", "Viewings": "Ziara", "Conversations": "Mazungumzo", "View listing →": "Tazama tangazo →"
   };
   var HEADS_SW = [

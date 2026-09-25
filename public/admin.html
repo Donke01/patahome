@@ -125,7 +125,7 @@
   .ph-item .btn{margin:0 8px 8px}
   .bk-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px;flex-wrap:wrap}
 </style>
-<link rel="stylesheet" href="/refresh.css?v=20260924-5">
+<link rel="stylesheet" href="/refresh.css?v=20260925-1">
 </head>
 <body>
 
@@ -300,7 +300,7 @@ function setTab(t){
   renderTab();
 }
 function renderTab(){
-  const CAT={rent:"Rent",sale:"Sale",shortlet:"Airbnb",land:"Land"};
+  const CAT={rent:"Rent",sale:"Sale",shortlet:"Airbnb",land:"Land",commercial:"Commercial"};
   if(tab==="listings"){
     $("panel").innerHTML=`<table><tr><th>Listing</th><th>Owner</th><th>Price</th><th>Leads</th><th>Status</th><th></th></tr>`+
       cache.listings.map(x=>`<tr>
@@ -313,9 +313,9 @@ function renderTab(){
       </tr>`).join("")+`</table>`;
   }else if(tab==="verifs"){
     const v=cache.verifs||[], ld=cache.landDocs||[];
-    const landHtml=ld.length?`<h3 style="margin:22px 0 4px;font-size:1rem">Land documents to check</h3>
+    const landHtml=ld.length?`<h3 style="margin:22px 0 4px;font-size:1rem">Land &amp; commercial documents to check</h3>
       <div class="muted" style="margin:0 0 10px">Compare the title / LR number with the official search. Approve only if the registered owner matches the account and there are no cautions or charges you weren't told about.</div>
-      <table><tr><th>Land</th><th>Title / LR no.</th><th>Documents</th><th></th></tr>`+
+      <table><tr><th>Property</th><th>Title / LR no.</th><th>Documents</th><th></th></tr>`+
       ld.map(x=>`<tr>
         <td><b>${esc(x.title)}</b><div class="muted">${esc(x.area)} · ${esc(x.size)} · ${esc(x.price)}</div><div class="muted">Owner: ${esc(x.owner)} · <a href="/browse.html?open=${x.id}" target="_blank" rel="noopener">#${x.id} ↗</a></div></td>
         <td><b>${esc(x.titleRef||"—")}</b></td>

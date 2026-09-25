@@ -258,3 +258,60 @@ test("land: units, price per acre, lease, filters, pages and document checks", a
   assert.equal((await call("PATCH", "/api/listings/" + leaseId, { status: "rented" }, t)).status, 200, "lease land can be marked leased");
   assert.match((await call("GET", "/sitemap.xml")).body.html, /land-for-sale\/kitale-town-cbd/);
 });
+
+test("commercial: shops, offices and buildings for sale or to let", async () => {
+  const t = (await call("POST", "/api/auth/register", { name: "Landlord Biz", identifier: "0711888000", password: "password123" })).body.token;
+  const C = (b) => call("POST", "/api/listings", { category: "commercial", areaId: areaId("Westlands, Nairobi"), ...b }, t);
+  assert.equal((await C({ title: "No type", price: 50000, deal: "lease" })).status, 400);
+  assert.equal((await C({ title: "Per sq ft without area", price: 120, deal: "lease", commType: "office", priceBasis: "sqft_month" })).status, 400);
+
+  let r = await C({ title: "Ground-floor shop on Waiyaki Way", price: 80000, deal: "lease", commType: "shop", sizeValue: 800, sizeUnit: "sqft",
+    priceBasis: "month", leaseMin: "2 years", features: { frontage: "main", fit: "shell", parking: true, floors: 1, bogus: "x" } });
+  assert.equal(r.status, 201, JSON.stringify(r.body));
+  assert.equal(r.body.pricePerSqft, 100);
+  assert.equal(r.body.leaseMin, "2 years");
+  assert.equal(r.body.features.bogus, undefined);
+  assert.equal(r.body.bedrooms, null);
+  const shopId = r.body.id;
+
+  r = await C({ title: "Office floor 200 m²", price: 110, deal: "lease", commType: "office", sizeValue: 200, sizeUnit: "sqm", priceBasis: "sqft_month" });
+  assert.equal(r.status, 201, JSON.stringify(r.body));
+  assert.equal(r.body.areaSqft, 2153);
+
+  r = await C({ title: "Rental block with 24 units", price: 48000000, deal: "sale", commType: "rental_block", incomeMonth: 400000,
+    features: { tenancy: "tenanted", units: 24 }, titleRef: "NAIROBI/BLOCK 1/99" });
+  assert.equal(r.status, 201, JSON.stringify(r.body));
+  assert.equal(r.body.incomeMonth, 400000);
+  assert.equal(r.body.titleRef, undefined, "title number stays private");
+  const blockId = r.body.id;
+
+  r = await call("GET", "/api/search?cat=commercial&deal=lease");
+  assert.deepEqual(r.body.listings.map(x => x.title).sort(), ["Ground-floor shop on Waiyaki Way", "Office floor 200 m²"]);
+  r = await call("GET", "/api/search?cat=commercial&commType=rental_block");
+  assert.deepEqual(r.body.listings.map(x => x.title), ["Rental block with 24 units"]);
+  r = await call("GET", "/api/search?cat=commercial&minSqft=1000");
+  assert.deepEqual(r.body.listings.map(x => x.title), ["Office floor 200 m²"]);
+  r = await call("GET", "/api/search?q=duka%20westlands");
+  assert.ok(r.body.listings.some(x => x.title.startsWith("Ground-floor shop")));
+
+  r = await call("GET", "/commercial-to-let/westlands-nairobi");
+  assert.equal(r.status, 200); assert.match(r.body.html, /Ground-floor shop/); assert.doesNotMatch(r.body.html, /Rental block/);
+  r = await call("GET", "/commercial-for-sale/westlands-nairobi");
+  assert.equal(r.status, 200); assert.match(r.body.html, /Rental block/); assert.match(r.body.html, /yield/);
+  assert.equal((await call("GET", "/commercial-for-sale/westlands-nairobi/bedsitters")).status, 404);
+  assert.match((await call("GET", "/sitemap.xml")).body.html, /commercial-to-let\/westlands-nairobi/);
+
+  // documents check for a building on sale
+  assert.equal((await call("POST", `/api/listings/${blockId}/land-docs`, { titleRef: "NAIROBI/BLOCK 1/99", docs: ["patahome/verify/block-search"] }, t)).status, 200);
+  const admin = (await call("POST", "/api/auth/login", { phone: "0700000001", password: "adminpass123" })).body.token;
+  r = await call("GET", "/api/admin/land-docs", null, admin);
+  assert.ok(r.body.some(x => x.id === blockId && x.category === "commercial"));
+  await call("POST", `/api/admin/land-docs/${blockId}`, { action: "approve" }, admin);
+  assert.equal((await call("GET", "/api/listings/" + blockId)).body.docsChecked, true);
+
+  // editing re-normalises; a let shop can be marked let
+  r = await call("PATCH", "/api/listings/" + shopId, { price: 96000 }, t);
+  assert.equal(r.status, 200, JSON.stringify(r.body));
+  assert.equal((await call("GET", "/api/listings/" + shopId)).body.pricePerSqft, 120);
+  assert.equal((await call("PATCH", "/api/listings/" + shopId, { status: "rented" }, t)).status, 200);
+});

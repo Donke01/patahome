@@ -1057,3 +1057,6 @@ footer.pf .pf-mail:hover{background:rgba(95,211,160,.14)}
 /* Land badge + filters */
 .badge.land{background:rgba(236,244,222,.95);color:#3d5a1c;border:1px solid rgba(92,128,48,.35)}
 .land-only{display:none}
+/* Commercial badge + filters */
+.badge.commercial{background:rgba(226,240,247,.95);color:#014B6A;border:1px solid rgba(1,75,106,.3)}
+.comm-only{display:none}

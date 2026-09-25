@@ -343,6 +343,42 @@ for (const col of [
 ]) { try { db.exec("ALTER TABLE listings ADD COLUMN " + col); } catch (e) { /* exists */ } }
 try { db.exec("CREATE INDEX IF NOT EXISTS idx_listings_land ON listings(category, land_deal, size_acres)"); } catch (e) { /* ignore */ }
 
+/* ---- Commercial property (shops, offices, warehouses, buildings…) for sale or lease.
+   Reuses land_deal (sale|lease), size_value/size_unit, price_basis, lease_min,
+   exact_pin and the private title documents; adds its own type/area/income columns. */
+for (const col of ["comm_type TEXT", "area_sqft REAL", "price_per_sqft REAL", "income_month INTEGER"]) {
+  try { db.exec("ALTER TABLE listings ADD COLUMN " + col); } catch (e) { /* exists */ }
+}
+// Allow category 'commercial'. SQLite can't ALTER a CHECK constraint, so rebuild the
+// table from its own schema (every column and index kept). Foreign keys are switched
+// off for the swap so child rows (inquiries, viewings…) are not cascade-deleted.
+try {
+  const info = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='listings'").get();
+  if (info && info.sql && !info.sql.includes("'commercial'")) {
+    const newSql = info.sql
+      .replace(/CHECK\s*\(\s*category IN \(([^)]*)\)\s*\)/, (m, list) => `CHECK (category IN (${list},'commercial'))`)
+      .replace(/^CREATE TABLE\s+("?)listings\1/, "CREATE TABLE listings_new");
+    if (!newSql.includes("'commercial'") || !newSql.startsWith("CREATE TABLE listings_new")) throw new Error("unexpected listings schema");
+    const cols = db.prepare("PRAGMA table_info(listings)").all().map(c => `"${c.name}"`).join(",");
+    const idx = db.prepare("SELECT sql FROM sqlite_master WHERE type='index' AND tbl_name='listings' AND sql IS NOT NULL").all().map(r => r.sql);
+    db.exec("PRAGMA foreign_keys = OFF");
+    db.exec("BEGIN");
+    db.exec(newSql);
+    db.exec(`INSERT INTO listings_new (${cols}) SELECT ${cols} FROM listings`);
+    db.exec("DROP TABLE listings");
+    db.exec("ALTER TABLE listings_new RENAME TO listings");
+    for (const s of idx) db.exec(s);
+    db.exec("COMMIT");
+    db.exec("PRAGMA foreign_keys = ON");
+    console.log("✓ Migrated listings table: 'commercial' category enabled.");
+  }
+} catch (e) {
+  try { db.exec("ROLLBACK"); } catch {}
+  try { db.exec("PRAGMA foreign_keys = ON"); } catch {}
+  console.error("commercial migration failed:", e.message);
+}
+try { db.exec("CREATE INDEX IF NOT EXISTS idx_listings_comm ON listings(category, comm_type, area_sqft)"); } catch (e) { /* ignore */ }
+
 /* Login sessions — one row per signed-in device. Tokens carry the session id,
    so a session can be expired for inactivity, capped in length, or revoked
    (logout, "sign out everywhere", password/phone/email change). */

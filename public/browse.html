@@ -452,7 +452,7 @@
     .foot-tag{margin-left:auto;margin-right:auto;text-align:center}
   }
 </style>
-  <link rel="stylesheet" href="/refresh.css?v=20260924-5">
+  <link rel="stylesheet" href="/refresh.css?v=20260925-1">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#0B5D3B">
 </head>
@@ -550,6 +550,14 @@
       <option value="commercial">Commercial</option><option value="mixed">Mixed use</option><option value="industrial">Industrial</option>
     </select>
     <label class="direct-toggle land-only"><input type="checkbox" id="titleReady" onchange="render()"> Title deed ready</label>
+    <select id="commDeal" onchange="render()" class="comm-only">
+      <option value="">Sale or to let</option><option value="sale">For sale</option><option value="lease">To let</option>
+    </select>
+    <select id="commType" onchange="render()" class="comm-only"><option value="">Any type</option></select>
+    <select id="commSize" onchange="render()" class="comm-only">
+      <option value="">Any floor area</option><option value="0-500">Up to 500 sq ft</option><option value="500-2000">500 – 2,000 sq ft</option>
+      <option value="2000-10000">2,000 – 10,000 sq ft</option><option value="10000-0">10,000+ sq ft</option>
+    </select>
     <select id="bedFilter" onchange="render()">
       <option value="">Any bedrooms</option>
       <option value="0">Bedsitter / Studio</option>
@@ -563,7 +571,8 @@
       <option value="price-desc">Price: high → low</option>
       <option value="newest">Newest</option>
       <option value="acre-asc" class="land-only">Price per acre: low → high</option>
-      <option value="size-desc" class="land-only">Largest first</option>
+      <option value="sqft-asc" class="comm-only">Price per sq ft: low → high</option>
+      <option value="size-desc" class="land-only comm-only">Largest first</option>
     </select>
     <label class="direct-toggle"><input type="checkbox" id="directOnly" onchange="render()"> Direct from owners only</label>
     <span class="sort-label" id="resultCount"></span>
@@ -827,6 +836,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="/land.js?v=1"></script>
+<script src="/commercial.js?v=1"></script>
 <script src="/lightbox.js?v=20260923-1" defer></script>
 <script>
 /* ================= CONFIG ================= */
@@ -841,13 +851,15 @@ const CAT = {
   rent:    {label:"For Rent",   unit:"/month", grad:"linear-gradient(140deg,#0d6b50,#14735a)", gal:["home","sofa","shower"], badge:"rent"},
   sale:    {label:"For Sale",   unit:"",       grad:"linear-gradient(140deg,#20272e,#3d4b56)", gal:["home","tree","key"],    badge:"sale"},
   shortlet:{label:"Airbnb", unit:"/night", grad:"linear-gradient(140deg,#8a4a1a,#c68a3a)", gal:["home","sofa","key"],    badge:"shortlet"},
-  land:    {label:"Land",   unit:"",       grad:"linear-gradient(140deg,#4d6b2a,#7f8f3a)", gal:["tree","key","home"],    badge:"land"}
+  land:    {label:"Land",   unit:"",       grad:"linear-gradient(140deg,#4d6b2a,#7f8f3a)", gal:["tree","key","home"],    badge:"land"},
+  commercial:{label:"Commercial",unit:"",   grad:"linear-gradient(140deg,#014B6A,#0189AD)", gal:["home","key","home"],    badge:"commercial"}
 };
 const AMENITIES = {
   rent:["Secure compound","Water 24/7","Parking","Near matatu route"],
   sale:["Ready title","Gated community","Mains power","Borehole"],
   shortlet:["Furnished","WiFi included","Kitchen","Instant check-in"],
-  land:[]
+  land:[],
+  commercial:[]
 };
 
 /* ================= STATE ================= */
@@ -896,14 +908,19 @@ const toItem=x=>({
   posted:timeAgo(x.createdAt),owner:x.ownerName,ownerId:x.ownerId,verified:x.ownerVerified,
   role:x.listerRole||"owner",fee:x.agentFee||"",
   features:x.features||{},video:x.video||null,nearby:x.nearby||null,featured:!!x.featured,
+  deal:x.deal,commType:x.commType,areaSqft:x.areaSqft,pricePerSqft:x.pricePerSqft,incomeMonth:x.incomeMonth,
   landDeal:x.landDeal,sizeValue:x.sizeValue,sizeUnit:x.sizeUnit,sizeAcres:x.sizeAcres,priceBasis:x.priceBasis,pricePerAcre:x.pricePerAcre,
   leaseMin:x.leaseMin,exactPin:!!x.exactPin,docsChecked:!!x.docsChecked,
   photos:x.photoUrls||[]
 });
 // Land shows its deal type instead of the generic category label
-const priceTxt=x=>x.cat==="land"&&window.PH_LAND?PH_LAND.priceLabel(x).main:fmt(x.price)+CAT[x.cat].unit;
-const catLabel=x=>x.cat==="land"?(x.landDeal==="lease"?"Land for lease":"Land for sale"):CAT[x.cat].label;
+const priceTxt=x=>x.cat==="commercial"&&window.PH_COMM?PH_COMM.priceLabel(x).main:x.cat==="land"&&window.PH_LAND?PH_LAND.priceLabel(x).main:fmt(x.price)+CAT[x.cat].unit;
+const catLabel=x=>x.cat==="land"?(x.landDeal==="lease"?"Land for lease":"Land for sale")
+  :x.cat==="commercial"?((window.PH_COMM&&PH_COMM.TYPES[x.commType]||"Commercial").split(" / ")[0]+(x.deal==="lease"?" to let":" for sale")):CAT[x.cat].label;
+if(window.PH_COMM)document.getElementById("commType").insertAdjacentHTML("beforeend",Object.entries(PH_COMM.TYPES).map(([k,v])=>`<option value="${k}">${v}</option>`).join(""));
+const commSize=x=>window.PH_COMM?[PH_COMM.TYPES[x.commType],x.sizeValue?PH_COMM.areaLabel(x.sizeValue,x.sizeUnit,x.areaSqft):""].filter(Boolean).join(" · "):"";
 function priceHTML(x){
+  if(x.cat==="commercial"&&window.PH_COMM){const p=PH_COMM.priceLabel(x);return `${esc(p.main)}${p.extra?` <small>${esc(p.extra)}</small>`:""}`}
   if(x.cat!=="land"||!window.PH_LAND)return `${fmt(x.price)} <small>${CAT[x.cat].unit}</small>`;
   const p=PH_LAND.priceLabel(x);return `${esc(p.main)}${p.extra?` <small>${esc(p.extra)}</small>`:""}`;
 }
@@ -1251,11 +1268,18 @@ function searchQuery(page){
   const pr=document.getElementById("priceFilter").value;
   const bd=document.getElementById("bedFilter").value;
   let sort=document.getElementById("sortSelect").value;
-  const land=activeCat==="land";
-  document.querySelectorAll(".land-only").forEach(el=>el.style.display=land?"":"none");
-  document.getElementById("bedFilter").style.display=land?"none":"";
-  document.getElementById("priceFilter").style.display=land?"none":"";
-  if(!land&&(sort==="acre-asc"||sort==="size-desc")){sort="newest";document.getElementById("sortSelect").value="newest"}
+  const land=activeCat==="land",comm=activeCat==="commercial";
+  document.querySelectorAll(".land-only,.comm-only").forEach(el=>el.style.display="none");
+  document.querySelectorAll(land?".land-only":comm?".comm-only":"#none").forEach(el=>el.style.display="");
+  document.getElementById("bedFilter").style.display=land||comm?"none":"";
+  document.getElementById("priceFilter").style.display=land||comm?"none":"";
+  if((!land&&sort==="acre-asc")||(!comm&&sort==="sqft-asc")||(!land&&!comm&&sort==="size-desc")){sort="newest";document.getElementById("sortSelect").value="newest"}
+  if(comm){
+    const g=id=>document.getElementById(id).value;
+    if(g("commDeal"))P.set("deal",g("commDeal"));
+    if(g("commType"))P.set("commType",g("commType"));
+    if(g("commSize")){const [lo,hi]=g("commSize").split("-").map(Number);if(lo)P.set("minSqft",lo);if(hi)P.set("maxSqft",hi)}
+  }
   if(land){
     const g=id=>document.getElementById(id).value;
     if(g("landDeal"))P.set("landDeal",g("landDeal"));
@@ -1264,8 +1288,8 @@ function searchQuery(page){
     if(document.getElementById("titleReady").checked)P.set("titleReady","1");
   }
   if(q)P.set("q",q);
-  if(pr&&!land)P.set("price",pr);
-  if(bd!==""&&!land)P.set("beds",bd);
+  if(pr&&!land&&!comm)P.set("price",pr);
+  if(bd!==""&&!land&&!comm)P.set("beds",bd);
   if(userLoc){P.set("lat",userLoc[0]);P.set("lng",userLoc[1])}
   else if(sort==="distance")sort="newest"; // nothing to measure from yet
   P.set("sort",sort);
@@ -1295,7 +1319,7 @@ function cardHTML(x,i){
         <div class="title">${esc(x.title)}</div>
         <div class="meta">
           <span>${PIN_SVG}${esc(x.area)}</span>
-          ${x.cat==="land"&&window.PH_LAND?`<span>📐 ${esc(PH_LAND.sizeLabel(x.sizeValue,x.sizeUnit,x.sizeAcres))}</span>`:x.beds!==null?`<span>${BED_SVG}${x.beds===0?"Bedsitter":x.beds+" BR"}</span>`:""}
+          ${x.cat==="commercial"?`<span>🏢 ${esc(commSize(x))}</span>`:x.cat==="land"&&window.PH_LAND?`<span>📐 ${esc(PH_LAND.sizeLabel(x.sizeValue,x.sizeUnit,x.sizeAcres))}</span>`:x.beds!==null?`<span>${BED_SVG}${x.beds===0?"Bedsitter":x.beds+" BR"}</span>`:""}
           <span>${CLOCK_SVG}${x.posted}</span>
         </div>
         ${(()=>{const t=trustLine(x);return `<div class="listing-trust ${t.cls}">${esc(t.txt)}</div>`})()}
@@ -1378,7 +1402,7 @@ function renderMarkers(list){
   list.forEach(x=>{
     const c=CAT[x.cat];
     const m=L.marker([x.lat,x.lng]).addTo(map)
-      .bindPopup(`<b>${esc(x.title)}</b><br>${x.cat==="land"&&window.PH_LAND?esc(PH_LAND.priceLabel(x).main):fmt(x.price)+c.unit}<br>${esc(x.area)}<br><a href="#" onclick="openContact(${x.id});return false">Contact owner</a>`);
+      .bindPopup(`<b>${esc(x.title)}</b><br>${esc(priceTxt(x))}<br>${esc(x.area)}<br><a href="#" onclick="openContact(${x.id});return false">Contact owner</a>`);
     markers.push(m);
   });
 }
@@ -1414,8 +1438,15 @@ function openDetail(id){
   document.getElementById("dCat").className="dm-cat "+c.badge;
   document.getElementById("dPlace").textContent=x.area;
   document.getElementById("dPrice").innerHTML=priceHTML(x);
-  const isLand=x.cat==="land";
+  const isLand=x.cat==="land",isComm=x.cat==="commercial";
   const facts=[];
+  if(isComm&&window.PH_COMM){
+    facts.push(["🏢 ",commSize(x)]);
+    if(x.deal==="lease"&&x.leaseMin)facts.push(["🗓 ","Minimum lease: "+x.leaseMin]);
+    if(x.incomeMonth)facts.push(["💰 ","Earning KES "+Number(x.incomeMonth).toLocaleString("en-KE")+"/month"]);
+    if(x.docsChecked)facts.push(["✓ ","Documents checked"]);
+    if(x.exactPin)facts.push(["📍 ","Exact location on map"]);
+  }
   if(isLand&&window.PH_LAND){
     facts.push(["📐 ",PH_LAND.sizeLabel(x.sizeValue,x.sizeUnit,x.sizeAcres)]);
     if(x.landDeal==="lease"&&x.leaseMin)facts.push(["🗓 ","Minimum lease: "+x.leaseMin]);
@@ -1432,13 +1463,17 @@ function openDetail(id){
   // Only what the owner actually told us — no made-up amenities.
   const F=x.features||{};
   const LD=(window.PH_LAND&&PH_LAND.DETAILS)||{};
-  const KV=isLand?[
+  const CD=(window.PH_COMM&&PH_COMM.DETAILS)||{};
+  const KV=isComm?[["Type",window.PH_COMM&&PH_COMM.TYPES[x.commType]],["Frontage",CD.frontage&&CD.frontage[F.frontage]],["Fit-out",CD.fit&&CD.fit[F.fit]],
+    ["Power",CD.power&&CD.power[F.power]],["Occupancy",CD.tenancy&&CD.tenancy[F.tenancy]],["Title",CD.title&&CD.title[F.title]],
+    ["Floors",F.floors],["Parking slots",F.parkingSlots],["Units / rooms",F.units],["Service charge",F.serviceCharge],["Deposit",F.deposit]].filter(k=>k[1]!=null&&k[1]!=="")
+   :isLand?[
     ["Title",F.title?(LD.title[F.title]+(F.title==="leasehold"&&F.leaseYears?` · ${F.leaseYears} yrs left`:"")):null],["Land use",LD.use&&LD.use[F.use]],
     ["Road",F.road?(LD.road[F.road]+(F.roadKm!=null&&F.road!=="tarmac"?` · ${F.roadKm} km to tarmac`:"")):(F.roadKm!=null?F.roadKm+" km to tarmac":null)],
     ["Water",LD.water&&LD.water[F.water]],["Electricity",LD.power&&LD.power[F.power]],["Terrain",LD.terrain&&LD.terrain[F.terrain]]].filter(k=>k[1])
    :[["Deposit",F.deposit],["Service charge",F.serviceCharge],["Water",{included:"Included in rent",metered:"Metered",borehole:"Borehole",tank:"Tank / delivered"}[F.water]],
     ["Electricity",{token:"Prepaid tokens",postpaid:"Postpaid bill",included:"Included in rent",solar:"Solar"}[F.power]],["Floor",F.floor]].filter(k=>k[1]);
-  const TICK=isLand?{fenced:"Fenced",beacons:"Beacons in place",surveyed:"Surveyed",subdivisible:"Can be subdivided"}
+  const TICK=isComm?Object.assign({},window.PH_COMM?PH_COMM.TICKS:{}):isLand?{fenced:"Fenced",beacons:"Beacons in place",surveyed:"Surveyed",subdivisible:"Can be subdivided"}
     :{parking:"Parking",security:"Security guard",gated:"Gated compound",borehole:"Borehole",backupPower:"Backup power",wifi:"Wi-Fi",furnished:"Furnished",pets:"Pets allowed"};
   const ticks=Object.keys(TICK).filter(k=>F[k]);
   if(isLand&&Array.isArray(F.suits))F.suits.forEach(k=>{if(LD.suits&&LD.suits[k]){TICK["suit_"+k]="Suits "+LD.suits[k].toLowerCase();ticks.push("suit_"+k)}});
@@ -1468,9 +1503,12 @@ function openDetail(id){
   document.getElementById("dFollowBtn").onclick=()=>openFollow(id);
   document.getElementById("dReportBtn").onclick=()=>openReport(id);
   document.getElementById("dBookBtn").onclick=()=>openViewing(id);
-  document.getElementById("dBookBtn").lastChild.nodeValue=isLand?"Book a free site visit":"Book a free viewing";
+  document.getElementById("dBookBtn").lastChild.nodeValue=isLand||isComm?"Book a free site visit":"Book a free viewing";
   const safe=document.querySelector("#detailModal .dm-safe span");
-  if(safe)safe.innerHTML=isLand
+  if(safe)safe.innerHTML=isComm
+    ?(x.deal==="lease"?'<b>Before paying a deposit:</b> view the premises and confirm the landlord owns or manages it. <button type="button" class="dm-safe-rep" onclick="document.getElementById(\'dReportBtn\').click()">Report a scam</button>'
+      :'<b>Before paying anything:</b> do an official search on <a href="https://ardhisasa.lands.go.ke" target="_blank" rel="noopener">Ardhisasa</a> and use a lawyer for the sale. <button type="button" class="dm-safe-rep" onclick="document.getElementById(\'dReportBtn\').click()">Report a scam</button>')
+    :isLand
     ?'<b>Before paying anything:</b> do an official search on <a href="https://ardhisasa.lands.go.ke" target="_blank" rel="noopener">Ardhisasa</a> and visit the land with the owner. <button type="button" class="dm-safe-rep" onclick="document.getElementById(\'dReportBtn\').click()">Report a scam</button>'
     :'<b>Never pay before viewing.</b> PataHome never asks for money. <button type="button" class="dm-safe-rep" onclick="document.getElementById(\'dReportBtn\').click()">Report a scam</button>';
   document.getElementById("dShareBtn").onclick=()=>shareListing(id);
@@ -1748,6 +1786,8 @@ async function paintAccount(){
   if(P.get("q"))document.getElementById("searchInput").value=P.get("q");
   if(P.get("cat")&&CAT[P.get("cat")])activeCat=P.get("cat");
   if(P.get("landDeal"))document.getElementById("landDeal").value=P.get("landDeal");
+  if(P.get("deal"))document.getElementById("commDeal").value=P.get("deal");
+  if(P.get("commType"))document.getElementById("commType").value=P.get("commType");
   if(P.get("price"))document.getElementById("priceFilter").value=P.get("price");
   if(P.get("beds")!==null&&P.get("beds")!==undefined&&P.get("beds")!=="")document.getElementById("bedFilter").value=P.get("beds");
   render();
