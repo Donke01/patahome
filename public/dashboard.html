@@ -71,6 +71,7 @@
   #gsiBtn>div{max-width:100%!important}
   .auth-card h1{font-family:var(--serif);font-size:1.35rem;font-weight:600;color:var(--green-dark);margin-bottom:4px}
   .auth-card .sub{font-size:.85rem;color:var(--muted);margin-bottom:14px}
+  .link-btn{display:block;margin:12px auto 0;border:0;background:none;color:var(--green);font:600 .78rem inherit;cursor:pointer}
   .auth-tabs{display:flex;gap:6px;margin-bottom:14px}
   .auth-tabs button{flex:1;border:1.5px solid var(--line);background:#fff;border-radius:10px;padding:8px;font-weight:700;font-size:.85rem;color:var(--muted)}
   .auth-tabs button.on{background:var(--green);border-color:var(--green);color:#fff}
@@ -382,8 +383,11 @@
     </div>
     <div class="err" id="authErr"></div>
     <button class="btn btn-primary" style="width:100%;padding:12px" onclick="submitAuth()" id="authBtn">Log In</button>
+    <button class="link-btn" onclick="openForgot()" id="forgotBtn">Forgot password?</button>
   </div>
 </div>
+
+<div class="overlay" id="forgotModal" onclick="if(event.target===this)hide('forgotModal')"><div class="modal"><button class="close-x" onclick="hide('forgotModal')">✕</button><h2>Reset your password</h2><div class="sub">We’ll email you a verification code. It expires in 3 minutes.</div><div id="forgotStart"><label>Phone or email</label><input id="forgotId" placeholder="you@email.com or 07XXXXXXXX"><div class="err" id="forgotErr"></div><button class="btn btn-primary" style="width:100%;padding:12px" onclick="sendResetCode()">Send code</button></div><div id="forgotReset" style="display:none"><label>Verification code</label><input id="resetCode" inputmode="numeric" maxlength="6" placeholder="••••••" style="text-align:center;letter-spacing:.35em"><label>New password</label><input id="resetPass" type="password" placeholder="At least 8 characters"><div class="err" id="resetErr"></div><button class="btn btn-primary" style="width:100%;padding:12px" onclick="resetPassword()">Reset password</button><button class="link-btn" onclick="sendResetCode()">Resend code</button></div></div></div>
 
 <!-- ============ DASHBOARD ============ -->
 <div id="dashView" class="wrap" style="display:none">
@@ -808,6 +812,7 @@ function setMode(m){
   $("aPhone").placeholder="07XXXXXXXX or you@email.com";
   $("authBtn").textContent=reg?"Create Account":"Log In";
   $("authErr").textContent="";
+  $("aName").value="";$("aPhone").value="";$("aPass").value="";if($("aTerms"))$("aTerms").checked=false;
 }
 async function submitAuth(){
   $("authErr").textContent="";
@@ -831,6 +836,9 @@ async function submitAuth(){
     else if(r.verifyKind==="phone")setTimeout(()=>openPhoneVerify(r.verifyTarget),500);
   }catch(e){$("authErr").textContent=e.message}
 }
+function openForgot(){show("forgotModal");$("forgotStart").style.display="block";$("forgotReset").style.display="none";$("forgotErr").textContent=""}
+async function sendResetCode(){const identifier=$("forgotId").value.trim();if(!identifier){$("forgotErr").textContent="Enter your phone or email";return}try{await api("/api/auth/forgot-password",{method:"POST",body:JSON.stringify({identifier})});window._resetIdentifier=identifier;$("forgotStart").style.display="none";$("forgotReset").style.display="block";toast("If an account exists, a code was sent")}catch(e){$("forgotErr").textContent=e.message}}
+async function resetPassword(){const code=$("resetCode").value.trim(),password=$("resetPass").value;if(!code||password.length<8){$("resetErr").textContent="Enter the code and a password of at least 8 characters";return}try{await api("/api/auth/reset-password",{method:"POST",body:JSON.stringify({identifier:window._resetIdentifier,code,password})});hide("forgotModal");setMode("login");toast("Password reset — you can now log in")}catch(e){$("resetErr").textContent=e.message}}
 /* ---------- invites ---------- */
 (function(){const P=new URLSearchParams(location.search);const r=P.get("ref");if(r){try{localStorage.setItem("ph_ref",r.toUpperCase().slice(0,12))}catch(e){}}})();
 function inviteRef(){try{return localStorage.getItem("ph_ref")||""}catch(e){return""}}
@@ -882,7 +890,7 @@ function logout(){
   token=null;ME=null;localStorage.removeItem("pb_token");localStorage.removeItem("pb_name");
   closeMenu();
   $("headerRight").style.display="none";
-  showAuth();
+  showAuth();setMode("login");
 }
 
 /* ---------- header user menu ---------- */
