@@ -1,0 +1,33 @@
+/* ---- hand-tuned dark-mode fixes (appended to the generated rules) ---- */
+html.dark{color-scheme:dark;background:#0d1714}
+/* one dark palette for every page (some pages only defined light values for these) */
+html.dark body.dark{--bg:#0d1714;--surface:#101c18;--card:#13231e;--line:#294138;--ink:#effcf7;--muted:#aac1b8;
+  --header-bg:rgba(13,23,20,.92);--footer-bg:#070d0b;--brand-light:#15211c;--gold-soft:#241e12;--violet-light:#15211c;--bg-soft:#101c18;
+  --brand:#3fa982;--brand-dark:#6cc9a6;--green:#3fa982;--green-dark:#6cc9a6;--green-light:#15211c;--violet:#3fa982;--violet-dark:#6cc9a6;--amber:#d4af6a;--gold:#d4af6a;--red:#ef8f86;
+  --shadow:0 2px 10px rgba(0,0,0,.4);--shadow-lift:0 8px 30px rgba(0,0,0,.5)}
+html.dark body.dark{background:#0d1714;color:#e6f1ec}
+/* form fields */
+html.dark body.dark input:not([type=checkbox]):not([type=radio]):not([type=range]),
+html.dark body.dark select,html.dark body.dark textarea{background-color:#13231e!important;color:#e6f1ec!important;border-color:#2c453b!important}
+html.dark body.dark input::placeholder,html.dark body.dark textarea::placeholder{color:#8fa79d!important;opacity:1}
+html.dark body.dark option{background:#13231e;color:#e6f1ec}
+/* photos and videos keep their real colours; icons in coloured badges stay readable */
+html.dark body.dark img,html.dark body.dark video{filter:none}
+/* maps: soften the bright tiles */
+html.dark body.dark .leaflet-tile-pane{filter:brightness(.72) contrast(1.1) saturate(.85)}
+html.dark body.dark .leaflet-popup-content-wrapper,html.dark body.dark .leaflet-popup-tip{background:#13231e;color:#e6f1ec}
+/* elements whose colours are set inline by scripts */
+html.dark body.dark #phInstall{background:#13231e!important;border-color:#2c453b!important;color:#e6f1ec!important}
+html.dark body.dark #phInstall span,html.dark body.dark #phInstall .phi-x{color:#9fb7ad!important}
+html.dark body.dark #dAdminBanner{background:#3a1512!important;border-color:#7a2c24!important;color:#ffc9c2!important}
+html.dark body.dark .lang-btn{background:#13231e!important;border-color:#2c453b!important}
+html.dark body.dark .lang-btn span{color:#9fb7ad}
+html.dark body.dark .lang-btn span.on{background:#3fa982;color:#06140f}
+/* scrollbars */
+html.dark ::-webkit-scrollbar{background:#0d1714}
+html.dark ::-webkit-scrollbar-thumb{background:#2c453b;border-radius:8px}
+/* mint (light brand) buttons need dark text in dark mode */
+html.dark body.dark .new-badge,html.dark body.dark .map-fab{color:#05231a!important}
+html.dark body.dark :is(.btn-primary,.pr-btn,.pf-btn,.pf-call,.searchbar>button){color:#05231a!important}
+html.dark body.dark :is(.btn-primary,.pr-btn,.pf-btn,.pf-call,.searchbar>button) svg{color:#05231a;stroke:currentColor}
+html.dark body.dark .pf-call b,html.dark body.dark .pf-btn b{color:#05231a!important}

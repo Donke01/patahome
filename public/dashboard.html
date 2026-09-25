@@ -301,10 +301,12 @@
   .badge-new{background:var(--amber);color:#fff;font-size:.68rem;font-weight:800;border-radius:999px;padding:2px 9px}
 </style>
   <link rel="stylesheet" href="/refresh.css?v=20260925-1">
+<link rel="stylesheet" href="/dark.css?v=2">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#0B5D3B">
 </head>
 <body class="page-dashboard">
+<script>try{if(localStorage.getItem("ph_theme")==="dark"){document.documentElement.classList.add("dark");document.body.classList.add("dark")}}catch(e){}</script>
 
 <header>
   <a class="logo" href="/" aria-label="PataHome home">
@@ -326,6 +328,7 @@
           <div class="mh-sub" id="mhSub"></div>
           <span class="mh-badge none" id="mhBadge">Unverified</span>
         </div>
+        <button class="menu-item" data-theme-toggle onclick="phToggleTheme&&phToggleTheme()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><span data-theme-label>Dark mode</span></button>
         <button class="menu-item" onclick="openSettings('personal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Personal details</button>
         <button class="menu-item" onclick="openSettings('business')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V8l9-5 9 5v13"/><path d="M9 21v-6h6v6"/></svg>Business details</button>
         <button class="menu-item" onclick="openSettings('verify')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v6c0 5 3.5 8 8 11 4.5-3 8-6 8-11V5z"/><path d="m9 12 2 2 4-4"/></svg>Verify my details</button>
@@ -2115,6 +2118,6 @@ async function doDelete(){
 // Messages passed back from one-tap email links (e.g. "Still available")
 (function(){const n=new URLSearchParams(location.search).get("notice");if(n){setTimeout(()=>toast(n),900);history.replaceState(null,"",location.pathname)}})();
 </script>
-<script src="/app.js?v=2" defer></script>
+<script src="/app.js?v=3" defer></script>
 </body>
 </html>

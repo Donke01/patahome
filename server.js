@@ -3188,9 +3188,21 @@ ${jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script
   .chips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px}
   .chips a{padding:6px 12px;border-radius:99px;background:#fff;border:1px solid #d3e8de;text-decoration:none;font-size:.85rem;font-weight:600}
   .chips a.on{background:#0e7c5a;color:#fff;border-color:#0e7c5a}
+  html.dark body{background:#0d1714;color:#e6f1ec}
+  html.dark header{background:#101c18;border-color:#294138}
+  html.dark header a.logo{color:#6cc9a6}
+  html.dark h1,html.dark .price{color:#8fe0bd}
+  html.dark a{color:#6cc9a6}
+  html.dark .card,html.dark .lcard,html.dark .chips a{background:#13231e;border-color:#294138;color:#e6f1ec}
+  html.dark .lcard .t{color:#e6f1ec}
+  html.dark .meta,html.dark .links,html.dark footer{color:#aac1b8}
+  html.dark .links{border-color:#294138}
+  html.dark .cta,html.dark .chips a.on{background:#3fa982;color:#05231a}
+  html.dark .lcard .ph{background-color:#1a2c26}
 </style>
 </head>
 <body>
+<script>try{if(localStorage.getItem("ph_theme")==="dark")document.documentElement.classList.add("dark")}catch(e){}</script>
 <header><a class="logo" href="/">Pata<b>Home</b></a></header>
 <div class="wrap">${bodyHtml}</div>
 <footer>PataHome · Houses for rent &amp; sale across Kenya</footer>
