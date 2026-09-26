@@ -3448,7 +3448,7 @@ ${imageAlt ? `<meta property="og:image:alt" content="${escapeHtml(imageAlt)}">` 
 ${noindex ? '<meta name="robots" content="noindex">' : ""}
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="preconnect" href="https://res.cloudinary.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/ph.css?v=15">
+<link rel="stylesheet" href="/ph.css?v=16">
 <link rel="stylesheet" href="/page.css?v=1">
 <script>try{navigator.sendBeacon("/api/pv",new Blob([JSON.stringify({path:location.pathname,ref:document.referrer})],{type:"application/json"}))}catch(e){}</script>
 ${jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd).replace(/</g, "\\u003c")}</script>` : ""}
