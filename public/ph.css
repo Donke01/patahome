@@ -576,3 +576,15 @@ html.dark .fh{background:#1b2a33}
   .fh-chips{justify-content:flex-start}
   .fh-shade{background:linear-gradient(180deg,rgba(8,20,28,.25) 0%,rgba(8,20,28,.2) 30%,rgba(8,20,28,.7) 65%,rgba(8,20,28,.88) 100%)}
 }
+/* phones: keep scrolling light. Blur effects and scroll animations are expensive on mid-range phones */
+@media (max-width:900px){
+  .ph-header,.bnav,.fh-chips a,.fh-cap,.ph-card .kind,.ph-card .fav{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+  .ph-header{background:rgba(251,250,247,.98)}
+  html.dark .ph-header{background:rgba(11,20,27,.98)}
+  .bnav{background:var(--surface)}
+  .fh-chips a{background:rgba(14,42,59,.45)}
+  .reveal{opacity:1!important;transform:none!important;transition:none!important}
+  .fh{box-shadow:none}
+  body.page-home .ph-grid{scroll-snap-type:none;scroll-behavior:auto;will-change:scroll-position}
+  body.page-home .ph-grid>.ph-card{flex-basis:80%}
+}
