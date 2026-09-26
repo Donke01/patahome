@@ -14,7 +14,7 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="theme-color" content="#0E2A3B">
+<meta name="theme-color" content="#FBFAF7">
 <meta property="og:url" content="https://patahome.co.ke/">
 <link rel="canonical" href="https://patahome.co.ke/">
 <link rel="icon" href="/favicon.ico" sizes="48x48">
@@ -24,7 +24,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/ph.css?v=7">
+<link rel="stylesheet" href="/ph.css?v=8">
 <link rel="manifest" href="/manifest.webmanifest">
 </head>
 <body class="ph page-home on-hero">
@@ -76,6 +76,7 @@
 <main>
 <section class="fh" id="fh" aria-label="Find a home">
   <div class="fh-bg" id="fhBg" aria-hidden="true"></div>
+  <script>/* show the last hero photo straight away (no empty flash on refresh) */try{var u=localStorage.getItem("ph_hero"+(matchMedia("(max-width:900px)").matches?"_m":""));if(u){document.getElementById("fhBg").innerHTML='<div class="fh-img on" style="background-image:url(\''+u.replace(/'/g,"")+'\')"></div>';document.getElementById("fh").classList.add("ready")}}catch(e){}</script>
   <div class="fh-shade" aria-hidden="true"></div>
   <div class="ph-wrap fh-in">
     <h1>Find your next <em>home.</em></h1>
@@ -264,8 +265,10 @@ async function paintHero(){
       .map(x=>({src:crop(x.photos[0].full||x.photos[0].thumb,HW,HH),x}));
   }
   if(!HERO.length)return;
+  try{localStorage.setItem("ph_hero"+(PHONE?"_m":""),HERO[0].src)}catch(e){}
   const bg=document.getElementById("fhBg");
   bg.innerHTML=HERO.map((h,i)=>`<div class="fh-img${i===0?" on":""}" data-i="${i}"></div>`).join("");
+  bg.firstElementChild.style.backgroundImage=`url("${HERO[0].src}")`;
   document.getElementById("fhDots").innerHTML=HERO.length>1?HERO.map((h,i)=>`<i class="${i===0?"on":""}"></i>`).join(""):"";
   showHero(0);
   if(HERO.length>1&&!reduceMotion)heroT=setInterval(()=>showHero((heroI+1)%HERO.length),7000);
@@ -370,7 +373,7 @@ function renderLatest(){
   g.innerHTML=list.map(x=>{
     const c=CAT[x.cat],size=sizeOrBeds(x);
     const who=x.role==="agent"?"Agent listing":x.role==="caretaker"?"Caretaker":x.verified?`<span class="v">✓ Verified owner</span>`:`<span class="v">✓ Direct owner</span>`;
-    return `<a class="ph-card reveal" href="/browse?open=${x.id}">
+    return `<a class="ph-card" href="/browse?open=${x.id}">
       <div class="ph-photo">
         ${x.photos.length?`<img src="${esc(crop(x.photos[0].thumb,800,620))}" alt="${esc(x.title)}" loading="lazy">`:`<span class="blank">${ICONS[c.icon]}</span>`}
         <span class="kind">${esc(kindLabel(x))}</span>

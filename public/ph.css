@@ -550,3 +550,14 @@ body.page-home .ph-header{position:sticky}
 .fh-in{padding-top:90px;padding-bottom:48px}
 .fh-cap{bottom:48px}
 @media (max-width:900px){.fh{min-height:0}.fh-in{padding:clamp(110px,20svh,170px) 18px 20px}}
+/* no navy flash before the photo arrives: soft neutral placeholder, photo fades in */
+.fh{background:#d9d4ca}
+html.dark .fh{background:#1b2a33}
+.fh-shade{opacity:.55;transition:opacity .6s}
+.fh.ready .fh-shade{opacity:1}
+/* smoother swiping on the homepage listings row */
+@media (max-width:900px){
+  body.page-home .ph-grid{scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scroll-behavior:smooth}
+  body.page-home .ph-grid>.ph-card{opacity:1!important;transform:none!important;transition:none!important}
+  body.page-home .ph-grid .ph-photo img{transition:none}
+}
