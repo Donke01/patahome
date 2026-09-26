@@ -374,3 +374,80 @@ html.dark .leaflet-popup-content-wrapper,html.dark .leaflet-popup-tip{background
   .dm-sim{flex-basis:160px}
   .dm-similar{margin:30px 6px 0}
 }
+
+/* ===== Listing popup v2: calmer layout, inspired by Booking.com's property page ===== */
+#detailModal .dm .ic{width:18px;height:18px;flex-shrink:0}
+.dm-body{grid-template-columns:minmax(0,1fr) 340px;grid-template-areas:"main col";column-gap:52px}
+.dm-top{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px}
+.dm-cat{display:inline-block;padding:4px 11px;border-radius:var(--pill);background:var(--surface-2);color:var(--heading);font:600 .74rem var(--sans);letter-spacing:.02em}
+.dm-cat::after{content:none}
+.dm-avail{margin:0;font-size:.84rem;color:var(--muted)}
+.dm-avail b{color:var(--ok);font-weight:600}
+.dm-head{margin-top:12px}
+#detailModal .dm-head h2{font-size:clamp(1.6rem,1.2rem + 1.2vw,2.15rem)}
+.dm-owntitle{font-style:normal;font-size:.95rem;margin-top:6px}
+.dm-loc{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:10px;font-size:.92rem;color:var(--text)}
+.dm-loc svg{width:16px;height:16px;color:var(--heading)}
+.dm-maplink{border:0;background:none;padding:0;margin-left:6px;color:var(--link);font:600 .9rem var(--sans);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.dm-notice{margin:14px 0 0;padding:10px 14px;border-radius:12px;background:#fdecea;border:1px solid #e7a9a2;color:#8a2319;font-weight:600;font-size:.88rem}
+.dm-facts{margin:20px 0 0;padding:0;border:0;gap:12px 26px}
+.dm-facts span,.dm-vid{padding:0;font-size:.9rem;color:var(--heading);gap:9px}
+.dm-facts .ic{color:var(--heading)}
+.dm-vid{font-weight:600;color:var(--link)}.dm-vid .ic{color:var(--link)}
+.dm-nav{position:sticky;top:-28px;z-index:6;display:flex;gap:28px;margin-top:26px;background:var(--surface);border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+.dm-nav::-webkit-scrollbar{display:none}
+.dm-nav button{position:relative;flex-shrink:0;padding:15px 0 13px;border:0;background:none;font:600 .9rem var(--sans);color:var(--muted);cursor:pointer}
+.dm-nav button:hover{color:var(--heading)}
+.dm-nav button.on{color:var(--heading)}
+.dm-nav button.on::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;border-radius:2px;background:var(--heading)}
+.dm-sec{margin:0;padding:30px 0;border-top:1px solid var(--line)}
+.dm-nav+.dm-sec,.dm-nav[style*="none"]+.dm-sec{border-top:0}
+.dm-sec h3{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0 0 16px;font:400 1.35rem/1.2 var(--serif);color:var(--heading);letter-spacing:-.01em}
+.dm-gmaps{font:600 .84rem var(--sans)}
+.dm-desc{font-size:.98rem;line-height:1.75}
+.dm-amen-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:24px 36px}
+.dm-amen-g+.dm-amen-g{margin-top:0}
+.dm-amen-t{display:flex;align-items:center;gap:9px;margin:0 0 12px;font-size:.95rem;font-weight:600;color:var(--heading)}
+.dm-amen-t .ic{width:20px;height:20px}
+.dm-amen-g ul{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.dm-amen-g li{display:flex;align-items:center;gap:9px;font-size:.92rem;color:var(--text)}
+.dm-amen-g li .ic{width:16px;height:16px;color:var(--ok)}
+.dm-kv{display:block;border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden}
+.dm-kv div{display:grid;grid-template-columns:minmax(150px,220px) minmax(0,1fr);gap:18px;align-items:start;padding:15px 20px;border-bottom:1px solid var(--line);font-size:.92rem}
+.dm-kv div:last-child{border-bottom:0}
+.dm-kv span{display:flex;align-items:center;gap:10px;color:var(--heading);font-weight:600}
+.dm-kv span .ic{color:var(--muted)}
+.dm-kv b{font-weight:400;color:var(--text);text-align:left}
+.dm-kv b small{display:block;margin-top:3px;font-size:.8rem;color:var(--muted)}
+.dm-kv .total{background:var(--surface-2)}
+.dm-kv .total b{font-weight:700;color:var(--heading);font-size:1rem}
+.dm-near{grid-template-columns:repeat(2,minmax(0,1fr));gap:0 36px}
+.dm-near div{padding:13px 0}
+.dm-near .ni{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:var(--surface-2);color:var(--heading);flex-shrink:0}
+.dm-near .nt{font-weight:500}
+.dm-near b{font-weight:600}
+.dm-report{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:18px;border-top:1px solid var(--line);font-size:.8rem;color:var(--muted)}
+.dm-report .dm-report-top{margin-left:0}
+/* booking card: price, then the actions, then who's listing it */
+.dm-col{grid-area:col;align-self:start;position:sticky;top:40px;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r-lg);padding:24px;background:var(--surface);box-shadow:var(--shadow)}
+.dm-col .dm-side{display:contents}
+.dm-col .dm-price-side{order:1}
+.dm-col .dm-actions{order:2;grid-area:auto;margin-top:18px}
+.dm-col .dm-book{order:3}
+.dm-col .dm-owner{order:4;margin-top:18px;border-bottom:0;padding-bottom:4px}
+.dm-col .dm-perks{order:5;justify-content:flex-start;margin-top:8px}
+.dm-col .dm-safe{order:6;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.dm-col .phone{order:7}
+@media (max-width:900px){
+  .dm-body{grid-template-columns:1fr;grid-template-areas:"main" "side" "actions"}
+  .dm-col{display:contents}
+  .dm-col .dm-side{display:block;border:1px solid var(--line);border-radius:var(--r-lg);padding:20px}
+  .dm-col .dm-actions{grid-area:actions;margin:18px -20px 0}
+  .dm-col .dm-owner{margin-top:0}
+  .dm-nav{top:-14px;margin:22px -20px 0;padding:0 20px;gap:22px}
+  .dm-sec{padding:24px 0}
+  .dm-kv div{grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);padding:13px 14px;gap:12px}
+  .dm-near{grid-template-columns:1fr}
+  .dm-facts{gap:10px 20px}.dm-facts span,.dm-vid{font-size:.86rem}
+  .dm-amen-cols{grid-template-columns:1fr 1fr;gap:20px}
+}
