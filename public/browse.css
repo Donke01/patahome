@@ -313,3 +313,8 @@ html.dark .leaflet-popup-content-wrapper,html.dark .leaflet-popup-tip{background
   .dm-side .dm-price-side{display:none}
   .dm-owner{margin-top:0;padding-top:0;border-top:0}
 }
+@media (max-width:900px){
+  .br-bar,.card-img .photo-count,.card-img .dist-badge,.overlay{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+  .br-bar{background:var(--bg)}
+  .card{animation:none}
+}
