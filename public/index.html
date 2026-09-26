@@ -24,13 +24,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/ph.css?v=5">
+<link rel="stylesheet" href="/ph.css?v=6">
 <link rel="manifest" href="/manifest.webmanifest">
 </head>
 <body class="ph page-home on-hero">
 <script>try{if(localStorage.getItem("ph_theme")==="dark"){document.documentElement.classList.add("dark");document.body.classList.add("dark")}}catch(e){}</script>
 
-<header class="ph-header over" id="hd">
+<header class="ph-header" id="hd">
   <div class="ph-wrap ph-hd">
     <a class="ph-logo" href="/" aria-label="PataHome home"><img src="/patahome-logo-transparent.png?v=20260921-2" alt="PataHome: Kwa sababu tunakujali"></a>
     <nav class="ph-nav" aria-label="Main">
@@ -252,7 +252,7 @@ async function loadData(){
 let HERO=[],heroI=0,heroT=null;
 // Portrait crop on phones (sharper, no zoomed-in landscape), wide crop on desktop.
 const PHONE=typeof matchMedia==="function"&&matchMedia("(max-width:900px)").matches;
-const HW=PHONE?Math.min(1080,Math.round(innerWidth*(devicePixelRatio||1))):1920, HH=PHONE?Math.round(HW*1.35):1200;
+const HW=PHONE?Math.min(1080,Math.round((innerWidth-24)*(devicePixelRatio||1))):1920, HH=PHONE?Math.round(HW*1.25):1200;
 async function paintHero(){
   let cfg=null;try{cfg=await api("/api/config")}catch(e){}
   if(cfg&&cfg.heroImages&&cfg.heroImages.length){
@@ -451,7 +451,7 @@ function armReveal(root){
 }
 try{armReveal()}catch(e){document.querySelectorAll(".reveal").forEach(el=>el.classList.add("in"))}
 setTimeout(()=>document.querySelectorAll(".reveal:not(.in)").forEach(el=>{const r=el.getBoundingClientRect();if(r.top<innerHeight&&r.bottom>0)el.classList.add("in")}),2500);
-function onScrollHd(){const hd=document.getElementById("hd"),fh=document.getElementById("fh");const past=scrollY>40;hd.classList.toggle("scrolled",scrollY>8);hd.classList.toggle("over",!past);document.body.classList.toggle("on-hero",!past)}
+function onScrollHd(){const hd=document.getElementById("hd"),fh=document.getElementById("fh");const past=scrollY>40;hd.classList.toggle("scrolled",scrollY>8);document.body.classList.toggle("on-hero",!past)}
 addEventListener("scroll",onScrollHd,{passive:true});onScrollHd();
 
 /* ---------- live chat ---------- */

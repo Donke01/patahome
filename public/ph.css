@@ -531,3 +531,17 @@ body.page-home main{padding-top:0}
   .fh-in{padding-top:clamp(230px,48svh,380px)}
 }
 @media (max-width:900px){body.page-home.on-hero .fab-w{opacity:0;pointer-events:none;transform:scale(.8)}.fab-w{transition:opacity .25s,transform .25s}}
+
+/* ===================== hero as a rounded photo card ===================== */
+body.page-home .ph-header{position:sticky}
+.fh{width:calc(100% - 40px);max-width:1480px;margin:4px auto 0;border-radius:32px;min-height:min(820px,calc(100vh - 100px));min-height:min(820px,calc(100svh - 100px));isolation:isolate;box-shadow:var(--shadow-lg)}
+.fh-in{padding-top:120px;padding-bottom:64px}
+.fh-cap{bottom:64px}
+.fh-dots{bottom:22px}
+@media (max-width:900px){
+  .fh{width:calc(100% - 24px);border-radius:24px;margin-top:2px;min-height:0;box-shadow:var(--shadow)}
+  .fh-in{padding:clamp(170px,36svh,300px) 18px 24px}
+  .fh h1{font-size:clamp(2.1rem,9.6vw,2.7rem)}
+  .fh .ph-search-wrap{margin-top:18px}
+  .fh-chips{margin-top:14px;margin-right:-18px;padding-right:18px}
+}
