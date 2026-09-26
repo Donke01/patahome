@@ -24,7 +24,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/ph.css?v=4">
+<link rel="stylesheet" href="/ph.css?v=5">
 <link rel="manifest" href="/manifest.webmanifest">
 </head>
 <body class="ph page-home on-hero">
@@ -250,15 +250,18 @@ async function loadData(){
 /* ================= HERO ================= */
 /* Full-screen hero: admin-chosen photos (Site settings) or the newest listing photos, crossfading. */
 let HERO=[],heroI=0,heroT=null;
+// Portrait crop on phones (sharper, no zoomed-in landscape), wide crop on desktop.
+const PHONE=typeof matchMedia==="function"&&matchMedia("(max-width:900px)").matches;
+const HW=PHONE?Math.min(1080,Math.round(innerWidth*(devicePixelRatio||1))):1920, HH=PHONE?Math.round(HW*1.35):1200;
 async function paintHero(){
   let cfg=null;try{cfg=await api("/api/config")}catch(e){}
   if(cfg&&cfg.heroImages&&cfg.heroImages.length){
-    HERO=cfg.heroImages.map(u=>({src:u.replace("/upload/","/upload/c_fill,g_auto,w_1920,h_1200,q_auto:good/")}));
+    HERO=cfg.heroImages.map(u=>({src:u.replace("/upload/",`/upload/c_fill,g_auto,w_${HW},h_${HH},q_auto:good/`)}));
   }else{
     const seen=new Set();
     HERO=[...LISTINGS].filter(x=>x.photos.length).sort((a,b)=>(b.featured-a.featured)||(b.id-a.id))
       .filter(x=>!seen.has(x.photos[0].full)&&seen.add(x.photos[0].full)).slice(0,5)
-      .map(x=>({src:crop(x.photos[0].full||x.photos[0].thumb,1920,1200),x}));
+      .map(x=>({src:crop(x.photos[0].full||x.photos[0].thumb,HW,HH),x}));
   }
   if(!HERO.length)return;
   const bg=document.getElementById("fhBg");

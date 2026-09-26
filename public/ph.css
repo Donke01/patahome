@@ -521,3 +521,13 @@ body.page-home main{padding-top:0}
   .ph-ft{gap:26px 20px}
   .ph-copy{margin-top:30px}
 }
+@media (max-width:900px){
+  /* phone hero: sharp portrait photo, no zoom, darker base so the headline reads */
+  .fh-img{inset:0;transform:none}
+  .fh-img.on{animation:none}
+  .fh-shade{background:linear-gradient(180deg,rgba(8,20,28,.45) 0%,rgba(8,20,28,0) 22%,rgba(8,20,28,.15) 42%,rgba(8,20,28,.72) 68%,rgba(8,20,28,.9) 100%)}
+  .fh h1{text-shadow:0 2px 18px rgba(0,0,0,.45)}
+  .fh-lead{text-shadow:0 1px 10px rgba(0,0,0,.5);color:#fff}
+  .fh-in{padding-top:clamp(230px,48svh,380px)}
+}
+@media (max-width:900px){body.page-home.on-hero .fab-w{opacity:0;pointer-events:none;transform:scale(.8)}.fab-w{transition:opacity .25s,transform .25s}}
