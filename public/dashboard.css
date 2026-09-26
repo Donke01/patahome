@@ -329,3 +329,17 @@ body.page-dashboard .code-input{text-align:center;font:400 2rem var(--serif);let
   .lst-side .actions{justify-content:flex-start}
   .inq-time{margin-left:0}
 }
+/* centred headings */
+.owner-overview-head{flex-direction:column;align-items:center;text-align:center}
+.owner-overview-head>div:last-child{justify-content:center!important}
+.overview-card{justify-content:center}
+.pnav{justify-content:center}
+.section-head{justify-content:center;text-align:center;flex-direction:column}
+.section-head .btn{margin-left:0}
+.pane-sub{margin-left:auto;margin-right:auto;text-align:center}
+.overview-head{justify-content:center}
+.updated{margin-left:0}
+.auth-card{text-align:center}
+.auth-card label,.auth-card input{text-align:left}
+.help-card{margin-left:auto;margin-right:auto}
+@media (max-width:900px){.pnav{justify-content:flex-start}}

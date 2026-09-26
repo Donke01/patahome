@@ -597,3 +597,19 @@ html.dark .fh{background:#1b2a33}
   .fh-cap b{font-size:.98rem}
   .fh-cap span{font-size:.74rem}
 }
+
+/* ===================== centred layout (site-wide headings, sections, footer) ===================== */
+.ph-sec-head{flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px}
+.ph-sec-head .ph-h2{margin-top:0}
+.fh-list-in{flex-direction:column;justify-content:center;text-align:center}
+.ph-place{text-align:center}
+.ph-empty{text-align:center}
+.ph-ft{text-align:center}
+.ph-ft>div{display:flex;flex-direction:column;align-items:center}
+.ph-footer .about{margin-left:auto;margin-right:auto}
+.ph-social{justify-content:center}
+.ph-copy{justify-content:center;text-align:center}
+@media (max-width:900px){
+  .fh-list-in{align-items:center}
+  .ph-ft{grid-template-columns:1fr 1fr}
+}

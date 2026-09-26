@@ -318,3 +318,14 @@ html.dark .leaflet-popup-content-wrapper,html.dark .leaflet-popup-tip{background
   .br-bar{background:var(--bg)}
   .card{animation:none}
 }
+/* centred page head + bars */
+.br-head{text-align:center}
+.br-head .ph-lead{margin-left:auto;margin-right:auto}
+.br-search{justify-content:center}
+.br-search .ph-search-wrap{text-align:left}
+#locStatus{text-align:center}
+.tabs{justify-content:center}
+.filters{justify-content:center}
+.sort-label{margin-left:0;width:100%;text-align:center;order:10}
+.empty,.more-wrap{text-align:center}
+@media (max-width:900px){.tabs{justify-content:flex-start}.filters{justify-content:flex-start}.sort-label{width:auto;order:0}}
