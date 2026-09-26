@@ -250,7 +250,7 @@ body.ph .lang-btn span.on{background:var(--primary)!important;color:var(--on-pri
 
 /* ---------- floating bits ---------- */
 .bnav{display:none}
-.fab{position:fixed;right:24px;width:54px;height:54px;border-radius:50%;display:grid;place-items:center;border:0;cursor:pointer;box-shadow:var(--shadow-lg);z-index:45;transition:transform .2s}
+.fab{position:fixed;right:24px;width:54px;height:54px;border-radius:50%;display:grid;place-items:center;border:0;cursor:pointer;box-shadow:var(--shadow-lg);z-index:45;transition:transform .2s,opacity .25s}
 .fab:hover{transform:translateY(-2px)}
 .fab svg{width:24px;height:24px}
 .fab-w{bottom:24px;background:#25D366;color:#fff}
@@ -274,6 +274,13 @@ body.ph .lang-btn span.on{background:var(--primary)!important;color:var(--on-pri
 .reveal{opacity:0;transform:translateY(14px);transition:opacity .7s var(--ease),transform .7s var(--ease)}
 .reveal.in{opacity:1;transform:none}
 @media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}body.ph *{animation:none!important;transition:none!important}}
+
+/* Cookie banner (injected by cookie-consent.js with its own fixed position).
+   While it is up it would otherwise cover the bottom bar and the floating
+   buttons, so lift it clear of the bar and hide the buttons until it is gone. */
+body.ph:has(.ph-cookie,.ph-cookie-settings) .fab{opacity:0;pointer-events:none}
+/* Fallback for browsers without :has() — cookie-consent.js sets this on <body>. */
+body.ph.ph-consent-open .fab{opacity:0;pointer-events:none}
 
 /* things injected by app.js / cookie banner */
 html.dark body.ph #phInstall{background:var(--surface)!important;border-color:var(--line)!important;color:var(--ink)!important}
@@ -300,8 +307,10 @@ html.dark body.ph ::-webkit-scrollbar-thumb{background:var(--line-2);border-radi
   .ph-hero{padding:20px 0 48px}
   .ph-hero-grid{grid-template-columns:1fr;gap:28px}
   .ph-hero-photo{order:-1;aspect-ratio:16/11}
-  body.ph .lang-btn{height:38px}body.ph .lang-btn span{padding:5px 7px!important;font-size:.66rem}
-  .ph-icon-btn{width:38px;height:38px}
+  body.ph .lang-btn{height:44px}body.ph .lang-btn span{padding:7px 8px!important;font-size:.66rem}
+  /* 44px minimum touch target; the logo keeps its 38px visual height. */
+  .ph-icon-btn{width:44px;height:44px}
+  .ph-logo{min-height:44px}
   .ph-hero h1{margin-top:12px}
   .ph-search{flex-wrap:wrap;border-radius:22px;padding:6px}
   .ph-search .f,.ph-search .f.grow{flex:1 1 100%;border-right:0;border-bottom:1px solid var(--line);padding:10px 14px}
@@ -333,6 +342,8 @@ html.dark body.ph ::-webkit-scrollbar-thumb{background:var(--line-2);border-radi
   .fab-c{bottom:calc(144px + env(safe-area-inset-bottom))}
   .chatbox{right:16px;bottom:calc(84px + env(safe-area-inset-bottom))}
   .toast{bottom:calc(92px + env(safe-area-inset-bottom))}
+  /* clear the bottom bar (65px) instead of sitting on top of it */
+  body.ph .ph-cookie,body.ph .ph-cookie-settings{bottom:calc(75px + env(safe-area-inset-bottom))!important}
 }
 @media (max-width:420px){
   .ph-hero h1{font-size:2.35rem}
@@ -358,7 +369,9 @@ body.page-home main{padding-top:0}
 .fh-img{position:absolute;inset:-2%;background-size:cover;background-position:center;opacity:0;transition:opacity 1.6s ease;transform:scale(1.04)}
 .fh-img.on{opacity:1;animation:fhZoom 14s ease-out both}
 @keyframes fhZoom{from{transform:scale(1.1)}to{transform:scale(1.02)}}
-.fh-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,20,28,.55) 0%,rgba(8,20,28,.08) 26%,rgba(8,20,28,.18) 50%,rgba(8,20,28,.82) 100%),linear-gradient(90deg,rgba(8,20,28,.5) 0%,rgba(8,20,28,0) 60%)}
+/* The headline and search sit in the 40-75% band, so keep that band dark enough
+   for white text on a bright photo rather than letting it thin out mid-frame. */
+.fh-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,20,28,.55) 0%,rgba(8,20,28,.14) 22%,rgba(8,20,28,.42) 48%,rgba(8,20,28,.64) 68%,rgba(8,20,28,.86) 100%),linear-gradient(90deg,rgba(8,20,28,.55) 0%,rgba(8,20,28,0) 62%)}
 .fh-in{position:relative;z-index:2;width:100%;padding-top:140px;padding-bottom:88px}
 .fh h1{font-family:var(--serif);font-weight:400;font-size:clamp(3rem,7.4vw,6.6rem);line-height:.98;letter-spacing:-.03em;color:#fff;max-width:12ch;text-shadow:0 2px 30px rgba(0,0,0,.25)}
 .fh h1 em{font-style:italic;color:var(--gold-2)}
@@ -371,11 +384,13 @@ body.page-home main{padding-top:0}
 .fh .ph-search input::placeholder{color:#8a959a}
 .fh .ph-search select option{background:#fff;color:#16232B}
 .fh .ph-search .go{background:#0E2A3B;color:#fff}.fh .ph-search .go:hover{background:#163A50}
-.fh-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:22px}
+/* Keep the row inside the text column so it never runs under the price caption. */
+.fh-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:22px;max-width:760px}
 .fh-chips a{display:inline-flex;align-items:center;gap:7px;height:40px;padding:0 18px;border-radius:var(--pill);background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);color:#fff;font-size:.9rem;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);transition:background .2s,border-color .2s}
 .fh-chips a:hover{background:rgba(255,255,255,.26);border-color:#fff}
 .fh-chips small{font-size:.74rem;opacity:.75}
-.fh-cap{position:absolute;right:32px;bottom:88px;z-index:2;max-width:300px;padding:14px 18px;border-radius:16px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);color:#fff;transition:background .2s}
+/* Sits clear of the chips row below it and the floating buttons to its right. */
+.fh-cap{position:absolute;right:calc(24px + 54px + 20px);bottom:164px;z-index:2;max-width:300px;padding:14px 18px;border-radius:16px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);color:#fff;transition:background .2s}
 .fh-cap:hover{background:rgba(255,255,255,.24)}
 .fh-cap b{display:block;font-family:var(--serif);font-weight:500;font-size:1.15rem}
 .fh-cap b small{font-family:var(--sans);font-weight:400;font-size:.78rem;opacity:.8}
@@ -383,7 +398,9 @@ body.page-home main{padding-top:0}
 .fh-dots{position:absolute;left:50%;bottom:28px;transform:translateX(-50%);z-index:2;display:flex;gap:8px}
 .fh-dots i{width:24px;height:2px;background:rgba(255,255,255,.35);border-radius:2px;transition:background .4s,width .4s}
 .fh-dots i.on{background:#fff;width:40px}
-@media (min-width:1500px){.fh-cap{right:calc((100vw - 1240px)/2 + 32px)}}
+/* Past this width the content column stops growing, so align the caption to it —
+   but never let it slide under the floating buttons pinned to the viewport edge. */
+@media (min-width:1500px){.fh-cap{right:max(calc((100vw - 1240px)/2 + 32px),calc(24px + 54px + 20px))}}
 
 .fh-list{padding:0 0 96px}
 .fh-list-in{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;padding-top:48px;background:linear-gradient(var(--line),var(--line)) top center/calc(100% - 64px) 1px no-repeat}
@@ -393,13 +410,114 @@ body.page-home main{padding-top:0}
 @media (max-width:1100px){.fh-cap{display:none}}
 @media (max-width:900px){
   .fh{min-height:92svh}
-  .fh-in{padding-top:110px;padding-bottom:64px}
+  /* Bottom padding leaves room for the floating buttons stacked above the bottom
+     bar, so the chips row and Search button stay tappable. */
+  .fh-in{padding-top:110px;padding-bottom:144px}
   .fh h1{font-size:clamp(2.6rem,12vw,3.6rem)}
   .fh-lead{margin-top:12px}
   .fh .ph-search-wrap{margin-top:24px}
   .fh-chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-right:-20px;padding-right:20px}
   .fh-chips::-webkit-scrollbar{display:none}
-  .fh-chips a{flex-shrink:0;height:38px;padding:0 15px}
+  .fh-chips a{flex-shrink:0;height:44px;padding:0 16px}
   .fh-dots{bottom:20px}
   .fh-list{padding-bottom:120px}
+}
+
+/* ---------- tablet (portrait iPad and up to the desktop nav) ----------
+   Comes last so it wins over the two max-width:900px blocks above. Tablets keep
+   the touch chrome (bottom bar, menu button) but get room for real columns
+   instead of the one-card-per-row phone stack. */
+@media (min-width:680px) and (max-width:900px){
+  .ph-wrap{padding:0 28px}
+  .ph-grid{grid-template-columns:repeat(2,1fr);gap:34px 24px}
+  .ph-places{grid-template-columns:repeat(3,1fr);gap:16px}
+  .ph-ft{grid-template-columns:1fr 1fr 1fr}
+  .ph-ft>div:first-child{grid-column:1/-1}
+  /* search goes back to a single horizontal pill */
+  .ph-search{flex-wrap:nowrap;border-radius:var(--pill);padding:8px}
+  .ph-search .f,.ph-search .f.grow,.ph-search .f.half{flex:1;border-bottom:0;border-right:1px solid var(--line);padding:6px 18px}
+  .ph-search .f.grow{flex:1.35}
+  .ph-search .f:last-of-type{border-right:0}
+  .ph-search .go{width:52px;height:52px;border-radius:50%;margin-top:0;display:grid}
+  .ph-search .go .lbl{display:none}
+  .fh-in{padding-top:124px;padding-bottom:140px}
+  .fh-chips{flex-wrap:wrap;margin-right:0;padding-right:0}
+}
+
+/* ---------- short phones (iPhone 8/SE, small Androids) ----------
+   Under ~760px tall the hero content is taller than the screen, so the floating
+   buttons — fixed to the viewport, not the hero — sit over the middle of it.
+   Tighten the hero's vertical rhythm so it fits, rather than padding it further
+   down. Last in the file so it wins over the phone block above. */
+@media (max-width:900px) and (max-height:760px){
+  .fh-in{padding-top:88px;padding-bottom:132px}
+  .fh h1{font-size:clamp(2rem,8.5vw,2.6rem)}
+  .fh-lead{margin-top:8px;font-size:.96rem}
+  .fh .ph-search-wrap{margin-top:16px}
+  .fh-chips{margin-top:14px}
+  .fh .ph-search .f,.fh .ph-search .f.grow{padding:7px 14px}
+  .fh .ph-search .go{height:46px;margin-top:4px}
+  .fh-dots{display:none}
+}
+
+/* On phones the hero owns the whole screen, and the floating buttons would land on
+   the search field or the chips row. Hide them until the visitor scrolls off the
+   hero (index.html toggles body.on-hero); WhatsApp and chat stay in the menu.
+   Desktop keeps them — there the hero is wide enough that they never overlap. */
+@media (max-width:900px){
+  body.ph.page-home.on-hero .fab{opacity:0;pointer-events:none}
+}
+
+/* ===================== phone polish (homepage + shared) ===================== */
+@media (max-width:900px){
+  /* one floating button is enough on phones: live chat lives in the menu */
+  .fab-c{display:none}
+  .fab{width:46px;height:46px}.fab svg{width:22px;height:22px}
+  .fab-w{bottom:calc(80px + env(safe-area-inset-bottom));right:14px}
+  /* lighter header: dark mode is in the menu */
+  .header-actions #darkBtn{display:none}
+  .header-actions{gap:8px}
+
+  /* hero: shorter, photo shows, one-line search */
+  .fh{min-height:0;height:auto}
+  .fh-in{padding-top:clamp(200px,42svh,330px);padding-bottom:44px}
+  .fh h1{font-size:clamp(2.3rem,10.5vw,3rem);max-width:none}
+  .fh-lead{font-size:.95rem;margin-top:10px}
+  .fh .ph-search-wrap{margin-top:20px}
+  .fh .ph-search{flex-wrap:nowrap;border-radius:var(--pill);padding:5px 5px 5px 6px}
+  .fh .ph-search .f.grow{flex:1 1 auto;border:0;padding:4px 12px}
+  .fh .ph-search .f.half{display:none!important}
+  .fh .ph-search label{display:none}
+  .fh .ph-search input{font-size:1rem;padding:10px 0}
+  .fh .ph-search .go{width:46px;height:46px;border-radius:50%;margin:0;flex-shrink:0}
+  .fh .ph-search .go .lbl{display:none}
+  .fh-chips{margin-top:16px;-webkit-mask-image:linear-gradient(90deg,#000 85%,transparent);mask-image:linear-gradient(90deg,#000 85%,transparent)}
+  .fh-dots{display:none}
+
+  /* listings: swipeable row instead of a long column */
+  body.page-home .ph-block{padding:44px 0}
+  body.page-home .ph-sec-head{margin-bottom:18px}
+  body.page-home .ph-h2{font-size:1.6rem}
+  body.page-home .ph-grid{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-inline:20px;scrollbar-width:none;margin:0 -20px;padding:0 20px 4px}
+  body.page-home .ph-grid::-webkit-scrollbar{display:none}
+  body.page-home .ph-grid>.ph-card{flex:0 0 78%;scroll-snap-align:start}
+  body.page-home .ph-card .meta{padding-top:12px}
+  body.page-home .ph-card h3{font-size:1.05rem}
+  body.page-home .ph-card .facts{margin-top:6px}
+
+  /* areas: compact two-up tiles */
+  .ph-places{gap:10px}
+  .ph-place{padding:14px 14px 12px;border-radius:12px}
+  .ph-place b{font-size:1.02rem}
+  .ph-place span{font-size:.78rem}
+  .ph-place em{margin-top:8px;font-size:.74rem}
+  .fh-list{padding-bottom:40px}
+  .fh-list-in{padding-top:32px;flex-direction:column;align-items:flex-start;gap:16px;background-size:100% 1px}
+  .fh-list-in .ph-btn{width:100%}
+
+  /* shorter footer */
+  .ph-footer{padding:40px 0 100px}
+  .ph-footer .about{display:none}
+  .ph-ft{gap:26px 20px}
+  .ph-copy{margin-top:30px}
 }

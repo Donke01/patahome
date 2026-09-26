@@ -24,7 +24,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/ph.css?v=3">
+<link rel="stylesheet" href="/ph.css?v=4">
 <link rel="manifest" href="/manifest.webmanifest">
 </head>
 <body class="ph page-home on-hero">
@@ -82,7 +82,7 @@
     <p class="fh-lead">Rentals, homes, Airbnbs, land and shops across Kenya.</p>
     <div class="ph-search-wrap">
       <form class="ph-search" onsubmit="event.preventDefault();closeSugg();doSearch()" role="search">
-        <div class="f grow"><label for="searchInput">Where</label><input id="searchInput" type="text" placeholder="Town, estate or county" autocomplete="off" oninput="onSearchInput()" onfocus="renderSugg()" onkeydown="if(event.key==='Escape')closeSugg()"></div>
+        <div class="f grow"><label for="searchInput">Where</label><input id="searchInput" type="text" placeholder="Search a town or estate" autocomplete="off" oninput="onSearchInput()" onfocus="renderSugg()" onkeydown="if(event.key==='Escape')closeSugg()"></div>
         <div class="f half"><label for="catSel">Looking for</label><select id="catSel" onchange="syncBudget()"><option value="">Anything</option><option value="rent">Rent</option><option value="sale">Buy</option><option value="shortlet">Airbnb</option><option value="land">Land</option><option value="commercial">Commercial</option></select></div>
         <div class="f half" id="budgetF"><label for="budgetSel">Budget</label><select id="budgetSel"></select></div>
         <button class="go" id="searchBtn" type="submit" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span class="lbl">Search</span></button>
@@ -311,7 +311,7 @@ function typewriter(){
   const word=(window.PH_I18N&&PH_I18N.lang==="sw"?"Jaribu: ":"Try ")+HINTS[hi];
   let i=0;
   const iv=setInterval(()=>{
-    if(inp.value||document.activeElement===inp){clearInterval(iv);inp.placeholder="Town, estate or county";setTimeout(typewriter,4000);return}
+    if(inp.value||document.activeElement===inp){clearInterval(iv);inp.placeholder="Search a town or estate";setTimeout(typewriter,4000);return}
     inp.placeholder=word.slice(0,++i);
     if(i>=word.length){clearInterval(iv);setTimeout(()=>{hi=(hi+1)%HINTS.length;typewriter()},2200)}
   },45);
@@ -402,7 +402,7 @@ async function renderAreaDiscovery(){
   const countOf=area=>STATS?((STATS.byArea.find(b=>b.area+", "+b.county===area)||{}).n||0):LISTINGS.filter(x=>x.area===area).length;
   let rows=Object.entries(AREAS).map(([area,[lat,lng]])=>({area,lat,lng,count:countOf(area),km:null}));
   if(!rows.length){document.getElementById("areaSec").style.display="none";return}
-  const N=innerWidth<=900?6:8;
+  const N=innerWidth<=900?4:8;
   const draw=()=>{
     rail.innerHTML=rows.slice(0,N).map(({area,count,km})=>{
       const [name,county]=area.split(", ");
