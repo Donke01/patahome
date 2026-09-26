@@ -5,6 +5,14 @@
 .br-head h1{font-family:var(--serif);font-weight:400;font-size:clamp(2.1rem,4vw,3.2rem);line-height:1.08;letter-spacing:-.02em;color:var(--heading);margin:12px 0 10px}
 .br-head h1 em{font-style:italic;color:var(--accent)}
 .br-head .ph-lead{max-width:36rem}
+.pagination{display:flex;align-items:center;justify-content:center;gap:6px;margin:26px 0 8px;flex-wrap:wrap}
+.pagination button{min-width:38px;height:38px;padding:0 11px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--heading);font-weight:700;cursor:pointer;transition:.15s}
+.pagination button:hover:not(:disabled){border-color:var(--accent);color:var(--accent);transform:translateY(-1px)}
+.pagination button.active{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
+.pagination button:disabled{opacity:.4;cursor:not-allowed}
+.pagination .dots{color:var(--muted);padding:0 3px}
+.pagination-note{text-align:center;color:var(--muted);font-size:.76rem;margin-top:8px}
+@media(max-width:640px){.pagination{gap:4px}.pagination button{min-width:34px;height:34px;padding:0 8px;font-size:.82rem}.pagination button.edge{font-size:.78rem}}
 .br-search{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:26px}
 .br-search .ph-search-wrap{flex:1 1 460px;margin:0;max-width:640px}
 .br-search .ph-search .f{padding:6px 18px}

@@ -898,60 +898,55 @@ function render(){
   renderTabs();try{markNav()}catch(e){}
   return fetchResults(false);
 }
-function loadMore(){
-  if(!HAS_MORE)return;
-  const w=document.getElementById("moreWrap");
-  if(w){if(w.dataset.busy)return;w.dataset.busy="1";const b=w.querySelector("button");if(b)b.innerHTML='<span class="more-spin"></span>Loading more homes…'}
-  fetchResults(true);
+function goToPage(page){
+  const pages=Math.max(1,Math.ceil(TOTAL/20));
+  if(page<1||page>pages||page===PAGE)return;
+  fetchResults(false,page);
 }
-async function fetchResults(append){
+async function fetchResults(append,requestedPage){
   const seq=++searchSeq;
   const cards=document.getElementById("cards");
-  if(!append)cards.classList.add("loading");
+  cards.classList.add("loading");
   let r;
-  try{r=await api("/api/search?"+searchQuery(append?PAGE+1:1))}
+  try{r=await api("/api/search?"+searchQuery(requestedPage||1))}
   catch(e){
     if(seq!==searchSeq)return;
     cards.classList.remove("loading");
-    if(append){const w=document.getElementById("moreWrap");if(w){delete w.dataset.busy;w.querySelector("button").textContent="Couldn't load, tap to retry"}}
-    else cards.innerHTML=`<div class="empty">Couldn't load listings, check your connection and try again.</div>`;
+    cards.innerHTML=`<div class="empty">Couldn't load listings, check your connection and try again.</div>`;
     return;
   }
   if(seq!==searchSeq)return; // a newer search started while this one was in flight
   cards.classList.remove("loading");
   const items=r.listings.filter(x=>CAT[x.category]).map(toItem);
   items.forEach(x=>BYID.set(x.id,x));
-  LISTINGS=append?LISTINGS.concat(items):items;
+  LISTINGS=items;
   PAGE=r.page;TOTAL=r.total;HAS_MORE=r.hasMore;
   if(r.counts)COUNTS=r.counts;
   if(r.pins)PINS=r.pins.filter(p=>CAT[p.category]).map(p=>({...p,cat:p.category}));
   renderTabs();
-  drawCards(append?items:LISTINGS,append);
-  if(!append)renderMarkers(PINS);
+  drawCards(LISTINGS,false);
+  if(r.page===1)renderMarkers(PINS);
 }
 function repaint(){drawCards(LISTINGS,false)}
-function drawCards(list,append){
+function drawCards(list){
   document.getElementById("resultCount").textContent=TOTAL
-    ?(LISTINGS.length<TOTAL?`Showing ${LISTINGS.length} of ${TOTAL} results`:`${TOTAL} result${TOTAL===1?"":"s"}`)
+    ?(`Showing ${TOTAL?((PAGE-1)*20+1):0}–${Math.min(PAGE*20,TOTAL)} of ${TOTAL} result${TOTAL===1?"":"s"}`)
     :"0 results";
   const cards=document.getElementById("cards");
-  const old=document.getElementById("moreWrap");if(old)old.remove();
-  const offset=append?LISTINGS.length-list.length:0;
-  const html=list.map((x,i)=>cardHTML(x,append?i:offset+i)).join("");
-  if(append)cards.insertAdjacentHTML("beforeend",html);
-  else cards.innerHTML=list.length?html:`<div class="empty">${document.getElementById("searchInput").value.trim()?`No matches for “${esc(document.getElementById("searchInput").value.trim())}”, try fewer or different keywords.`:"No listings match your filters. Try widening your search."}</div>`;
-  if(HAS_MORE){
-    cards.insertAdjacentHTML("beforeend",`<div class="more-wrap" id="moreWrap"><button type="button" class="btn btn-ghost more-btn" onclick="loadMore()">Show more homes <small>(${LISTINGS.length} of ${TOTAL})</small></button></div>`);
-    watchMore();
-  }
+  const html=list.map((x,i)=>cardHTML(x,i)).join("");
+  cards.innerHTML=list.length?html:`<div class="empty">${document.getElementById("searchInput").value.trim()?`No matches for “${esc(document.getElementById("searchInput").value.trim())}”, try fewer or different keywords.`:"No listings match your filters. Try widening your search."}</div>`;
+  if(TOTAL>20)cards.insertAdjacentHTML("beforeend",paginationHTML());
 }
-// Load the next page automatically when the "Show more" button scrolls into view.
-let moreIO=null;
-function watchMore(){
-  const w=document.getElementById("moreWrap");
-  if(!w||typeof IntersectionObserver!=="function")return;
-  if(!moreIO)moreIO=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)loadMore()}),{rootMargin:"400px 0px"});
-  moreIO.disconnect();moreIO.observe(w);
+function paginationHTML(){
+  const pages=Math.max(1,Math.ceil(TOTAL/20)), nums=[];
+  for(let p=1;p<=pages;p++)if(p===1||p===pages||Math.abs(p-PAGE)<=1)nums.push(p);
+  const compact=[];let last=0;
+  nums.forEach(p=>{if(last&&p-last>1)compact.push("…");compact.push(p);last=p});
+  return `<nav class="pagination" aria-label="Listings pages">
+    <button class="edge" type="button" onclick="goToPage(${PAGE-1})" ${PAGE===1?"disabled":""}>Previous</button>
+    ${compact.map(p=>p==="…"?`<span class="dots">…</span>`:`<button type="button" class="${p===PAGE?"active":""}" aria-current="${p===PAGE?"page":"false"}" onclick="goToPage(${p})">${p}</button>`).join("")}
+    <button class="edge" type="button" onclick="goToPage(${PAGE+1})" ${PAGE===pages?"disabled":""}>Next</button>
+  </nav><div class="pagination-note">Page ${PAGE} of ${pages}</div>`;
 }
 
 /* ================= MAP ================= */
