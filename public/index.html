@@ -26,7 +26,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/ph.css?v=13">
+<link rel="stylesheet" href="/ph.css?v=14">
 <link rel="manifest" href="/manifest.webmanifest">
 </head>
 <body class="ph page-home on-hero">
@@ -100,8 +100,8 @@
       <a href="/browse?cat=commercial">Commercial <small data-count="commercial"></small></a>
       <a href="/browse?nearby=1">Near me</a>
     </nav>
+    <a class="fh-cap off" id="fhCap" href="/browse" aria-live="polite"></a>
   </div>
-  <a class="fh-cap" id="fhCap" href="/browse" hidden></a>
   <div class="fh-dots" id="fhDots" aria-hidden="true"></div>
 </section>
 
@@ -306,7 +306,7 @@ function showHero(i){
     const mark='<img class="fh-cap-logo" src="/patahome-mark.png" alt="" width="54" height="32">';
     if(h.x){cap.href="/browse?open="+h.x.id;cap.innerHTML=`${mark}<span class="fh-cap-t"><em>${esc(h.cap||"Featured home")} · ${esc(String(h.x.area||"").split(",")[0])}</em><b>${priceHTML(h.x)}</b><span>${esc(cleanTitle(h.x))}</span><i>View home →</i></span>`}
     else if(h.cap||h.sub){cap.href="/browse";cap.innerHTML=`${mark}<span class="fh-cap-t"><em>PataHome</em><b>${esc(h.cap)}</b>${h.sub?`<span>${esc(h.sub)}</span>`:""}<i>Browse homes →</i></span>`}
-    cap.hidden=!(h.x||h.cap||h.sub);
+    cap.classList.toggle("off",!(h.x||h.cap||h.sub));
     cap.classList.remove("in");void cap.offsetWidth;cap.classList.add("in");
     if(HERO.length>1){const n=new Image();n.src=HERO[(i+1)%HERO.length].src}
   };

@@ -637,3 +637,23 @@ html.dark .fh{background:#1b2a33}
   .fh-cap-t i{display:none}
 }
 @media (prefers-reduced-motion:reduce){.fh-cap.in{animation:none}}
+
+/* ===== hero banner card v3: sits in the hero's own column under the chips, so it never covers text ===== */
+.fh .fh-cap,.fh .fh-cap:not([hidden]){position:relative;inset:auto;top:auto;right:auto;bottom:auto;left:auto;display:flex;align-items:center;gap:12px;width:fit-content;max-width:min(440px,100%);min-height:60px;margin:24px auto 0;padding:8px 18px 8px 10px;border-radius:14px;text-align:left;animation:none}
+.fh .fh-cap.off{visibility:hidden}
+.fh .fh-cap.in{animation:fhCapIn .6s var(--ease,ease) both}
+.fh .fh-cap-logo{width:46px}
+.fh .fh-cap-t{padding-left:12px}
+.fh .fh-cap-t em{font-size:.6rem;letter-spacing:.1em}
+.fh .fh-cap .fh-cap-t b{margin-top:1px;font-size:1rem;line-height:1.2}
+.fh .fh-cap .fh-cap-t>span{font-size:.76rem;max-width:300px}
+.fh .fh-cap-t i{display:none}
+.fh .fh-cap::after{content:"→";margin-left:4px;font-weight:600;color:#0E2A3B;flex:0 0 auto}
+@media (max-width:900px){
+  .fh .fh-cap,.fh .fh-cap:not([hidden]){min-height:50px;margin-top:16px;padding:6px 12px 6px 8px;gap:8px;max-width:calc(100% - 8px);border-radius:12px}
+  .fh .fh-cap-logo{width:36px}
+  .fh .fh-cap-t{padding-left:8px}
+  .fh .fh-cap-t em{display:none}
+  .fh .fh-cap .fh-cap-t b{font-size:.9rem}
+  .fh .fh-cap .fh-cap-t>span{font-size:.7rem;max-width:220px}
+}
