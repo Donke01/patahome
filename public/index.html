@@ -26,7 +26,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/ph.css?v=16">
+<link rel="stylesheet" href="/ph.css?v=17">
 <link rel="manifest" href="/manifest.webmanifest">
 </head>
 <body class="ph page-home on-hero">
@@ -187,7 +187,7 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="/land.js?v=2" defer></script>
+<script src="/land.js?v=3" defer></script>
 <script src="/commercial.js?v=2" defer></script>
 <script>
 /* ================= CONFIG ================= */
@@ -359,7 +359,7 @@ async function renderSugg(){
   let r;
   try{r=await api("/api/search?"+new URLSearchParams({q,cat,perPage:5}))}catch(e){return}
   if(seq!==suggSeq||document.getElementById("searchInput").value.trim()!==q)return;
-  const matches=r.listings.filter(x=>CAT[x.category]).map(x=>({id:x.id,cat:x.category,title:x.title,area:x.area+", "+x.county,price:x.price,photos:x.photoUrls||[],photoCount:x.photoCount||(x.photoUrls||[]).length,landDeal:x.landDeal,priceBasis:x.priceBasis,pricePerAcre:x.pricePerAcre,sizeAcres:x.sizeAcres,deal:x.deal,commType:x.commType,areaSqft:x.areaSqft,pricePerSqft:x.pricePerSqft,incomeMonth:x.incomeMonth}));
+  const matches=r.listings.filter(x=>CAT[x.category]).map(x=>({id:x.id,cat:x.category,title:x.title,area:x.area+", "+x.county,price:x.price,beds:x.bedrooms,features:x.features||{},photos:x.photoUrls||[],photoCount:x.photoCount||(x.photoUrls||[]).length,landDeal:x.landDeal,priceBasis:x.priceBasis,pricePerAcre:x.pricePerAcre,sizeAcres:x.sizeAcres,deal:x.deal,commType:x.commType,areaSqft:x.areaSqft,pricePerSqft:x.pricePerSqft,incomeMonth:x.incomeMonth}));
   if(!matches.length){
     box.innerHTML=`<div class="sg-none">No matches yet, try other keywords, e.g. “bedsitter Kasarani” or “2br under 20k”</div>`;
     box.classList.add("show");return;
@@ -369,12 +369,17 @@ async function renderSugg(){
     const th=x.photos.length?`<img src="${esc(crop(x.photos[0].thumb,120,120))}" alt="">`:ICONS[c.icon];
     return `<div class="sg" onmousedown="event.preventDefault()" onclick="pickSugg(${x.id})">
       <span class="sg-th" style="background:${c.tint}">${th}</span>
-      <span class="sg-main"><span class="sg-t">${esc(x.title)}</span><span class="sg-s">${esc(x.area)} · ${esc(catLabel(x))}</span></span>
+      <span class="sg-main"><span class="sg-t">${esc(cleanTitle(x))}</span><span class="sg-s">${esc(x.area)} · ${esc(catLabel(x))}</span></span>
       <span class="sg-p">${priceHTML(x)}</span>
     </div>`;
   }).join("")+`<div class="sg all" onmousedown="event.preventDefault()" onclick="closeSugg();doSearch()">See all ${r.total} result${r.total===1?"":"s"} →</div>`;
   box.classList.add("show");
 }
+// while typing: hold the hero photo still, and on phones lift the search box up so the suggestions have room
+function heroHold(on){if(on){clearInterval(heroT);heroT=null}else if(!heroT&&HERO.length>1&&!reduceMotion)heroT=setInterval(()=>showHero((heroI+1)%HERO.length),7000)}
+(function(){const i=document.getElementById("searchInput");
+  i.addEventListener("focus",()=>{heroHold(true);if(innerWidth<900){const w=i.closest(".ph-search-wrap"),y=w.getBoundingClientRect().top+scrollY-76;setTimeout(()=>scrollTo({top:y,behavior:"smooth"}),250)}});
+  i.addEventListener("blur",()=>setTimeout(()=>{if(document.activeElement!==i)heroHold(false)},300));})();
 function pickSugg(id){closeSugg();location.href="/browse?open="+id}
 function closeSugg(){document.getElementById("sugg").classList.remove("show")}
 document.addEventListener("click",e=>{if(!e.target.closest(".ph-search-wrap"))closeSugg()});

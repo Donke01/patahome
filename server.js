@@ -979,8 +979,13 @@ router.add("GET", "/api/search", (req, res) => {
   if (page === 1) {
     out.pins = rows.map(r => ({ id: r.id, lat: r.lat, lng: r.lng, price: r.price, category: r.category, title: r.title, area: `${r.area_name}, ${r.county}`,
       ...(r.land_deal ? { deal: r.land_deal, landDeal: r.land_deal, priceBasis: r.price_basis, pricePerAcre: r.price_per_acre, pricePerSqft: r.price_per_sqft, areaSqft: r.area_sqft, sizeAcres: r.size_acres } : {}) }));
+    // tab counts: every category, but for a typed search only the listings that match it
     const c = { all: 0 };
-    for (const x of db.prepare("SELECT category, COUNT(*) n FROM listings WHERE status='active' GROUP BY category").all()) { c[x.category] = x.n; c.all += x.n; }
+    if (tokens.length || priceCap !== null) {
+      let all = db.prepare(`${LISTING_SQL} WHERE l.status='active'${priceCap !== null ? " AND l.price <= ?" : ""}`).all(...(priceCap !== null ? [priceCap] : []));
+      if (tokens.length) all = all.filter(r => searchScore(r, tokens) > 0);
+      for (const r of all) { c[r.category] = (c[r.category] || 0) + 1; c.all++; }
+    } else for (const x of db.prepare("SELECT category, COUNT(*) n FROM listings WHERE status='active' GROUP BY category").all()) { c[x.category] = x.n; c.all += x.n; }
     out.counts = c;
   }
   send(res, 200, out);
@@ -3448,7 +3453,7 @@ ${imageAlt ? `<meta property="og:image:alt" content="${escapeHtml(imageAlt)}">` 
 ${noindex ? '<meta name="robots" content="noindex">' : ""}
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="preconnect" href="https://res.cloudinary.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/ph.css?v=16">
+<link rel="stylesheet" href="/ph.css?v=17">
 <link rel="stylesheet" href="/page.css?v=1">
 <script>try{navigator.sendBeacon("/api/pv",new Blob([JSON.stringify({path:location.pathname,ref:document.referrer})],{type:"application/json"}))}catch(e){}</script>
 ${jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd).replace(/</g, "\\u003c")}</script>` : ""}

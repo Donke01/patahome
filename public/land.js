@@ -42,8 +42,9 @@
     var deal = x.landDeal || "sale", basis = x.priceBasis || (deal === "lease" ? "acre_year" : "total");
     var main = money(x.price) + (SHORT[basis] ? " " + SHORT[basis] : "");
     var extra = "";
-    if (deal === "sale" && x.pricePerAcre && basis !== "per_acre") extra = money(x.pricePerAcre) + " /acre";
-    if (deal === "sale" && basis === "per_acre" && x.sizeAcres) extra = money(x.price * x.sizeAcres) + " total";
+    // the second line only when it adds something (a 1-acre plot's per-acre price is the same number)
+    if (deal === "sale" && x.pricePerAcre && basis !== "per_acre" && Math.round(x.pricePerAcre) !== Math.round(x.price)) extra = money(x.pricePerAcre) + " /acre";
+    if (deal === "sale" && basis === "per_acre" && x.sizeAcres && x.sizeAcres !== 1) extra = money(x.price * x.sizeAcres) + " total";
     if (deal === "lease" && x.pricePerAcre && basis !== "acre_year") extra = "≈ " + money(x.pricePerAcre) + " /acre/yr";
     return { main: main, extra: extra };
   }
