@@ -4,7 +4,7 @@
    - CSS/JS/icons: served from cache, refreshed in the background
    - /api/*: never cached (always live data)
    Bump VERSION to drop old caches after big changes. */
-const VERSION = "ph-v24";
+const VERSION = "ph-v25";
 const SHELL = ["/", "/browse", "/messages", "/offline.html", "/ph.css?v=16", "/page.css?v=1", "/favicon.svg", "/favicon-192.png"];
 
 self.addEventListener("install", (e) => {
