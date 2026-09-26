@@ -88,12 +88,55 @@
       </div>
       ${["rent", "sale", "shortlet"].includes(x.category) ? `<div id="eBWrap"><label>Bedrooms</label><select id="eB"><option value="">N/A</option>${[0, 1, 2, 3, 4, 5, 6].map(n => `<option value="${n}"${x.bedrooms === n ? " selected" : ""}>${n === 0 ? "Bedsitter" : n}</option>`).join("")}</select></div>` : ""}
       <label>Description</label><textarea id="eD" rows="4">${esc(x.description || "")}</textarea>
+      ${(x.photos || []).length ? `<label>Photos <span class="muted">(drag to reorder, or use ‹ ›. The first photo is the cover everywhere)</span></label>
+      <div class="ae-tools"><span class="muted" id="aeInfo"></span><button type="button" class="btn btn-ghost btn-sm" id="aeBest" onclick="aeBest()">✨ Choose best cover</button></div>
+      <div class="ae-grid" id="aeGrid"></div>` : ""}
       <label>Warning banner on the listing <span class="muted">(shown in red to visitors, leave empty for none)</span></label>
       <input id="eBn" list="bnList" value="${esc(x.adminBanner || "")}" placeholder="e.g. Under investigation, do not pay"><datalist id="bnList">${BANNERS.map(b => `<option value="${esc(b)}">`).join("")}</datalist>
       <label>Note to the owner (optional)</label><input id="eN" placeholder="e.g. Your number was in the title, please use the Contact button">
       <label class="chk"><input type="checkbox" id="eNo" checked> Tell the owner about these changes</label>
       <div class="err" id="eErr"></div>
       <div class="actions"><button class="btn btn-primary" onclick="saveListingEdit(${x.id})">Save changes</button><button class="btn btn-ghost" onclick="closeModal()">Cancel</button></div>`);
+    const url = {}; (x.photos || []).forEach((id, i) => { const p = (x.photoUrls || [])[i] || {}; url[id] = { small: p.small || p.thumb || "", thumb: p.thumb || "" }; });
+    window.aePh = { orig: (x.photos || []).slice(), ids: (x.photos || []).slice(), url, score: {} };
+    if (aePh.ids.length) aePaint();
+  };
+  /* ---- photo order in the edit window: the first photo is the listing's cover/thumbnail ---- */
+  if (!document.getElementById("aeCss")) document.head.insertAdjacentHTML("beforeend", `<style id="aeCss">
+    .ae-tools{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:4px 0 6px}
+    .ae-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;max-height:340px;overflow:auto;padding:2px}
+    .ae-cell{position:relative;cursor:grab;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+    .ae-cell .th{position:relative;aspect-ratio:4/3;border-radius:10px;overflow:hidden;background:#eee}
+    .ae-cell img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+    .ae-cell .cv,.ae-cell .mk{position:absolute;left:5px;bottom:5px;padding:1px 7px;border-radius:99px;font-size:.62rem;font-weight:600;border:0}
+    .ae-cell .cv{background:rgba(14,42,59,.75);color:#fff}.ae-cell .mk{background:rgba(255,255,255,.9);color:#0E2A3B;cursor:pointer}
+    .ae-cell .rm{position:absolute;top:5px;right:5px;width:22px;height:22px;border-radius:50%;border:0;background:rgba(14,42,59,.7);color:#fff;font-size:.65rem;cursor:pointer}
+    .ae-cell .sc{position:absolute;right:5px;bottom:5px;padding:1px 6px;border-radius:99px;background:rgba(14,42,59,.7);color:#fff;font-size:.6rem}
+    .ae-cell .mv{display:flex;justify-content:space-between;margin-top:3px}.ae-cell .mv button{border:1px solid #ddd;background:#fff;border-radius:6px;width:28px;cursor:pointer}.ae-cell .mv button:disabled{opacity:.3}
+    .ae-cell.ph-dragging{opacity:.35}.ae-cell.ph-target .th{outline:2px solid #c8a24a;outline-offset:2px}</style>`);
+  window.aePaint = () => {
+    const P = aePh, g = $("aeGrid"); if (!g) return;
+    g.innerHTML = P.ids.map((id, i) => `<div class="ae-cell" data-pi="${i}"><div class="th"><img src="${esc(P.url[id].small)}" alt="" loading="lazy" draggable="false">
+      ${i === 0 ? '<span class="cv">★ Cover</span>' : `<button type="button" class="mk" onclick="aeMove(${i},0)">★ Cover</button>`}
+      <button type="button" class="rm" onclick="aeDrop(${i})" title="Remove this photo">✕</button>${P.score[id] != null ? `<span class="sc">${P.score[id]}</span>` : ""}</div>
+      <div class="mv"><button type="button" onclick="aeMove(${i},${i - 1})" ${i ? "" : "disabled"}>‹</button><button type="button" onclick="aeMove(${i},${i + 1})" ${i < P.ids.length - 1 ? "" : "disabled"}>›</button></div></div>`).join("");
+    const gone = P.orig.length - P.ids.length, moved = P.ids.join() !== P.orig.filter(id => P.ids.includes(id)).join();
+    $("aeInfo").textContent = `${P.ids.length} photo${P.ids.length === 1 ? "" : "s"}` + (moved ? " · new order" : "") + (gone ? ` · ${gone} will be deleted on save` : "");
+    if (window.PhotoOrder) PhotoOrder.sortable(g, (a, b) => aeMove(a, b));
+  };
+  window.aeMove = (from, to) => { if (to < 0 || to >= aePh.ids.length || from === to) return; aePh.ids = PhotoOrder.move(aePh.ids, from, to); aePaint(); };
+  window.aeDrop = i => { if (aePh.ids.length <= 1) return toast("Keep at least one photo"); aePh.ids.splice(i, 1); aePaint(); };
+  window.aeBest = async () => {
+    const btn = $("aeBest"); btn.disabled = true; btn.textContent = "Checking photos…";
+    try {
+      const ids = aePh.ids.slice(), r = await PhotoOrder.rank(ids.map(id => aePh.url[id].thumb));
+      r.forEach(x => { if (!x.failed) aePh.score[ids[x.i]] = x.score; });
+      if (!r[0] || r[0].failed) return toast("Couldn't check the photos");
+      const now = aePh.ids.indexOf(ids[r[0].i]);
+      if (now > 0) { aePh.ids = PhotoOrder.move(aePh.ids, now, 0); toast("Best photo moved to cover" + (r[0].why.length ? ` (${r[0].why.join(", ")})` : "")); }
+      else toast("The cover is already the best photo");
+      aePaint();
+    } finally { btn.disabled = false; btn.textContent = "✨ Choose best cover"; }
   };
   const opts = (o, sel) => Object.entries(o).map(([k, v]) => `<option value="${k}"${k === sel ? " selected" : ""}>${esc(typeof v === "string" ? v : v.many)}</option>`).join("");
   // extra fields needed when a listing moves category (size for land, type for commercial, bedrooms for houses)
@@ -136,6 +179,11 @@
     if ($("eB") && ["rent", "sale", "shortlet"].includes(c) && (b.category || $("eB").value !== (x.bedrooms == null ? "" : String(x.bedrooms)))) b.bedrooms = $("eB").value;
     if ($("eD").value !== (x.description || "")) b.description = $("eD").value;
     if ($("eBn").value.trim() !== (x.adminBanner || "")) b.adminBanner = $("eBn").value.trim();
+    if (window.aePh && aePh.ids.length && aePh.ids.join("|") !== aePh.orig.join("|")) {
+      const gone = aePh.orig.length - aePh.ids.length;
+      if (gone && !confirm(`Delete ${gone} photo${gone === 1 ? "" : "s"} from this listing? This can't be undone.`)) return;
+      b.photos = aePh.ids;
+    }
     if (!Object.keys(b).length) return closeModal();
     b.notifyOwner = $("eNo").checked; b.note = $("eN").value.trim();
     try { await api(`/api/admin/listings/${id}`, { method: "PATCH", body: JSON.stringify(b) }); closeModal(); toast("Listing updated"); await refresh(); }

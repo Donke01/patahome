@@ -2938,11 +2938,24 @@ router.add("PATCH", "/api/admin/listings/:id", (req, res, p) => {
     if (newCat) {} else if (l.category === "land") { const f = landFields({ price }, l); if (!f.error) { sets.push("price_per_acre=?"); params.push(f.perAcre); } }
     if (l.category === "commercial") { const f = commFields({ price }, l); if (!f.error) { sets.push("price_per_sqft=?"); params.push(f.perSqft); } }
   }
+  // photos: the team can reorder (e.g. put the best photo first as the cover) or drop photos, not add new ones
+  let droppedPhotos = [];
+  if (b.photos !== undefined) {
+    const cur = parsePhotos(l.photos);
+    if (!Array.isArray(b.photos) || new Set(b.photos).size !== b.photos.length || b.photos.some(id => !cur.includes(id)))
+      return send(res, 400, { error: "Photos can only be reordered or removed here" });
+    droppedPhotos = cur.filter(id => !b.photos.includes(id));
+    if (b.photos.join("|") !== cur.join("|")) {
+      sets.push("photos=?"); params.push(JSON.stringify(b.photos));
+      changed.photos = (b.photos[0] !== cur[0] ? "new cover" : "reordered") + (droppedPhotos.length ? `, ${droppedPhotos.length} removed` : "");
+    }
+  }
   if (b.adminBanner !== undefined) { const t = String(b.adminBanner || "").trim().slice(0, 160); sets.push("admin_banner=?"); params.push(t || null); changed.banner = t || "(removed)"; }
   if (!sets.length) return send(res, 400, { error: "Nothing to change" });
   db.prepare(`UPDATE listings SET ${sets.join(",")} WHERE id=?`).run(...params, l.id);
   audit(req, a, "edit_listing", "listing", l.id, changed);
-  if (b.notifyOwner !== false && (changed.title || changed.price || changed.description || changed.area || changed.category)) {
+  droppedPhotos.forEach(id => cldDestroy(id));
+  if (b.notifyOwner !== false && (changed.title || changed.price || changed.description || changed.area || changed.category || changed.photos)) {
     const CAT_NAME = { rent: "Houses for rent", sale: "Houses for sale", shortlet: "Airbnb / short stays", land: "Land", commercial: "Commercial property" };
     db.prepare("INSERT INTO notifications (user_id,kind,title,body) VALUES (?,?,?,?)").run(l.owner_id, "listing", "We updated your listing",
       `Our team corrected details on "${l.title}"${newCat ? ` and moved it to ${CAT_NAME[newCat]}` : ""}${b.note ? ": " + String(b.note).slice(0, 200) : "."}`);

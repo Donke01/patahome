@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/ph.css?v=12">
-<link rel="stylesheet" href="/dashboard.css?v=4">
+<link rel="stylesheet" href="/dashboard.css?v=5">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#0B5D3B">
 </head>
@@ -259,6 +259,7 @@
     <textarea id="eDesc" rows="4" oninput="descCount()" placeholder="What makes it good? e.g. Water 24/7, quiet compound, 5 min walk to the stage, tiled floors, big windows. Mention anything tenants should know (rules, move-in date)."></textarea>
     <div id="photoWrap" style="display:none">
       <label>Photos <span id="photoCount" style="font-weight:400;text-transform:none;letter-spacing:0"></span></label>
+      <div class="ph-tools" id="phTools" hidden><span>Drag photos to reorder (on a phone, press and hold first). The first photo is the cover.</span><button type="button" class="btn btn-ghost btn-sm" id="phBest" onclick="bestCover()">✨ Choose best cover</button></div>
       <div class="photo-grid" id="photoGrid"></div>
       <div class="up-prog" id="upProg" aria-live="polite"><div class="up-bar"><i id="upBar"></i></div><span id="upPct">0%</span></div>
       <div class="photo-note">JPG, PNG or WebP, up to 8&nbsp;MB each.</div>
@@ -473,6 +474,7 @@
 
 <div class="toast" id="toast"></div>
 
+<script src="/photo-order.js?v=1"></script>
 <script src="/land.js?v=2"></script>
 <script src="/commercial.js?v=2"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -1127,9 +1129,11 @@ function renderPhotos(){
   uploadingCount=uploads.length;
   if($("photoCount"))$("photoCount").textContent=`(${photoIds.length} of ${max}${uploads.length?`, ${uploads.length} uploading`:""})`;
   $("photoGrid").innerHTML=
-    photoIds.map((id,i)=>`<div class="photo-cell"><div class="photo-th"><img src="${thumbUrl(id)}" alt="photo ${i+1}" loading="lazy"><button type="button" class="rm" onclick="removePhoto(${i})">✕</button>${i===0?'<span class="cover">Cover</span>':""}</div><select class="ph-lab" onchange="photoLabels['${id}']=this.value" aria-label="What is in photo ${i+1}?"><option value="">Label…</option>${PHOTO_LABELS.map(l=>`<option${photoLabels[id]===l?" selected":""}>${l}</option>`).join("")}</select></div>`).join("")+
+    photoIds.map((id,i)=>`<div class="photo-cell" data-pi="${i}"><div class="photo-th"><img src="${thumbUrl(id)}" alt="photo ${i+1}" loading="lazy" draggable="false"><button type="button" class="rm" onclick="removePhoto(${i})" aria-label="Remove photo ${i+1}">✕</button>${i===0?'<span class="cover">★ Cover</span>':`<button type="button" class="mk-cover" onclick="makeCover(${i})" title="Use as cover photo">★ Cover</button>`}${photoScore[id]!=null?`<span class="ph-score" title="Photo quality">${photoScore[id]}</span>`:""}</div><div class="ph-row"><button type="button" class="ph-mv" onclick="movePhoto(${i},${i-1})" ${i?"":"disabled"} aria-label="Move photo ${i+1} earlier">‹</button><select class="ph-lab" onchange="photoLabels['${id}']=this.value" aria-label="What is in photo ${i+1}?"><option value="">Label…</option>${PHOTO_LABELS.map(l=>`<option${photoLabels[id]===l?" selected":""}>${l}</option>`).join("")}</select><button type="button" class="ph-mv" onclick="movePhoto(${i},${i+1})" ${i<photoIds.length-1?"":"disabled"} aria-label="Move photo ${i+1} later">›</button></div></div>`).join("")+
     uploads.map(u=>`<div class="photo-th uploading${u.done?" done":""}" id="up-${u.key}"><img src="${u.preview}" alt=""><div class="ring" style="--p:${pctOf(u)}"><b>${u.done?"✓":pctOf(u)+"%"}</b></div>${u.done?"":`<button type="button" class="up-cancel" title="Cancel upload" onclick="cancelUpload('${u.key}')">✕</button>`}</div>`).join("")+
     (photoIds.length+uploads.length<max?`<button type="button" class="photo-add" onclick="$('photoFile').click()"><span>+</span>Add photo</button>`:"");
+  $("phTools").hidden=photoIds.length<2;
+  if(window.PhotoOrder)PhotoOrder.sortable($("photoGrid"),(a,b)=>movePhoto(a,b));
   updateOverall();
 }
 const pctOf=u=>u.total?Math.min(100,Math.round(u.loaded/u.total*100)):0;
@@ -1161,6 +1165,25 @@ function cancelUpload(key){
   u.cancelled=true;try{u.xhr&&u.xhr.abort()}catch{}
 }
 function removePhoto(i){photoIds.splice(i,1);renderPhotos()}
+/* ---------- photo order: the first photo is the cover (thumbnail) everywhere ---------- */
+let coverManual=false,photoScore={};
+function movePhoto(from,to){if(to<0||to>=photoIds.length||from===to)return;photoIds=PhotoOrder.move(photoIds,from,to);coverManual=true;renderPhotos()}
+function makeCover(i){movePhoto(i,0);toast("Cover photo changed")}
+const analysisUrl=id=>signCfg&&signCfg.cloudName?`https://res.cloudinary.com/${signCfg.cloudName}/image/upload/c_limit,w_480,h_480,q_auto,f_jpg/${id}`:"";
+async function bestCover(auto){
+  if(photoIds.length<2||!window.PhotoOrder)return;
+  const btn=$("phBest");btn.disabled=true;btn.textContent="Checking photos…";
+  try{
+    const ids=photoIds.slice(),r=await PhotoOrder.rank(ids.map(analysisUrl));
+    r.forEach(x=>{if(!x.failed)photoScore[ids[x.i]]=x.score});
+    const best=r[0];
+    if(!best||best.failed){if(!auto)toast("Couldn't check the photos, try again");return}
+    const id=ids[best.i],now=photoIds.indexOf(id);
+    if(now>0){photoIds=PhotoOrder.move(photoIds,now,0);toast(auto?"We set your best photo as the cover. Tap ★ Cover on another photo to change it.":`Cover set: photo ${best.i+1}${best.why.length?" ("+best.why.join(", ")+")":""}`)}
+    else if(!auto)toast("Your cover is already the best photo 👍");
+    renderPhotos();
+  }finally{btn.disabled=false;btn.textContent="✨ Choose best cover"}
+}
 let photoLabels={};
 const PHOTO_LABELS=["Living room","Bedroom","Kitchen","Bathroom","Balcony","Outside","View","Compound","Dining","Other"];
 const DESC_MIN=40;
@@ -1231,6 +1254,7 @@ async function uploadPhotos(files){
     }
   };
   await Promise.all(Array.from({length:Math.min(4,queue.length)},async()=>{while(queue.length)await one(queue.shift())}));
+  if(!editId&&!coverManual&&photoIds.length>1&&!uploads.length)bestCover(true);
 }
 
 /* ---------- add / edit ---------- */
@@ -1241,7 +1265,7 @@ async function preparePhotoSection(){
   if(on){renderPhotos();renderVideo()}
 }
 function openAdd(){
-  editId=null;photoIds=[];uploads.forEach(u=>{u.cancelled=true;try{u.xhr&&u.xhr.abort()}catch{}});uploads=[];uploadingCount=0;saveLabel=null;$("emSave").disabled=false;
+  editId=null;photoIds=[];coverManual=false;photoScore={};uploads.forEach(u=>{u.cancelled=true;try{u.xhr&&u.xhr.abort()}catch{}});uploads=[];uploadingCount=0;saveLabel=null;$("emSave").disabled=false;
   $("emTitle").textContent="New Listing";$("emSave").textContent="Publish";
   $("emCatWrap").style.display="block";$("emStatusWrap").style.display="none";
   $("eTitle").value="";$("eDesc").value="";$("ePrice").value="";$("eBeds").value="";$("emErr").textContent="";
@@ -1252,7 +1276,7 @@ function openAdd(){
 }
 function openEdit(id){
   const x=myListings.find(y=>y.id===id);
-  editId=id;photoIds=[...(x.photos||[])];uploads.forEach(u=>{u.cancelled=true;try{u.xhr&&u.xhr.abort()}catch{}});uploads=[];uploadingCount=0;saveLabel=null;$("emSave").disabled=false;
+  editId=id;photoIds=[...(x.photos||[])];coverManual=false;photoScore={};uploads.forEach(u=>{u.cancelled=true;try{u.xhr&&u.xhr.abort()}catch{}});uploads=[];uploadingCount=0;saveLabel=null;$("emSave").disabled=false;
   $("emTitle").textContent="Edit Listing";$("emSave").textContent="Save Changes";
   $("emCatWrap").style.display="none";$("emStatusWrap").style.display="block";
   $("eTitle").value=x.title;$("eDesc").value=x.description||"";$("ePrice").value=x.price;

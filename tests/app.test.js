@@ -513,3 +513,23 @@ test("photos: up to 60 per listing, lists carry a few plus the true count", asyn
   assert.equal(s.photoCount, 12);
   assert.ok(s.photoUrls.length <= 6, "search results stay light");
 });
+test("photos: owners and the team can reorder so the best photo is the cover", async () => {
+  const t = await owner("reorder@example.com");
+  await call("POST", "/api/account/change-phone", { phone: "0712000162" }, t);
+  const ids = ["a", "b", "c", "d"].map(k => `patahome/listings/ro_${k}`);
+  const r = await call("POST", "/api/listings", { category: "rent", title: "Reorder flat", areaId: areaId("Ruaka"), price: 21000, bedrooms: 1, photos: ids }, t);
+  assert.equal(r.status, 201);
+  // owner moves photo 3 to the front
+  const o = await call("PATCH", `/api/listings/${r.body.id}`, { photos: [ids[2], ids[0], ids[1], ids[3]] }, t);
+  assert.equal(o.status, 200);
+  assert.deepEqual(o.body.photos, [ids[2], ids[0], ids[1], ids[3]]);
+  assert.match(o.body.photoUrls[0].thumb, /ro_c/, "cover follows the order");
+  // admin reorders and drops one
+  const at = (await call("POST", "/api/auth/login", { phone: "0700000001", password: "adminpass123" })).body.token;
+  const bad = await call("PATCH", `/api/admin/listings/${r.body.id}`, { photos: [ids[1], "patahome/listings/not_theirs"] }, at);
+  assert.equal(bad.status, 400, "can't add photos that aren't on the listing");
+  const a = await call("PATCH", `/api/admin/listings/${r.body.id}`, { photos: [ids[3], ids[2], ids[0]] }, at);
+  assert.equal(a.status, 200);
+  assert.deepEqual(a.body.photos, [ids[3], ids[2], ids[0]]);
+  assert.equal(a.body.photoCount, 3);
+});
