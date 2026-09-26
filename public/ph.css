@@ -614,46 +614,22 @@ html.dark .fh{background:#1b2a33}
   .ph-ft{grid-template-columns:1fr 1fr}
 }
 
-/* ===== hero banner card v2: white card with the PataHome mark ===== */
-.fh-cap{display:flex;align-items:center;gap:14px;max-width:340px;padding:14px 18px 14px 14px;border-radius:18px;background:rgba(255,255,255,.95);border:1px solid rgba(255,255,255,.7);color:#0E2A3B;box-shadow:0 18px 40px -12px rgba(8,22,32,.45);-webkit-backdrop-filter:none;backdrop-filter:none;text-decoration:none}
-.fh-cap:hover{background:#fff}
-.fh-cap.in{animation:fhCapIn .6s var(--ease,ease) both}
-@keyframes fhCapIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-.fh-cap-logo{flex:0 0 auto;width:54px;height:auto;display:block}
-.fh-cap-t{display:block;min-width:0;padding-left:14px;border-left:1px solid rgba(14,42,59,.12);white-space:normal!important;overflow:visible!important;opacity:1!important;margin:0!important;font-size:inherit!important}
-@media (min-width:1101px){.fh-cap{top:28px;right:28px;bottom:auto;max-width:340px}}
-.fh-cap-t em{display:block;font-style:normal;font-size:.66rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#0f7a5a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.fh-cap .fh-cap-t b{display:block;margin-top:3px;font-family:var(--serif);font-weight:500;font-size:1.12rem;line-height:1.2;color:#0E2A3B}
-.fh-cap .fh-cap-t b small{font-family:var(--sans);font-size:.75rem;color:#5b6b75;opacity:1}
-.fh-cap .fh-cap-t>span{display:block;margin-top:2px;font-size:.8rem;color:#43525c;opacity:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.fh-cap-t i{display:block;margin-top:6px;font-style:normal;font-size:.76rem;font-weight:600;color:#0E2A3B}
-@media (max-width:1100px){.fh-cap:not([hidden]){display:flex}}
-@media (max-width:900px){
-  .fh-cap:not([hidden]){display:flex;gap:10px;padding:9px 12px 9px 9px;border-radius:14px;background:rgba(255,255,255,.94);border-color:rgba(255,255,255,.7);max-width:min(280px,76%)}
-  .fh-cap-logo{width:40px}
-  .fh-cap-t{padding-left:10px}
-  .fh-cap .fh-cap-t b{font-size:.95rem}
-  .fh-cap .fh-cap-t>span{font-size:.72rem}
-  .fh-cap-t i{display:none}
-}
-@media (prefers-reduced-motion:reduce){.fh-cap.in{animation:none}}
-
-/* ===== hero banner card v3: sits in the hero's own column under the chips, so it never covers text ===== */
-.fh .fh-cap,.fh .fh-cap:not([hidden]){position:relative;inset:auto;top:auto;right:auto;bottom:auto;left:auto;display:flex;align-items:center;gap:12px;width:fit-content;max-width:min(440px,100%);min-height:60px;margin:24px auto 0;padding:8px 18px 8px 10px;border-radius:14px;text-align:left;animation:none}
+/* ===== hero photo label: a small see-through pill in the photo's top-left corner,
+   PataHome logo + what the photo shows (e.g. "3-bedroom apartment · Nyali") ===== */
+.fh .fh-cap,.fh .fh-cap:not([hidden]){position:absolute;top:22px;left:22px;right:auto;bottom:auto;z-index:3;display:inline-flex;align-items:center;gap:9px;width:auto;max-width:min(440px,calc(100% - 44px));height:36px;min-height:0;margin:0;padding:0 16px 0 5px;border-radius:999px;background:rgba(14,42,59,.34);border:1px solid rgba(255,255,255,.26);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:none;color:#fff;text-decoration:none;font:500 .8rem/1 var(--sans);white-space:nowrap;transition:background .2s}
+.fh .fh-cap:hover{background:rgba(14,42,59,.5)}
 .fh .fh-cap.off{visibility:hidden}
-.fh .fh-cap.in{animation:fhCapIn .6s var(--ease,ease) both}
-.fh .fh-cap-logo{width:46px}
-.fh .fh-cap-t{padding-left:12px}
-.fh .fh-cap-t em{font-size:.6rem;letter-spacing:.1em}
-.fh .fh-cap .fh-cap-t b{margin-top:1px;font-size:1rem;line-height:1.2}
-.fh .fh-cap .fh-cap-t>span{font-size:.76rem;max-width:300px}
-.fh .fh-cap-t i{display:none}
-.fh .fh-cap::after{content:"→";margin-left:4px;font-weight:600;color:#0E2A3B;flex:0 0 auto}
+.fh .fh-cap.in{animation:fhCapIn .6s ease both}
+@keyframes fhCapIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.fh .fh-cap-logo{flex:0 0 auto;width:26px;height:26px;padding:3px;border-radius:50%;background:#fff;object-fit:contain;display:block}
+.fh .fh-cap b{display:inline;font:600 .8rem/1 var(--sans);letter-spacing:.01em;color:#fff;opacity:1;margin:0}
+.fh .fh-cap .sep{width:1px;height:14px;background:rgba(255,255,255,.4);flex:0 0 auto}
+.fh .fh-cap span.tx{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.8rem;opacity:.95;margin:0}
+.fh .fh-cap::after{content:none}
 @media (max-width:900px){
-  .fh .fh-cap,.fh .fh-cap:not([hidden]){min-height:50px;margin-top:16px;padding:6px 12px 6px 8px;gap:8px;max-width:calc(100% - 8px);border-radius:12px}
-  .fh .fh-cap-logo{width:36px}
-  .fh .fh-cap-t{padding-left:8px}
-  .fh .fh-cap-t em{display:none}
-  .fh .fh-cap .fh-cap-t b{font-size:.9rem}
-  .fh .fh-cap .fh-cap-t>span{font-size:.7rem;max-width:220px}
+  .fh .fh-cap,.fh .fh-cap:not([hidden]){top:12px;left:12px;height:30px;gap:7px;padding:0 12px 0 4px;max-width:calc(100% - 24px);background:rgba(14,42,59,.45);-webkit-backdrop-filter:none;backdrop-filter:none;font-size:.74rem}
+  .fh .fh-cap-logo{width:22px;height:22px;padding:2px}
+  .fh .fh-cap b,.fh .fh-cap .sep{display:none}
+  .fh .fh-cap span.tx{font-size:.74rem}
 }
+@media (prefers-reduced-motion:reduce){.fh .fh-cap.in{animation:none}}

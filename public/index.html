@@ -26,7 +26,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/ph.css?v=14">
+<link rel="stylesheet" href="/ph.css?v=15">
 <link rel="manifest" href="/manifest.webmanifest">
 </head>
 <body class="ph page-home on-hero">
@@ -100,8 +100,8 @@
       <a href="/browse?cat=commercial">Commercial <small data-count="commercial"></small></a>
       <a href="/browse?nearby=1">Near me</a>
     </nav>
-    <a class="fh-cap off" id="fhCap" href="/browse" aria-live="polite"></a>
   </div>
+  <a class="fh-cap off" id="fhCap" href="/browse"></a>
   <div class="fh-dots" id="fhDots" aria-hidden="true"></div>
 </section>
 
@@ -267,7 +267,7 @@ let HERO=[],heroI=0,heroT=null;
 const PHONE=typeof matchMedia==="function"&&matchMedia("(max-width:900px)").matches;
 const HW=PHONE?Math.min(1080,Math.round((innerWidth-24)*(devicePixelRatio||1))):1920, HH=PHONE?Math.round(HW*1.05):1200;
 // Banner text for the stock photos (Admin → Homepage photos can set its own per photo)
-const STOCK_CAP=[["Homes worth coming home to","Rentals across Kenya, straight from owners"],["Light, space and room to settle","Browse verified homes near you"],["Your next home is on PataHome","Free viewings. Never pay before you see it"],["Find it, view it, move in","Book a free viewing in a few taps"],["Kwa sababu tunakujali","Because we care about where you live"]];
+const STOCK_CAP=[["Open-plan living room","Apartment"],["Sunlit lounge","Modern home"],["Apartment block","Leafy estate"],["Bright living room","Family home"],["Master bedroom","Apartment"]];
 const STOCK_HERO=["photo-1658218635253-64728f6234be","photo-1600210492493-0946911123ea","photo-1651151084802-867d6a55dd25","photo-1600494448850-6013c64ba722","photo-1658218729615-167c32d70537"];
 async function paintHero(){
   let cfg=null;try{cfg=await api("/api/config")}catch(e){}
@@ -302,10 +302,13 @@ function showHero(i){
     document.getElementById("fh").classList.add("ready");
     heroI=i;
     const cap=document.getElementById("fhCap");
-    // banner card: PataHome mark + what's in the photo (a listing's price and name, or the photo's caption)
-    const mark='<img class="fh-cap-logo" src="/patahome-mark.png" alt="" width="54" height="32">';
-    if(h.x){cap.href="/browse?open="+h.x.id;cap.innerHTML=`${mark}<span class="fh-cap-t"><em>${esc(h.cap||"Featured home")} · ${esc(String(h.x.area||"").split(",")[0])}</em><b>${priceHTML(h.x)}</b><span>${esc(cleanTitle(h.x))}</span><i>View home →</i></span>`}
-    else if(h.cap||h.sub){cap.href="/browse";cap.innerHTML=`${mark}<span class="fh-cap-t"><em>PataHome</em><b>${esc(h.cap)}</b>${h.sub?`<span>${esc(h.sub)}</span>`:""}<i>Browse homes →</i></span>`}
+    // photo label: PataHome logo + what the photo shows ("3-bedroom apartment · Nyali")
+    const brand='<img class="fh-cap-logo" src="/patahome-mark.png" alt="" width="26" height="26"><b>PataHome</b><i class="sep"></i>';
+    let txt="";
+    if(h.x){const place=String(h.x.area||"").split(",")[0];txt=cleanTitle(h.x).replace(" in "+place,"")+" · "+place;cap.href="/browse?open="+h.x.id;cap.title="View this home"}
+    else if(h.cap||h.sub){txt=[h.cap,h.sub].filter(Boolean).join(" · ");cap.href="/browse";cap.title="Browse homes"}
+    cap.innerHTML=brand+`<span class="tx">${esc(txt)}</span>`;
+    cap.setAttribute("aria-label","PataHome: "+txt);
     cap.classList.toggle("off",!(h.x||h.cap||h.sub));
     cap.classList.remove("in");void cap.offsetWidth;cap.classList.add("in");
     if(HERO.length>1){const n=new Image();n.src=HERO[(i+1)%HERO.length].src}

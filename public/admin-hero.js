@@ -127,7 +127,7 @@
       <span class="${a.sc.colour >= 50 ? "good" : a.sc.colour < 30 ? "bad" : ""}">Colour ${Math.round(a.sc.colour)}</span></div>` : "";
   const badge = a => a ? (a.error ? `<span class="hs-badge g-x">?</span>` : `<span class="hs-badge ${a.grade[1]}">${a.score} · ${a.grade[0]}</span>`) : `<span class="hs-badge g-x">Checking…</span>`;
   // banner text shown on the stock photos when nothing custom is set (same as the homepage)
-  const STOCK_CAP = [["Homes worth coming home to", "Rentals across Kenya, straight from owners"], ["Light, space and room to settle", "Browse verified homes near you"], ["Your next home is on PataHome", "Free viewings. Never pay before you see it"], ["Find it, view it, move in", "Book a free viewing in a few taps"], ["Kwa sababu tunakujali", "Because we care about where you live"]];
+  const STOCK_CAP = [["Open-plan living room", "Apartment"], ["Sunlit lounge", "Modern home"], ["Apartment block", "Leafy estate"], ["Bright living room", "Family home"], ["Master bedroom", "Apartment"]];
   const srcLabel = it => it.listing ? `Listing #${it.listing}` : it.upload ? "Upload" : /unsplash/.test(it.url || "") ? "Stock" : "Link";
 
   function paint() {
@@ -135,7 +135,7 @@
     el.innerHTML = lineup.length ? lineup.map((it, i) => `<div class="hs-it">
         <div class="hs-ph"><img src="${esc(thumbUrl(it.url))}" alt="" loading="lazy"><span class="phone"><img src="${esc(phoneUrl(it.url))}" alt="" loading="lazy"></span>${badge(it.a)}<span class="hs-src">${srcLabel(it)}</span><span class="hs-num">${i + 1}</span></div>
         <div class="hs-bd">${chips(it.a)}<div class="hs-why">${it.a ? esc(it.a.error || it.a.why.join(" · ")) : ""}</div>
-        <div class="hs-capf"><input maxlength="60" placeholder="${it.listing ? "Banner label (optional, e.g. New this week)" : "Banner title, e.g. Modern living in Kilimani"}" value="${esc(it.caption || "")}" oninput="hsCap(${i},'caption',this.value)"><input maxlength="80" placeholder="${it.listing ? "Shows the price and home name" : "Short line under it (optional)"}" value="${esc(it.sub || "")}" ${it.listing ? "disabled" : ""} oninput="hsCap(${i},'sub',this.value)"></div>
+        <div class="hs-capf"><input maxlength="60" placeholder="${it.listing ? "Label is automatic, e.g. 3-bedroom apartment · Nyali" : "What the photo shows, e.g. Master bedroom"}" ${it.listing ? "disabled" : ""} value="${esc(it.caption || "")}" oninput="hsCap(${i},'caption',this.value)"><input maxlength="80" placeholder="${it.listing ? "" : "Type or place, e.g. Kilimani"}" value="${esc(it.sub || "")}" ${it.listing ? "disabled" : ""} oninput="hsCap(${i},'sub',this.value)"></div>
         <label style="font-size:.76rem;display:flex;gap:6px;align-items:center;margin:0;text-transform:none;letter-spacing:0;font-weight:500"><input type="checkbox" ${it.enhance ? "checked" : ""} onchange="hsEnhance(${i},this.checked)"> Auto-enhance${it.a && it.a.canEnhance ? " (recommended)" : ""}</label>
         <div class="hs-act"><button class="btn btn-ghost" ${i === 0 ? "disabled" : ""} onclick="hsMove(${i},-1)">↑ Earlier</button><button class="btn btn-ghost" ${i === lineup.length - 1 ? "disabled" : ""} onclick="hsMove(${i},1)">↓ Later</button><button class="btn btn-ghost" onclick="hsRemove(${i})">Remove</button></div></div></div>`).join("")
       : `<div class="muted">No photos yet. The homepage will show the 5 stock photos.</div>`;
@@ -263,7 +263,7 @@
     if (!saved.length) lineup.forEach((it, i) => { const c = STOCK_CAP[i % STOCK_CAP.length]; it.caption = c[0]; it.sub = c[1]; });
     $("panel").innerHTML = `<div class="hs-wrap">
       <div class="hs-card"><h3>🏠 On the homepage now <small class="muted" id="hsAvg"></small></h3>
-        <div class="muted">Shown in this order, fading every 7 seconds. The small inset shows how each photo crops on a phone. Each photo gets a banner card with the PataHome logo: listing photos show that home's price, other photos show the title and line you type.</div>
+        <div class="muted">Shown in this order, fading every 7 seconds. The small inset shows how each photo crops on a phone. Each photo gets a small see-through label with the PataHome logo, e.g. \"3-bedroom apartment · Nyali\". Listing photos are labelled automatically; for other photos type what it shows.</div>
         <div class="hs-row" id="hsLineup"></div>
         <div class="hs-tools"><button class="btn btn-primary" onclick="hsSave()">Save &amp; put live</button><button class="btn btn-ghost" onclick="hsBest()">Fill with the best photos</button><button class="btn btn-ghost" onclick="hsReset()">Reset to stock photos</button></div>
       </div>
