@@ -343,3 +343,8 @@ body.page-dashboard .code-input{text-align:center;font:400 2rem var(--serif);let
 .auth-card label,.auth-card input{text-align:left}
 .help-card{margin-left:auto;margin-right:auto}
 @media (max-width:900px){.pnav{justify-content:flex-start}}
+/* photo labels + cover badge */
+.photo-grid{grid-template-columns:repeat(auto-fill,minmax(112px,1fr))}
+.photo-cell{display:flex;flex-direction:column;gap:6px}
+body.page-dashboard .photo-cell .ph-lab{padding:6px 8px;font-size:.76rem;border-radius:var(--r-sm)}
+.photo-th .cover{position:absolute;left:6px;bottom:6px;z-index:3;padding:2px 8px;border-radius:var(--pill);background:rgba(14,42,59,.7);color:#fff;font-size:.64rem;font-weight:600}

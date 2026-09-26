@@ -124,7 +124,9 @@ const listingView = (row, userLat, userLng) => ({
   photos: parsePhotos(row.photos),
   photoUrls: cldEnabled() ? parsePhotos(row.photos).map(id => ({
     thumb: photoUrl(id, "c_limit,w_720,h_720,q_auto:eco"), // whole photo, no crop
-    full: photoUrl(id, "c_limit,w_1280,q_auto:good")
+    small: photoUrl(id, "c_fill,g_auto,w_420,h_320,q_auto:eco"), // gallery tiles
+    full: photoUrl(id, "c_limit,w_1280,q_auto:good"),
+    label: (parseJson(row.features, {}).photoLabels || {})[id] || ""
   })) : [],
   featured: !!(row.featured_until && row.featured_until > new Date().toISOString()),
   features: parseJson(row.features, {}),
@@ -151,6 +153,8 @@ const listingView = (row, userLat, userLng) => ({
   ownerVerified: !!row.owner_verified,
   listerRole: row.lister_role || "owner",
   expiresAt: row.status === "active" ? expiryOf(row) : null,
+  confirmedAt: row.confirmed_at || row.created_at,
+  ref: "PH-" + String(row.id).padStart(4, "0"),
   agentFee: row.agent_fee || "",
   createdAt: row.created_at,
   distanceKm: (userLat != null && userLng != null)
@@ -994,6 +998,14 @@ router.add("GET", "/api/stats/listings", (req, res) => {
   send(res, 200, { total: t.n, owners: t.owners, byArea, byCat });
 });
 
+/* Similar homes for the listing popup: same category, same area first, then same county, near the price. */
+router.add("GET", "/api/listings/:id/similar", (req, res, p) => {
+  const row = db.prepare(`${LISTING_SQL} WHERE l.id=?`).get(p.id);
+  if (!row) return send(res, 404, { error: "Listing not found" });
+  const rows = db.prepare(`${LISTING_SQL} WHERE l.status='active' AND l.category=? AND l.id!=? AND a.county=?
+    ORDER BY (l.area_id=?) DESC, ABS(l.price - ?) ASC LIMIT 8`).all(row.category, row.id, row.county, row.area_id, row.price);
+  send(res, 200, { listings: rows.map(r => listingView(r)) });
+});
 router.add("GET", "/api/listings/:id", (req, res, p) => {
   const row = db.prepare(`${LISTING_SQL} WHERE l.id=?`).get(p.id);
   if (!row) return send(res, 404, { error: "Listing not found" });
@@ -1845,15 +1857,28 @@ function cldDestroyVideo(publicId) {
 /* ---------- 8 · structured listing details ---------- */
 const FEATURE_ENUMS = {
   water: ["included", "metered", "borehole", "tank"],
-  power: ["token", "postpaid", "included", "solar"]
+  power: ["token", "postpaid", "included", "solar"],
+  propType: ["apartment", "bedsitter", "studio", "maisonette", "bungalow", "townhouse", "villa", "cottage", "room", "servant-quarter"]
 };
-const FEATURE_BOOLS = ["parking", "pets", "furnished", "security", "borehole", "wifi", "gated", "backupPower"];
+// inside the home + in the compound
+const FEATURE_BOOLS = ["parking", "pets", "furnished", "security", "borehole", "wifi", "gated", "backupPower",
+  "hotShower", "fittedKitchen", "balcony", "ensuite", "water247", "cctv", "lift", "pool", "gym", "dsq", "garden", "playArea"];
+const PHOTO_LABELS = ["Living room", "Bedroom", "Kitchen", "Bathroom", "Balcony", "Outside", "View", "Compound", "Dining", "Other"];
 function cleanFeatures(f) {
   const out = {};
   if (!f || typeof f !== "object") return out;
   if (f.deposit) out.deposit = String(f.deposit).trim().slice(0, 40);
   if (f.serviceCharge) out.serviceCharge = String(f.serviceCharge).trim().slice(0, 40);
   if (f.floor) out.floor = String(f.floor).trim().slice(0, 20);
+  const n = (v, lo, hi) => { const x = Math.round(+v); return Number.isFinite(x) && x >= lo && x <= hi ? x : null; };
+  if (n(f.bathrooms, 1, 12) != null) out.bathrooms = n(f.bathrooms, 1, 12);
+  if (n(f.depositMonths, 0, 6) != null) out.depositMonths = n(f.depositMonths, 0, 6);
+  if (n(f.serviceChargeKes, 0, 1e6) != null) out.serviceChargeKes = n(f.serviceChargeKes, 0, 1e6);
+  if (f.photoLabels && typeof f.photoLabels === "object") {
+    const pl = {};
+    for (const [id, lab] of Object.entries(f.photoLabels).slice(0, 30)) if (/^[\w\/-]{3,120}$/.test(id) && PHOTO_LABELS.includes(lab)) pl[id] = lab;
+    if (Object.keys(pl).length) out.photoLabels = pl;
+  }
   for (const [k, allowed] of Object.entries(FEATURE_ENUMS)) if (allowed.includes(f[k])) out[k] = f[k];
   for (const k of FEATURE_BOOLS) if (f[k] === true || f[k] === "true" || f[k] === 1) out[k] = true;
   return out;

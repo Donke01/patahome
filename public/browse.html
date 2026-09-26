@@ -27,7 +27,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="/ph.css?v=12">
-<link rel="stylesheet" href="/browse.css?v=4">
+<link rel="stylesheet" href="/browse.css?v=5">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#0B5D3B">
 </head>
@@ -198,9 +198,9 @@
 </footer>
 
 <!-- Detail modal -->
-<div class="overlay" id="detailModal" onclick="if(event.target===this)closeModal('detailModal')">
+<div class="overlay" id="detailModal" onclick="if(event.target===this)closeDetail()">
   <div class="modal dm">
-    <button class="close-x" onclick="closeModal('detailModal')" aria-label="Close">✕</button>
+    <button class="close-x" onclick="closeDetail()" aria-label="Close">✕</button>
     <div class="gallery" id="gallery"></div>
     <div class="dm-body">
       <div class="dm-main">
@@ -210,22 +210,18 @@
         </div>
         <div class="dm-head">
           <h2 id="dTitle"></h2>
+          <div class="dm-owntitle" id="dOwnTitle"></div>
           <div class="dm-price" id="dPrice"></div>
         </div>
+        <div class="dm-avail" id="dAvail"></div>
         <div class="dm-facts" id="dFacts"></div>
         <div class="sub" id="dSub" hidden></div>
-        <div class="dm-tabs" id="dTabs" role="tablist"></div>
-        <div class="dm-pane" id="dDetailsWrap" data-tab="Details">
-          <div class="dm-kv" id="dKv"></div>
-          <div class="chips" id="dChips"></div>
-        </div>
-        <div class="dm-pane" id="dDescWrap" data-tab="About">
-          <p class="dm-desc" id="dDesc"></p>
-        </div>
-        <div class="dm-pane" id="dNearWrap" data-tab="Nearby">
-          <div class="dm-near" id="dNear"></div>
-          <div class="dm-note">Approximate distances from the listing's area.</div>
-        </div>
+        <div class="dm-tabs" id="dTabs" hidden></div>
+        <div class="dm-movein" id="dMoveIn" hidden></div>
+        <section class="dm-sec" id="dDescWrap"><h4>About this home</h4><p class="dm-desc" id="dDesc"></p><button class="dm-more" id="dDescMore" type="button" hidden>Read more</button></section>
+        <section class="dm-sec" id="dDetailsWrap"><h4>Details</h4><div class="dm-kv" id="dKv"></div></section>
+        <section class="dm-sec" id="dAmenWrap"><h4>Amenities</h4><div id="dAmen"></div><div class="chips" id="dChips"></div></section>
+        <section class="dm-sec" id="dNearWrap"><h4>Nearby <a class="dm-gmaps" id="dGmaps" target="_blank" rel="noopener">Open in Google Maps ↗</a></h4><div class="dm-near" id="dNear"></div><div class="dm-note">Approximate distances from the listing's area.</div></section>
       </div>
       <aside class="dm-side">
         <div class="dm-price-side" id="dPriceSide"></div>
@@ -249,6 +245,7 @@
         <button class="btn btn-ghost dm-ic" id="dMapBtn" aria-label="View on map" title="View on map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.1-7-11a7 7 0 0 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></button>
       </div>
     </div>
+    <section class="dm-similar" id="dSimilar" hidden><h4 id="dSimTitle">More homes nearby</h4><div class="dm-sim-row" id="dSimRow"></div></section>
   </div>
 </div>
 
@@ -370,6 +367,12 @@
     <input id="qName" placeholder="Your name" style="margin-bottom:8px">
     <input id="qPhone" placeholder="Your phone e.g. 0712 345 678" style="margin-bottom:8px">
     <input id="qEmail" type="email" placeholder="Your email (optional, to get the owner's reply)" style="margin-bottom:8px">
+    <div class="q-chips" id="qChips">
+      <button type="button" onclick="quickMsg(this)">Is it still available?</button>
+      <button type="button" onclick="quickMsg(this)">Can I view it this weekend?</button>
+      <button type="button" onclick="quickMsg(this)">Is the price negotiable?</button>
+      <button type="button" onclick="quickMsg(this)">What's the total move-in cost?</button>
+    </div>
     <textarea id="qMsg" rows="2" placeholder="e.g. Is it still available? Can I view Saturday?"></textarea>
     <button class="btn btn-primary" style="width:100%;margin-top:12px;padding:12px" onclick="sendInquiry()">Send Message</button>
   </div>
@@ -482,9 +485,38 @@ const toItem=x=>({
   notice:x.notice||"",deal:x.deal,commType:x.commType,areaSqft:x.areaSqft,pricePerSqft:x.pricePerSqft,incomeMonth:x.incomeMonth,
   landDeal:x.landDeal,sizeValue:x.sizeValue,sizeUnit:x.sizeUnit,sizeAcres:x.sizeAcres,priceBasis:x.priceBasis,pricePerAcre:x.pricePerAcre,
   leaseMin:x.leaseMin,exactPin:!!x.exactPin,docsChecked:!!x.docsChecked,
+  confirmedAt:x.confirmedAt||x.createdAt,ref:x.ref||("PH-"+String(x.id).padStart(4,"0")),
   photos:x.photoUrls||[]
 });
 // Land shows its deal type instead of the generic category label
+/* ---------- listing presentation helpers ---------- */
+const PROP={apartment:"Apartment",bedsitter:"Bedsitter",studio:"Studio",maisonette:"Maisonette",bungalow:"Bungalow",townhouse:"Townhouse",villa:"Villa",cottage:"Cottage",room:"Room","servant-quarter":"Servant quarter (SQ)"};
+// A clean headline from the facts ("2-bedroom apartment in Nyali"); the owner's own title shows under it.
+function cleanTitle(x){
+  const place=String(x.area||"").split(",")[0];
+  if(x.cat==="land"||x.cat==="commercial")return catLabel(x)+" in "+place;
+  const F=x.features||{},t=F.propType;
+  const kind=t==="bedsitter"||t==="studio"?PROP[t]:x.beds===0?"Bedsitter":(t?PROP[t]:x.cat==="shortlet"?"Airbnb":"House").toLowerCase();
+  const beds=x.beds>0?x.beds+"-bedroom ":"";
+  let s=(beds+kind).replace(/^./,c=>c.toUpperCase());
+  if(x.cat==="shortlet"&&t)s+=" (Airbnb)";
+  return s+" in "+place+(x.cat==="sale"?" for sale":"");
+}
+function agoTxt(iso){const d=(Date.now()-new Date(String(iso).replace(" ","T")+(String(iso).includes("Z")?"":"Z")))/864e5;
+  return isNaN(d)?"recently":d<1?"today":d<2?"yesterday":d<7?Math.floor(d)+" days ago":d<14?"last week":Math.floor(d/7)+" weeks ago"}
+// Move-in cost for rentals: first month + deposit(s) + service charge (when the owner gave amounts)
+function moveIn(x){
+  if(x.cat!=="rent")return null;const F=x.features||{};
+  if(F.depositMonths==null)return null;
+  const sc=+F.serviceChargeKes||0,total=x.price*(1+F.depositMonths)+sc;
+  const parts=["1 month rent"];if(F.depositMonths)parts.push(F.depositMonths+" month"+(F.depositMonths===1?"":"s")+" deposit");if(sc)parts.push("service charge "+fmt(sc));
+  return {total,parts};
+}
+const AMEN={
+  inside:{title:"Inside",items:{furnished:["🛋","Furnished"],wifi:["📶","Wi-Fi"],hotShower:["🚿","Hot shower"],fittedKitchen:["🍳","Fitted kitchen"],ensuite:["🛁","En-suite"],balcony:["🌇","Balcony"],backupPower:["⚡","Backup power"]}},
+  compound:{title:"Compound",items:{water247:["💧","Water 24/7"],borehole:["🚰","Borehole"],security:["💂","Security guard"],cctv:["📹","CCTV"],gated:["🚧","Gated"],parking:["🚗","Parking"],lift:["🛗","Lift"],pool:["🏊","Swimming pool"],gym:["🏋","Gym"],garden:["🌳","Garden"],playArea:["🛝","Kids' play area"],dsq:["🏠","Staff quarters (DSQ)"],pets:["🐾","Pets allowed"]}}
+};
+function quickMsg(b){const t=document.getElementById("qMsg");t.value=(t.value.trim()?t.value.trim()+" ":"")+b.textContent;t.focus()}
 const priceTxt=x=>x.cat==="commercial"&&window.PH_COMM?PH_COMM.priceLabel(x).main:x.cat==="land"&&window.PH_LAND?PH_LAND.priceLabel(x).main:fmt(x.price)+CAT[x.cat].unit;
 const catLabel=x=>x.cat==="land"?(x.landDeal==="lease"?"Land for lease":"Land for sale")
   :x.cat==="commercial"?((window.PH_COMM&&PH_COMM.TYPES[x.commType]||"Commercial").split(" / ")[0]+(x.deal==="lease"?" to let":" for sale")):CAT[x.cat].label;
@@ -885,7 +917,7 @@ function cardHTML(x,i){
         ${x.photos.length>1?`<span class="photo-count">${CAM}${x.photos.length}</span>`:""}
       </div>
       <div class="card-body">
-        <div class="row"><div class="title">${esc(x.title)}</div><div class="price">${priceHTML(x)}</div></div>
+        <div class="row"><div class="title">${esc(cleanTitle(x))}</div><div class="price">${priceHTML(x)}</div></div>
         <div class="where">${esc(x.area)}</div>
         <div class="meta">${size?`<span>${esc(size)}</span>`:""}<span>${esc(x.posted)}</span><span class="listing-trust ${t.cls}">${esc(t.txt)}</span></div>
       </div>
@@ -990,7 +1022,11 @@ function openDetail(id){
   const x=BYID.get(id),c=CAT[x.cat];
   galItem=x;galIdx=0;
   renderGallery();
-  document.getElementById("dTitle").textContent=x.title;
+  const ct=cleanTitle(x);
+  document.getElementById("dTitle").textContent=ct;
+  const own=String(x.title||"").trim();
+  document.getElementById("dOwnTitle").textContent=own&&own.toLowerCase()!==ct.toLowerCase()?"“"+own+"”":"";
+  document.getElementById("dAvail").innerHTML=`<span class="ok">● Available</span> · confirmed ${esc(agoTxt(x.confirmedAt))} · <span class="ref">${esc(x.ref)}</span>`;
   const d=userLoc?dist(userLoc[0],userLoc[1],x.lat,x.lng):null;
   const dTxt=d!==null?(d<1?Math.round(d*1000)+" m":d.toFixed(1)+" km")+" from you":"";
   document.getElementById("dSub").textContent=priceTxt(x)+" · "+x.area+(dTxt?" · "+dTxt:"")+" · posted "+x.posted;
@@ -1019,9 +1055,14 @@ function openDetail(id){
     if(x.docsChecked)facts.push(["✓ ","Documents checked"]);
     if(x.exactPin)facts.push(["📍 ","Exact location on map"]);
   }
+  const FF=x.features||{};
   if(x.beds!==null&&x.beds!==undefined)facts.push([BED_SVG,x.beds===0?"Bedsitter":x.beds+" bedroom"+(x.beds===1?"":"s")]);
+  if(FF.bathrooms)facts.push(["🛁 ",FF.bathrooms+" bathroom"+(FF.bathrooms===1?"":"s")]);
+  if(FF.propType&&!isLand&&!isComm)facts.push(["🏠 ",PROP[FF.propType]||FF.propType]);
+  if(!isLand&&!isComm&&FF.furnished)facts.push(["🛋 ","Furnished"]);
+  if(FF.floor)facts.push(["🏢 ","Floor: "+FF.floor]);
+  if(!isLand&&!isComm&&FF.parking)facts.push(["🚗 ","Parking"]);
   if(dTxt)facts.push([PIN_SVG,dTxt]);
-  facts.push([CLOCK_SVG,"Posted "+x.posted]);
   if(x.video)facts.push(['<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l11-6.5z"/></svg>',"Video tour"]);
   if(x.photos&&x.photos.length)facts.push(['<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h3l2-2h6l2 2h3v13H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',x.photos.length+" photo"+(x.photos.length===1?"":"s")]);
   document.getElementById("dFacts").innerHTML=facts.map(([ic,t])=>t==="Video tour"
@@ -1037,23 +1078,35 @@ function openDetail(id){
     ["Title",F.title?(LD.title[F.title]+(F.title==="leasehold"&&F.leaseYears?` · ${F.leaseYears} yrs left`:"")):null],["Land use",LD.use&&LD.use[F.use]],
     ["Road",F.road?(LD.road[F.road]+(F.roadKm!=null&&F.road!=="tarmac"?` · ${F.roadKm} km to tarmac`:"")):(F.roadKm!=null?F.roadKm+" km to tarmac":null)],
     ["Water",LD.water&&LD.water[F.water]],["Electricity",LD.power&&LD.power[F.power]],["Terrain",LD.terrain&&LD.terrain[F.terrain]]].filter(k=>k[1])
-   :[["Deposit",F.deposit],["Service charge",F.serviceCharge],["Water",{included:"Included in rent",metered:"Metered",borehole:"Borehole",tank:"Tank / delivered"}[F.water]],
+   :[["Deposit",F.depositMonths!=null?(F.depositMonths?F.depositMonths+" month"+(F.depositMonths===1?"":"s")+" of rent":"No deposit"):F.deposit],["Service charge",F.serviceChargeKes?fmt(F.serviceChargeKes)+" / month":F.serviceCharge],["Water",{included:"Included in rent",metered:"Metered",borehole:"Borehole",tank:"Tank / delivered"}[F.water]],
     ["Electricity",{token:"Prepaid tokens",postpaid:"Postpaid bill",included:"Included in rent",solar:"Solar"}[F.power]],["Floor",F.floor]].filter(k=>k[1]);
   const TICK=isComm?Object.assign({},window.PH_COMM?PH_COMM.TICKS:{}):isLand?{fenced:"Fenced",beacons:"Beacons in place",surveyed:"Surveyed",subdivisible:"Can be subdivided"}
     :{parking:"Parking",security:"Security guard",gated:"Gated compound",borehole:"Borehole",backupPower:"Backup power",wifi:"Wi-Fi",furnished:"Furnished",pets:"Pets allowed"};
   const ticks=Object.keys(TICK).filter(k=>F[k]);
   if(isLand&&Array.isArray(F.suits))F.suits.forEach(k=>{if(LD.suits&&LD.suits[k]){TICK["suit_"+k]="Suits "+LD.suits[k].toLowerCase();ticks.push("suit_"+k)}});
   document.getElementById("dKv").innerHTML=KV.map(([k,v])=>`<div><span>${k}</span><b>${esc(v)}</b></div>`).join("");
-  document.getElementById("dChips").innerHTML=ticks.map(k=>`<span class="chip">✓ ${TICK[k]}</span>`).join("");
-  document.getElementById("dDetailsWrap").style.display=(KV.length||ticks.length)?"":"none";
+  const house=!isLand&&!isComm;
+  document.getElementById("dChips").innerHTML=house?"":ticks.map(k=>`<span class="chip">✓ ${TICK[k]}</span>`).join("");
+  const amenHtml=house?Object.values(AMEN).map(g=>{const on=Object.keys(g.items).filter(k=>F[k]||(k==="borehole"&&F.water==="borehole"));
+    return on.length?`<div class="dm-amen-g"><div class="dm-amen-t">${g.title}</div><div class="dm-amen">${on.map(k=>`<span><i>${g.items[k][0]}</i>${g.items[k][1]}</span>`).join("")}</div></div>`:""}).join(""):"";
+  document.getElementById("dAmen").innerHTML=amenHtml;
+  document.getElementById("dAmenWrap").style.display=(amenHtml||(!house&&ticks.length))?"":"none";
+  document.getElementById("dDetailsWrap").style.display=KV.length?"":"none";
+  const mi=moveIn(x),miEl=document.getElementById("dMoveIn");
+  miEl.hidden=!mi;
+  if(mi)miEl.innerHTML=`<div><span>Move-in cost</span><b>${fmt(mi.total)}</b></div><small>${esc(mi.parts.join(" + "))}</small>`;
   const N=x.nearby||{},NL={stage:["🚌","Matatu stage"],supermarket:["🛒","Supermarket"],health:["🏥","Hospital / clinic"],school:["🏫","School"]};
   const dist2=m=>m<1000?Math.max(50,Math.round(m/50)*50)+" m":(m/1000).toFixed(1)+" km";
   const near=Object.keys(NL).filter(k=>N[k]);
   document.getElementById("dNear").innerHTML=near.map(k=>`<div><span class="ni">${NL[k][0]}</span><span class="nt">${NL[k][1]}<small>${esc(N[k].name!==NL[k][1]?N[k].name:"")}</small></span><b>~${dist2(N[k].m)}</b></div>`).join("");
   document.getElementById("dNearWrap").style.display=near.length?"":"none";
-  buildDetailTabs();
-  document.getElementById("dDesc").textContent=x.desc||"";
+  document.getElementById("dGmaps").href=`https://www.google.com/maps/search/?api=1&query=${x.lat},${x.lng}`;
+  const dEl=document.getElementById("dDesc"),dMore=document.getElementById("dDescMore");
+  dEl.textContent=x.desc||"";dEl.classList.remove("open");
   document.getElementById("dDescWrap").style.display=x.desc?"":"none";
+  dMore.hidden=!x.desc||x.desc.length<260;dMore.textContent="Read more";
+  dMore.onclick=()=>{const o=dEl.classList.toggle("open");dMore.textContent=o?"Show less":"Read more"};
+  loadSimilar(x);
   document.getElementById("dVerify").style.display=x.verified===false?"none":"";
   document.getElementById("dContactBtn").textContent=x.role==="agent"?"Contact Agent":x.role==="caretaker"?"Contact Caretaker":"Contact Owner";
   document.getElementById("dListed").textContent=x.role==="agent"?"Agent":x.role==="caretaker"?"Caretaker / manager":"Listed by owner";
@@ -1080,6 +1133,36 @@ function openDetail(id){
   document.getElementById("dShareBtn").onclick=()=>shareListing(id);
   track(id,"view");
   openModal("detailModal");
+  document.querySelector("#detailModal .modal").scrollTop=0;
+  // give the listing its own address: back button closes it, the link can be shared
+  const u=new URL(location.href);
+  if(u.searchParams.get("open")!==String(id)){u.searchParams.set("open",id);history[detailPushed?"replaceState":"pushState"]({open:id},"",u);detailPushed=true}
+}
+let detailPushed=false;
+function closeDetail(){
+  closeModal("detailModal");
+  if(detailPushed){detailPushed=false;history.back()}
+  else{const u=new URL(location.href);if(u.searchParams.has("open")){u.searchParams.delete("open");history.replaceState(null,"",u)}}
+}
+addEventListener("popstate",()=>{
+  const id=+new URL(location.href).searchParams.get("open");
+  if(id){detailPushed=false;openDetail(id)}
+  else{detailPushed=false;closeModal("detailModal")}
+});
+let simSeq=0;
+async function loadSimilar(x){
+  const box=document.getElementById("dSimilar"),row=document.getElementById("dSimRow"),seq=++simSeq;
+  box.hidden=true;row.innerHTML="";
+  let r;try{r=await api(`/api/listings/${x.id}/similar`)}catch(e){return}
+  if(seq!==simSeq)return;
+  const items=r.listings.filter(y=>CAT[y.category]).map(toItem);
+  items.forEach(y=>{if(!BYID.has(y.id))BYID.set(y.id,y)});
+  if(!items.length)return;
+  document.getElementById("dSimTitle").textContent="More homes in "+String(x.area).split(",")[0]+" and nearby";
+  row.innerHTML=items.map(y=>`<a class="dm-sim" href="?open=${y.id}" onclick="event.preventDefault();openDetail(${y.id})">
+    <span class="ph">${y.photos.length?`<img src="${esc(y.photos[0].small||y.photos[0].thumb)}" alt="" loading="lazy">`:""}</span>
+    <b>${priceHTML(y)}</b><span class="t">${esc(cleanTitle(y))}</span></a>`).join("");
+  box.hidden=false;
 }
 /* ---------- analytics (anonymous counts only) ---------- */
 function track(id,event){try{fetch(`/api/listings/${id}/track`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({event}),keepalive:true})}catch(e){}}
@@ -1246,8 +1329,8 @@ function renderPhotoGrid(gEl,photos){
     // mobile shows the big photo + 3 small; the 4th small tile carries "+N" there
     const mMore=(i===3&&n>4)?`<span class="pg-more pg-more-m">+${n-4} photo${n-4===1?"":"s"}</span>`:"";
     return i===0
-      ?`<button type="button" class="pg-tile pg-main" onclick="openZoom(0)" aria-label="View photo 1 of ${n} full screen"><img class="ph-bg" src="${p.thumb}" alt="" aria-hidden="true"><img class="pg-img pg-fit" src="${p.full}" alt="${esc(galItem.title)}, photo 1"><span class="gal-zoom">⤢ ${n>1?"View all "+n+" photos":"Full screen"}</span></button>`
-      :`<button type="button" class="pg-tile pg-s${i}" onclick="openZoom(${i})" aria-label="View photo ${i+1} of ${n} full screen"><img class="pg-img" src="${p.thumb}" alt="${esc(galItem.title)}, photo ${i+1}" loading="lazy">${more}${mMore}</button>`;
+      ?`<button type="button" class="pg-tile pg-main" onclick="openZoom(0)" aria-label="View photo 1 of ${n} full screen"><img class="ph-bg" src="${p.thumb}" alt="" aria-hidden="true"><img class="pg-img pg-fit" src="${p.full}" alt="${esc(galItem.title)}, photo 1"><span class="gal-zoom">⤢ ${n>1?"1 / "+n+" · View all":"Full screen"}</span>${p.label?`<span class="pg-lab">${esc(p.label)}</span>`:""}</button>`
+      :`<button type="button" class="pg-tile pg-s${i}" onclick="openZoom(${i})" aria-label="View photo ${i+1} of ${n} full screen"><img class="pg-img" src="${p.small||p.thumb}" alt="${esc(p.label||galItem.title)}, photo ${i+1}">${p.label?`<span class="pg-lab">${esc(p.label)}</span>`:""}${more}${mMore}</button>`;
   };
   gEl.className="gallery pgrid pg-n"+shown;
   gEl.innerHTML=photos.slice(0,shown).map(tile).join("");

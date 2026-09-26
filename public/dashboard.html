@@ -13,7 +13,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/ph.css?v=12">
-<link rel="stylesheet" href="/dashboard.css?v=3">
+<link rel="stylesheet" href="/dashboard.css?v=4">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#0B5D3B">
 </head>
@@ -254,8 +254,9 @@
     </div>
     <label>Title</label>
     <input id="eTitle" placeholder="e.g. Spacious 2BR with balcony">
-    <label>Description (optional)</label>
-    <textarea id="eDesc" rows="2" placeholder="Amenities, terms, directions…"></textarea>
+    <button type="button" class="link-btn" id="eSuggest" style="margin:6px 0 0;display:inline-block" onclick="suggestTitle()">Use a suggested title</button>
+    <label>Description <small id="eDescCount" style="text-transform:none;letter-spacing:0;font-weight:500"></small></label>
+    <textarea id="eDesc" rows="4" oninput="descCount()" placeholder="What makes it good? e.g. Water 24/7, quiet compound, 5 min walk to the stage, tiled floors, big windows. Mention anything tenants should know (rules, move-in date)."></textarea>
     <div id="photoWrap" style="display:none">
       <label>Photos (up to 5)</label>
       <div class="photo-grid" id="photoGrid"></div>
@@ -370,8 +371,11 @@
     <input id="ePrice" type="number" placeholder="e.g. 15000" oninput="landPreview();commPreview()">
     <div class="land-hint" id="lPriceHint"></div>
     <div id="eBedsWrap">
-    <label>Bedrooms (houses only)</label>
-    <select id="eBeds"><option value="">N/A</option><option value="0">Bedsitter</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+    <div class="em-grid">
+      <div><label>Property type</label><select id="fType"><option value="">Choose…</option><option value="apartment">Apartment / flat</option><option value="bedsitter">Bedsitter</option><option value="studio">Studio</option><option value="maisonette">Maisonette</option><option value="bungalow">Bungalow</option><option value="townhouse">Townhouse</option><option value="villa">Villa</option><option value="cottage">Cottage</option><option value="room">Single room</option><option value="servant-quarter">Servant quarter (SQ)</option></select></div>
+      <div><label>Bedrooms</label><select id="eBeds"><option value="">N/A</option><option value="0">Bedsitter / studio</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></div>
+      <div><label>Bathrooms</label><select id="fBaths"><option value="">Not stated</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></div>
+    </div>
     </div>
     <label>Who is posting this listing?</label>
     <div class="seg" id="eRoleSeg">
@@ -394,8 +398,9 @@
     <details class="em-more" id="eMore">
       <summary>Home details <small>the questions tenants always ask</small></summary>
       <div class="em-grid">
-        <div><label>Deposit</label><input id="fDeposit" maxlength="40" placeholder="e.g. 1 month's rent"></div>
-        <div><label>Service charge</label><input id="fSvc" maxlength="40" placeholder="e.g. KES 1,500/month or none"></div>
+        <div><label>Deposit</label><select id="fDepM"><option value="">Not stated</option><option value="0">No deposit</option><option value="1">1 month</option><option value="2">2 months</option><option value="3">3 months</option></select></div>
+        <div><label>Service charge (KES / month)</label><input id="fSvcK" type="number" min="0" placeholder="0 if none"></div>
+        <div style="display:none"><input id="fDeposit"><input id="fSvc"></div>
         <div><label>Water</label><select id="fWater"><option value="">Not stated</option><option value="included">Included in rent</option><option value="metered">Metered (pay per use)</option><option value="borehole">Borehole</option><option value="tank">Tank / delivered</option></select></div>
         <div><label>Electricity</label><select id="fPower"><option value="">Not stated</option><option value="token">Prepaid tokens</option><option value="postpaid">Postpaid bill</option><option value="included">Included in rent</option><option value="solar">Solar</option></select></div>
         <div><label>Floor</label><input id="fFloor" maxlength="20" placeholder="e.g. Ground, 3rd"></div>
@@ -409,6 +414,18 @@
         <label><input type="checkbox" value="wifi"> Wi-Fi available</label>
         <label><input type="checkbox" value="furnished"> Furnished</label>
         <label><input type="checkbox" value="pets"> Pets allowed</label>
+        <label><input type="checkbox" value="water247"> Water 24/7</label>
+        <label><input type="checkbox" value="hotShower"> Hot shower</label>
+        <label><input type="checkbox" value="fittedKitchen"> Fitted kitchen</label>
+        <label><input type="checkbox" value="ensuite"> En-suite</label>
+        <label><input type="checkbox" value="balcony"> Balcony</label>
+        <label><input type="checkbox" value="cctv"> CCTV</label>
+        <label><input type="checkbox" value="lift"> Lift</label>
+        <label><input type="checkbox" value="pool"> Swimming pool</label>
+        <label><input type="checkbox" value="gym"> Gym</label>
+        <label><input type="checkbox" value="garden"> Garden</label>
+        <label><input type="checkbox" value="playArea"> Kids' play area</label>
+        <label><input type="checkbox" value="dsq"> Staff quarters (DSQ)</label>
       </div>
     </details>
     <div id="videoWrap" style="display:none">
@@ -1109,7 +1126,7 @@ function renderPhotos(){
   const max=(signCfg&&signCfg.maxPhotos)||5;
   uploadingCount=uploads.length;
   $("photoGrid").innerHTML=
-    photoIds.map((id,i)=>`<div class="photo-th"><img src="${thumbUrl(id)}" alt="photo ${i+1}" loading="lazy"><button type="button" class="rm" onclick="removePhoto(${i})">✕</button></div>`).join("")+
+    photoIds.map((id,i)=>`<div class="photo-cell"><div class="photo-th"><img src="${thumbUrl(id)}" alt="photo ${i+1}" loading="lazy"><button type="button" class="rm" onclick="removePhoto(${i})">✕</button>${i===0?'<span class="cover">Cover</span>':""}</div><select class="ph-lab" onchange="photoLabels['${id}']=this.value" aria-label="What is in photo ${i+1}?"><option value="">Label…</option>${PHOTO_LABELS.map(l=>`<option${photoLabels[id]===l?" selected":""}>${l}</option>`).join("")}</select></div>`).join("")+
     uploads.map(u=>`<div class="photo-th uploading${u.done?" done":""}" id="up-${u.key}"><img src="${u.preview}" alt=""><div class="ring" style="--p:${pctOf(u)}"><b>${u.done?"✓":pctOf(u)+"%"}</b></div>${u.done?"":`<button type="button" class="up-cancel" title="Cancel upload" onclick="cancelUpload('${u.key}')">✕</button>`}</div>`).join("")+
     (photoIds.length+uploads.length<max?`<button type="button" class="photo-add" onclick="$('photoFile').click()"><span>+</span>Add photo</button>`:"");
   updateOverall();
@@ -1143,6 +1160,19 @@ function cancelUpload(key){
   u.cancelled=true;try{u.xhr&&u.xhr.abort()}catch{}
 }
 function removePhoto(i){photoIds.splice(i,1);renderPhotos()}
+let photoLabels={};
+const PHOTO_LABELS=["Living room","Bedroom","Kitchen","Bathroom","Balcony","Outside","View","Compound","Dining","Other"];
+const DESC_MIN=40;
+function descCount(){const n=$("eDesc").value.trim().length;$("eDescCount").textContent=n<DESC_MIN?`(at least ${DESC_MIN} characters · ${n} so far)`:`(${n} characters)`}
+function suggestTitle(){
+  const cat=curCat(),beds=$("eBeds").value,type=$("fType")?$("fType").value:"";
+  const area=($("eArea").selectedOptions[0]||{}).textContent||"";const place=area.split(",")[0].trim();
+  const TYPES={apartment:"apartment",bedsitter:"bedsitter",studio:"studio",maisonette:"maisonette",bungalow:"bungalow",townhouse:"townhouse",villa:"villa",cottage:"cottage",room:"single room","servant-quarter":"servant quarter"};
+  if(cat==="land"||cat==="commercial"){toast("Titles for land and commercial are set from the size and type");return}
+  const kind=TYPES[type]||(beds==="0"?"bedsitter":cat==="shortlet"?"Airbnb":"house");
+  const t=((beds&&beds!=="0"?beds+"-bedroom ":"")+kind+(place?" in "+place:"")+(cat==="sale"?" for sale":cat==="shortlet"?" (Airbnb)":" to let"));
+  $("eTitle").value=t.charAt(0).toUpperCase()+t.slice(1);
+}
 // XHR instead of fetch: fetch can't report upload progress.
 function sendToCloudinary(cfg,f,u){
   return new Promise((resolve,reject)=>{
@@ -1252,6 +1282,7 @@ function syncCat(){
   $("landWrap").style.display=land?"":"none";
   $("commWrap").style.display=comm?"":"none";
   $("eBedsWrap").style.display=land||comm?"none":"";
+  $("eSuggest").style.display=land||comm?"none":"inline-block";
   $("eMore").style.display=land||comm?"none":"";
   $("eTitle").placeholder=land?"e.g. 2 acres with title deed near Kitale town":comm?"e.g. Ground-floor shop on the main road":"e.g. Spacious 2BR with balcony";
   $("lPriceHint").textContent="";
@@ -1415,13 +1446,21 @@ async function sendLandDocs(){
 function setFeatureFields(f){
   f=f||{};
   $("fDeposit").value=f.deposit||"";$("fSvc").value=f.serviceCharge||"";$("fFloor").value=f.floor||"";
+  $("fDepM").value=f.depositMonths!=null?String(f.depositMonths):"";$("fSvcK").value=f.serviceChargeKes!=null?f.serviceChargeKes:"";
+  $("fType").value=f.propType||"";$("fBaths").value=f.bathrooms||"";photoLabels=Object.assign({},f.photoLabels||{});
   $("fWater").value=f.water||"";$("fPower").value=f.power||"";
   document.querySelectorAll("#fTicks input").forEach(c=>c.checked=!!f[c.value]);
-  $("eMore").open=Object.keys(f).length>0;
+  $("eMore").open=true;
+  try{descCount()}catch(e){}
 }
 function featureValues(){
   const f={deposit:$("fDeposit").value.trim(),serviceCharge:$("fSvc").value.trim(),floor:$("fFloor").value.trim(),water:$("fWater").value,power:$("fPower").value};
   document.querySelectorAll("#fTicks input").forEach(c=>{if(c.checked)f[c.value]=true});
+  if($("fDepM").value!=="")f.depositMonths=+$("fDepM").value;
+  if($("fSvcK").value!=="")f.serviceChargeKes=+$("fSvcK").value;
+  if($("fType").value)f.propType=$("fType").value;
+  if($("fBaths").value)f.bathrooms=+$("fBaths").value;
+  const pl={};photoIds.forEach(id=>{if(photoLabels[id])pl[id]=photoLabels[id]});if(Object.keys(pl).length)f.photoLabels=pl;
   Object.keys(f).forEach(k=>{if(f[k]===""||f[k]===false)delete f[k]});
   return f;
 }
@@ -1495,6 +1534,7 @@ async function saveListing(){
   if(isComm&&lister.priceBasis==="sqft_month"&&!(lister.sizeValue>0)){$("emErr").textContent="Enter the floor area to quote a price per sq ft";return}
   if(videoUp){$("emErr").textContent="Wait for the video to finish uploading…";return}
   if(listerRole==="agent"&&!lister.agentFee){$("emErr").textContent="State your fee to the tenant, or choose “No fee to tenant”";return}
+  if($("eDesc").value.trim().length<DESC_MIN){$("emErr").textContent=`Add a short description (at least ${DESC_MIN} characters). Listings with a description get far more calls.`;$("eDesc").focus();return}
   setSaveBusy(editId==null?"Publishing…":"Saving…");
   try{
     if(editId==null){

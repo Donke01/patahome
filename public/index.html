@@ -204,6 +204,15 @@ const CAT={
 };
 const catLabel=x=>x.cat==="land"?(x.landDeal==="lease"?"Land for lease":"Land for sale")
   :x.cat==="commercial"?((window.PH_COMM&&PH_COMM.TYPES[x.commType]||"Commercial").split(" / ")[0]+(x.deal==="lease"?" to let":" for sale")):CAT[x.cat].label;
+const PROP={apartment:"Apartment",bedsitter:"Bedsitter",studio:"Studio",maisonette:"Maisonette",bungalow:"Bungalow",townhouse:"Townhouse",villa:"Villa",cottage:"Cottage",room:"Room","servant-quarter":"Servant quarter (SQ)"};
+function cleanTitle(x){
+  const place=String(x.area||"").split(",")[0];
+  if(x.cat==="land"||x.cat==="commercial")return catLabel(x)+" in "+place;
+  const t=(x.features||{}).propType;
+  const kind=t==="bedsitter"||t==="studio"?PROP[t]:x.beds===0?"Bedsitter":(t?PROP[t]:x.cat==="shortlet"?"Airbnb":"House").toLowerCase();
+  let s=((x.beds>0?x.beds+"-bedroom ":"")+kind).replace(/^./,c=>c.toUpperCase());
+  return s+" in "+place+(x.cat==="sale"?" for sale":"");
+}
 const kindLabel=x=>x.cat==="land"?"Land":x.cat==="commercial"?(x.deal==="lease"?"To let":"Commercial"):x.cat==="rent"?"Rent":x.cat==="sale"?"For sale":"Airbnb";
 function priceHTML(x){
   if(x.cat==="commercial"&&window.PH_COMM){const p=PH_COMM.priceLabel(x);return `${esc(p.main)}${p.extra?` <small>${esc(p.extra)}</small>`:""}`}
@@ -246,7 +255,7 @@ async function loadData(){
     owner:x.ownerName,verified:x.ownerVerified,role:x.listerRole||"owner",
     photos:x.photoUrls||[],
     landDeal:x.landDeal,sizeValue:x.sizeValue,sizeUnit:x.sizeUnit,sizeAcres:x.sizeAcres,priceBasis:x.priceBasis,pricePerAcre:x.pricePerAcre,
-    deal:x.deal,commType:x.commType,areaSqft:x.areaSqft,pricePerSqft:x.pricePerSqft,incomeMonth:x.incomeMonth
+    deal:x.deal,commType:x.commType,areaSqft:x.areaSqft,pricePerSqft:x.pricePerSqft,incomeMonth:x.incomeMonth,features:x.features||{}
   }));
 }
 
@@ -290,7 +299,7 @@ function showHero(i){
     document.getElementById("fh").classList.add("ready");
     heroI=i;
     const cap=document.getElementById("fhCap");
-    if(h.x){cap.hidden=false;cap.href="/browse?open="+h.x.id;cap.innerHTML=`<b>${priceHTML(h.x)}</b><span>${esc(h.x.title)} · ${esc(h.x.area.split(",")[0])}</span>`}
+    if(h.x){cap.hidden=false;cap.href="/browse?open="+h.x.id;cap.innerHTML=`<b>${priceHTML(h.x)}</b><span>${esc(cleanTitle(h.x))}</span>`}
     else cap.hidden=true;
     if(HERO.length>1){const n=new Image();n.src=HERO[(i+1)%HERO.length].src}
   };
@@ -388,7 +397,7 @@ function renderLatest(){
         ${x.photos.length>1?`<span class="count">${x.photos.length} photos</span>`:""}
       </div>
       <div class="meta">
-        <div class="row"><h3>${esc(x.title)}</h3><div class="price">${priceHTML(x)}</div></div>
+        <div class="row"><h3>${esc(cleanTitle(x))}</h3><div class="price">${priceHTML(x)}</div></div>
         <div class="where">${esc(x.area)}</div>
         <div class="facts">${size?`<span>${esc(size)}</span>`:""}${x.cat==="land"||x.cat==="commercial"?`<span>${esc(catLabel(x))}</span>`:""}<span>${who}</span></div>
       </div>

@@ -122,6 +122,26 @@ test("listings: create, search, paging, direct-owner filter", async () => {
   assert.ok(!direct.body.listings.some(l => l.listerRole === "agent"));
 });
 
+test("listing details: type, bathrooms, move-in terms, amenities, photo labels, ref and similar homes", async () => {
+  const t = await owner("details@example.com");
+  await call("POST", "/api/account/change-phone", { phone: "0712000077" }, t);
+  const r = await call("POST", "/api/listings", { category: "rent", title: "Nice 2br", areaId: areaId("Ruaka"), price: 25000, bedrooms: 2,
+    description: "Bright two bedroom apartment with water all day and a quiet compound.",
+    features: { propType: "apartment", bathrooms: 2, depositMonths: 2, serviceChargeKes: 1500, water247: true, pool: true, lift: true,
+      photoLabels: { "patahome/listings/abc123": "Kitchen", "bad id!": "Kitchen", "patahome/listings/x9": "Garage" }, propTypeX: "castle", bathroomsBad: 99 } }, t);
+  assert.equal(r.status, 201);
+  assert.deepEqual(r.body.features, { propType: "apartment", bathrooms: 2, depositMonths: 2, serviceChargeKes: 1500, water247: true, pool: true, lift: true,
+    photoLabels: { "patahome/listings/abc123": "Kitchen" } });
+  assert.match(r.body.ref, /^PH-\d{4,}$/);
+  assert.ok(r.body.confirmedAt);
+  const bad = await call("POST", "/api/listings", { category: "rent", title: "Odd", areaId: areaId("Ruaka"), price: 9000, bedrooms: 1,
+    features: { propType: "castle", bathrooms: 40, depositMonths: 12 } }, t);
+  assert.deepEqual(bad.body.features, {});
+  const sim = await call("GET", `/api/listings/${r.body.id}/similar`);
+  assert.equal(sim.status, 200);
+  assert.ok(sim.body.listings.length >= 1 && sim.body.listings.every(l => l.id !== r.body.id && l.category === "rent"));
+});
+
 test("reports pause a listing and admin can restore it", async () => {
   const t = await owner("rep@example.com");
   await call("POST", "/api/account/change-phone", { phone: "0712000020" }, t);
