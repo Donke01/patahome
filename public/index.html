@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PataHome: Houses for Rent & Sale Near You</title>
-<meta name="description" content="Find bedsitters, 1BRs and family houses for rent or sale across Kenya, direct from verified owners. PataHome shows what is nearest to you first. No agents, no viewing fees.">
+<meta name="description" content="Houses for rent and sale, Airbnbs, land and commercial property across Kenya, direct from verified owners. Bedsitters to family homes, nearest to you first. No viewing fees.">
 <meta property="og:title" content="PataHome: Houses for Rent & Sale Near You">
 <meta property="og:description" content="Rentals and homes for sale from verified owners across Kenya, sorted by what is nearest to you.">
 <meta property="og:type" content="website">
@@ -17,6 +17,8 @@
 <meta name="theme-color" content="#FBFAF7">
 <meta property="og:url" content="https://patahome.co.ke/">
 <link rel="canonical" href="https://patahome.co.ke/">
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebSite","name":"PataHome","url":"https://patahome.co.ke/","potentialAction":{"@type":"SearchAction","target":"https://patahome.co.ke/browse?q={search_term_string}","query-input":"required name=search_term_string"}},{"@type":"Organization","name":"PataHome","url":"https://patahome.co.ke/","logo":"https://patahome.co.ke/patahome-logo-transparent.png","email":"info@patahome.co.ke","telephone":"+254748181876","areaServed":"KE","sameAs":["https://www.facebook.com/share/1GBzjtrL7z/"]}]}</script>
+<link rel="preconnect" href="https://res.cloudinary.com"><link rel="preconnect" href="https://images.unsplash.com">
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png">
@@ -184,8 +186,8 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="/land.js?v=1"></script>
-<script src="/commercial.js?v=1"></script>
+<script src="/land.js?v=1" defer></script>
+<script src="/commercial.js?v=1" defer></script>
 <script>
 /* ================= CONFIG ================= */
 const ICONS={
@@ -229,7 +231,7 @@ async function api(path,opts={}){
   return d;
 }
 // Cloudinary: swap the "whole photo" transform for a crop sized to the frame.
-const crop=(u,w,h)=>String(u||"").replace(/\/upload\/c_limit,[^/]+\//,`/upload/c_fill,g_auto,w_${w},h_${h},q_auto:good/`);
+const crop=(u,w,h)=>String(u||"").replace(/\/upload\/c_limit,[^/]+\//,`/upload/c_fill,g_auto,w_${w},h_${h},q_auto:good,f_auto/`);
 const inBrowser=typeof requestAnimationFrame==="function";
 const reduceMotion=typeof matchMedia==="function"&&matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -254,15 +256,20 @@ let HERO=[],heroI=0,heroT=null;
 // Portrait crop on phones (sharper, no zoomed-in landscape), wide crop on desktop.
 const PHONE=typeof matchMedia==="function"&&matchMedia("(max-width:900px)").matches;
 const HW=PHONE?Math.min(1080,Math.round((innerWidth-24)*(devicePixelRatio||1))):1920, HH=PHONE?Math.round(HW*1.05):1200;
+const STOCK_HERO=["photo-1658218635253-64728f6234be","photo-1600210492493-0946911123ea","photo-1651151084802-867d6a55dd25","photo-1600494448850-6013c64ba722","photo-1658218729615-167c32d70537"];
 async function paintHero(){
   let cfg=null;try{cfg=await api("/api/config")}catch(e){}
   if(cfg&&cfg.heroImages&&cfg.heroImages.length){
-    HERO=cfg.heroImages.map(u=>({src:u.replace("/upload/",`/upload/c_fill,g_auto,w_${HW},h_${HH},q_auto:good/`)}));
+    HERO=cfg.heroImages.map(u=>({src:/images\.unsplash\.com/.test(u)?u.split("?")[0]+`?auto=format&fit=crop&w=${HW}&h=${HH}&q=80`:u.replace("/upload/",`/upload/c_fill,g_auto,w_${HW},h_${HH},q_auto:good,f_auto/`)}));
   }else{
+    // Professional stock photos (free Unsplash licence) alternate with real listing photos,
+    // so the first impression is strong and visitors still see real homes with prices.
+    const stock=STOCK_HERO.map(id=>({src:`https://images.unsplash.com/${id}?auto=format&fit=crop&w=${HW}&h=${HH}&q=80`}));
     const seen=new Set();
-    HERO=[...LISTINGS].filter(x=>x.photos.length&&x.cat!=="land").sort((a,b)=>(b.featured-a.featured)||(b.id-a.id))
-      .filter(x=>!seen.has(x.photos[0].full)&&seen.add(x.photos[0].full)).slice(0,5)
+    const real=[...LISTINGS].filter(x=>x.photos.length&&x.cat!=="land").sort((a,b)=>(b.featured-a.featured)||(b.id-a.id))
+      .filter(x=>!seen.has(x.photos[0].full)&&seen.add(x.photos[0].full)).slice(0,3)
       .map(x=>({src:crop(x.photos[0].full||x.photos[0].thumb,HW,HH),x}));
+    HERO=[];for(let i=0;i<Math.max(stock.length,real.length);i++){if(stock[i])HERO.push(stock[i]);if(real[i])HERO.push(real[i])}
   }
   if(!HERO.length)return;
   try{localStorage.setItem("ph_hero"+(PHONE?"_m":""),HERO[0].src)}catch(e){}

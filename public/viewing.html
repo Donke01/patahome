@@ -6,35 +6,18 @@
 <title>Your viewing | PataHome</title>
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<style>
-  :root{--brand:#0e7c5a;--brand-dark:#073d2e;--ink:#17201c;--muted:#5f6b66;--line:#e1e8e4;--bg:#f6f9f7}
-  *{box-sizing:border-box}
-  body{margin:0;font-family:Inter,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--ink)}
-  header{background:#fff;border-bottom:1px solid var(--line);padding:12px 18px;display:flex;align-items:center}
-  header a.logo{font-weight:800;font-size:1.2rem;color:var(--brand-dark);text-decoration:none;letter-spacing:-.03em}
-  header a.logo b{color:var(--brand)}
-  header a.back{margin-left:auto;font-size:.85rem;color:var(--brand);font-weight:700;text-decoration:none}
-  .wrap{max-width:560px;margin:0 auto;padding:22px 16px 60px}
-  .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px}
-  .st{display:inline-block;font-size:.75rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:5px 11px;border-radius:99px;background:#fff3e0;color:#9a6017}
-  .st.confirmed{background:#e6f6ee;color:var(--brand-dark)}.st.declined,.st.cancelled{background:#eef1ef;color:var(--muted)}
-  h1{font-size:1.4rem;margin:12px 0 4px;letter-spacing:-.02em}
-  .when{font-size:1.15rem;font-weight:700;margin:14px 0 4px}
-  .muted{color:var(--muted);font-size:.9rem}
-  .row{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
-  a.btn,button{border:0;border-radius:10px;padding:12px 16px;font:inherit;font-weight:700;cursor:pointer;text-decoration:none;text-align:center;flex:1}
-  a.btn{background:var(--brand-dark);color:#fff}
-  button{background:#fff;border:1.5px solid var(--line);color:#b3261e}
-  .safe{margin-top:16px;font-size:.8rem;color:#6b4712;background:#fff8ec;border:1px solid #f3dfb8;border-radius:10px;padding:10px 12px}
-</style>
 <link rel="manifest" href="/manifest.webmanifest">
-<meta name="theme-color" content="#0B5D3B">
-<link rel="stylesheet" href="/dark.css?v=3">
+<meta name="theme-color" content="#FBFAF7">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/ph.css?v=12">
+<link rel="stylesheet" href="/page.css?v=1">
 </head>
-<body class="page-viewing">
+<body class="ph sub page-viewing">
 <script>try{if(localStorage.getItem("ph_theme")==="dark"){document.documentElement.classList.add("dark");document.body.classList.add("dark")}}catch(e){}</script>
-<header><a class="logo" href="/">Pata<b>Home</b></a><a class="back" href="/messages">My messages</a></header>
-<div class="wrap" id="app">Loading…</div>
+<header class="ph-header" id="hd"><div class="ph-wrap ph-hd"><a class="ph-logo" href="/" aria-label="PataHome home"><img src="/patahome-logo-transparent.png?v=20260921-2" alt="PataHome"></a><div class="header-actions"><a class="ph-btn ph-btn-line ph-btn-sm" href="/messages">My messages</a></div></div></header>
+<div class="sub-main" id="app">Loading…</div>
+<footer class="sub-foot"><b>PataHome</b> · Kenya<br><a href="/browse">Browse</a><a href="/areas">Areas</a><a href="/dashboard">List a property</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a></footer>
 <script>
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));

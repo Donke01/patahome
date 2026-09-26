@@ -1027,7 +1027,7 @@ function renderTable(){
       else if(x.category==="land"&&window.PH_LAND){const p=PH_LAND.priceLabel(x);price=esc(p.main);extra=esc(PH_LAND.sizeLabel(x.sizeValue,x.sizeUnit,x.sizeAcres))}
       else{price=fmt(x.price)+(x.category==="rent"?" <small>/month</small>":x.category==="shortlet"?" <small>/night</small>":"");extra=x.bedrooms===0?"Bedsitter":x.bedrooms?x.bedrooms+" bedroom"+(x.bedrooms===1?"":"s"):""}
       const docs=x.docsStatus==="checked"?'<span style="color:var(--ok)">✓ Documents checked</span>':x.docsStatus==="pending"?"<span>Documents being checked…</span>":"";
-      const ph=x.photoUrls&&x.photoUrls[0]?x.photoUrls[0].thumb.replace(/\/upload\/c_limit,[^/]+\//,"/upload/c_fill,g_auto,w_300,h_225,q_auto/"):"";
+      const ph=x.photoUrls&&x.photoUrls[0]?x.photoUrls[0].thumb.replace(/\/upload\/c_limit,[^/]+\//,"/upload/c_fill,g_auto,w_300,h_225,q_auto,f_auto/"):"";
       return `
     <div class="lst-item">
       <a class="lst-ph" href="/browse?open=${x.id}" title="See it as visitors do">${ph?`<img src="${esc(ph)}" alt="" loading="lazy">`:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>'}</a>

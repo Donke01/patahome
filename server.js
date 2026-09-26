@@ -79,7 +79,8 @@ const WM_LAYER = (w) => `l_${WM_ID}/c_scale,fl_relative,w_${w}/o_70/fl_layer_app
 const CLD_TRANSFORM_WM = `c_limit,w_1280,h_1280/${WM_LAYER(0.18)}/q_auto:good`;
 const VIDEO_WM_T = `c_limit,w_1280/${WM_LAYER(0.2)}/q_auto,vc_auto`;
 const watermarkOn = () => cldEnabled() && setting("watermark_on") === "1" && setting("watermark_asset") !== "";
-const photoUrl = (id, t) => `https://res.cloudinary.com/${CLD.cloud}/image/upload/${t}/${id}`;
+// f_auto: Cloudinary sends WebP/AVIF to browsers that support them (much smaller on phones)
+const photoUrl = (id, t) => `https://res.cloudinary.com/${CLD.cloud}/image/upload/${/(^|[,/])f_/.test(t) ? t : t + ",f_auto"}/${id}`;
 require("./public/land.js"); // defines globalThis.PH_LAND (units, conversions, labels), same file the browser uses
 const LAND = globalThis.PH_LAND;
 require("./public/commercial.js"); // defines globalThis.PH_COMM (types, units, labels)
@@ -217,8 +218,13 @@ const requireAuth = (req, res) => {
   return u;
 };
 function send(res, code, obj) {
-  const body = JSON.stringify(obj);
-  res.writeHead(code, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Credentials": "true" });
+  let body = JSON.stringify(obj);
+  const h = { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Credentials": "true" };
+  // big responses (search results, pins) are gzipped for mobile data
+  if (body.length > 2048 && res.req && /\bgzip\b/.test(res.req.headers["accept-encoding"] || "")) {
+    body = require("node:zlib").gzipSync(body, { level: 6 }); h["Content-Encoding"] = "gzip"; h.Vary = "Accept-Encoding";
+  }
+  res.writeHead(code, h);
   res.end(body);
 }
 
@@ -3369,7 +3375,7 @@ function areaBySlug(slug) {
   return db.prepare("SELECT * FROM areas").all().find((a) => slugify(a.name) === slug) || null;
 }
 
-function pageShell({ title, description, canonical, jsonLd, bodyHtml, image, imageAlt }) {
+function pageShell({ title, description, canonical, jsonLd, bodyHtml, image, imageAlt, noindex, wide }) {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -3387,56 +3393,26 @@ function pageShell({ title, description, canonical, jsonLd, bodyHtml, image, ima
 <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
 ${imageAlt ? `<meta property="og:image:alt" content="${escapeHtml(imageAlt)}">` : ""}
 <meta name="twitter:card" content="summary_large_image">
-<meta name="theme-color" content="#0e8a68">
+<meta name="theme-color" content="#FBFAF7">
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="manifest" href="/manifest.webmanifest">
+${noindex ? '<meta name="robots" content="noindex">' : ""}
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="preconnect" href="https://res.cloudinary.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/ph.css?v=12">
+<link rel="stylesheet" href="/page.css?v=1">
 <script>try{navigator.sendBeacon("/api/pv",new Blob([JSON.stringify({path:location.pathname,ref:document.referrer})],{type:"application/json"}))}catch(e){}</script>
-${jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>` : ""}
-<style>
-  body{font-family:'Segoe UI',system-ui,sans-serif;margin:0;background:#f7faf8;color:#1c2320;line-height:1.6}
-  a{color:#0e7c5a}
-  header{background:#fff;border-bottom:1px solid #e3e8e5;padding:12px 20px}
-  header a.logo{font-size:1.2rem;font-weight:800;color:#0e7c5a;text-decoration:none}
-  header a.logo b{color:#e8a13a}
-  .wrap{max-width:900px;margin:0 auto;padding:24px 20px 50px}
-  h1{font-size:1.5rem;color:#0a5c43}
-  .card{background:#fff;border:1px solid #e3e8e5;border-radius:12px;padding:16px 18px;margin:12px 0;box-shadow:0 2px 10px rgba(20,40,30,.06)}
-  .card a{font-weight:700;text-decoration:none;font-size:1.02rem}
-  .price{font-weight:800;color:#0a5c43}
-  .meta{font-size:.85rem;color:#5f6b66}
-  .links{font-size:.85rem;color:#5f6b66;margin-top:30px;border-top:1px solid #e3e8e5;padding-top:16px}
-  .links a{margin-right:12px;white-space:nowrap;display:inline-block}
-  .cta{display:inline-block;background:#0e7c5a;color:#fff;border-radius:10px;padding:10px 20px;text-decoration:none;font-weight:700;margin-top:10px}
-  footer{text-align:center;color:#5f6b66;font-size:.8rem;padding:20px}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin:16px 0}
-  .lcard{background:#fff;border:1px solid #e3e8e5;border-radius:14px;overflow:hidden;text-decoration:none;color:inherit;display:block;transition:transform .15s,box-shadow .15s}
-  .lcard:hover{transform:translateY(-3px);box-shadow:0 10px 24px rgba(20,40,30,.1)}
-  .lcard .ph{aspect-ratio:4/3;background:#e8f0ec center/cover no-repeat}
-  .lcard .bd{padding:12px 14px}
-  .lcard .t{font-weight:700;color:#1c2320;line-height:1.3}
-  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px}
-  .chips a{padding:6px 12px;border-radius:99px;background:#fff;border:1px solid #d3e8de;text-decoration:none;font-size:.85rem;font-weight:600}
-  .chips a.on{background:#0e7c5a;color:#fff;border-color:#0e7c5a}
-  html.dark body{background:#0d1714;color:#e6f1ec}
-  html.dark header{background:#101c18;border-color:#294138}
-  html.dark header a.logo{color:#6cc9a6}
-  html.dark h1,html.dark .price{color:#8fe0bd}
-  html.dark a{color:#6cc9a6}
-  html.dark .card,html.dark .lcard,html.dark .chips a{background:#13231e;border-color:#294138;color:#e6f1ec}
-  html.dark .lcard .t{color:#e6f1ec}
-  html.dark .meta,html.dark .links,html.dark footer{color:#aac1b8}
-  html.dark .links{border-color:#294138}
-  html.dark .cta,html.dark .chips a.on{background:#3fa982;color:#05231a}
-  html.dark .lcard .ph{background-color:#1a2c26}
-</style>
+${jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd).replace(/</g, "\\u003c")}</script>` : ""}
 </head>
-<body>
+<body class="ph sub page-seo">
 <script>try{if(localStorage.getItem("ph_theme")==="dark")document.documentElement.classList.add("dark")}catch(e){}</script>
-<header><a class="logo" href="/">Pata<b>Home</b></a></header>
-<div class="wrap">${bodyHtml}</div>
-<footer>PataHome · Houses for rent &amp; sale across Kenya</footer>
+<header class="ph-header"><div class="ph-wrap ph-hd"><a class="ph-logo" href="/" aria-label="PataHome home"><img src="/patahome-logo-transparent.png?v=20260921-2" alt="PataHome" width="110" height="46"></a>
+<nav class="ph-nav" aria-label="Main"><a href="/browse?cat=rent">Rent</a><a href="/browse?cat=sale">Buy</a><a href="/browse?cat=shortlet">Airbnb</a><a href="/browse?cat=land">Land</a><a href="/browse?cat=commercial">Commercial</a></nav>
+<div class="header-actions"><a class="ph-btn ph-btn-line ph-btn-sm" href="/browse">Browse homes</a></div></div></header>
+<main class="sub-main${wide ? " wide" : ""}">${bodyHtml}</main>
+<footer class="sub-foot"><b>PataHome</b> · Homes, land and shops across Kenya<br><a href="/browse">Browse</a><a href="/areas">Areas</a><a href="/dashboard">List a property</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a></footer>
 </body>
 </html>`;
 }
@@ -3450,8 +3426,11 @@ function areaLinksHtml() {
 }
 
 function sendHtml(res, code, html) {
-  res.writeHead(code, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache, must-revalidate" });
-  res.end(html);
+  const h = { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache, must-revalidate" };
+  let body = html;
+  if (res.req && /\bgzip\b/.test(res.req.headers["accept-encoding"] || "")) { body = require("node:zlib").gzipSync(html, { level: 6 }); h["Content-Encoding"] = "gzip"; h.Vary = "Accept-Encoding"; }
+  res.writeHead(code, h);
+  res.end(body);
 }
 
 /* ---- per-listing page: /listing/:id/:slug? ---- */
@@ -3459,7 +3438,7 @@ function listingPage(req, res, p) {
   const row = db.prepare(`${LISTING_SQL} WHERE l.id=? AND l.status='active'`).get(p.id);
   if (!row) return sendHtml(res, 404, pageShell({
     title: "Listing not found | PataHome", description: "This listing is no longer available.",
-    canonical: `${BASE_URL}/`, bodyHtml: `<h1>Listing not found</h1><p>It may have been rented or sold. <a href="/">Browse current listings</a>.</p>` }));
+    canonical: `${BASE_URL}/`, noindex: true, bodyHtml: `<h1>Listing not found</h1><p class="sub-lead">It may have been rented or sold.</p><div class="ctarow"><a class="cta" href="/browse">Browse current listings</a></div>` }));
   const catSlug = catSlugOf(row);
   const unit = row.category === "rent" ? "/month" : row.category === "shortlet" ? "/night" : "";
   const isLand = row.category === "land" || row.category === "commercial";
@@ -3481,22 +3460,34 @@ function listingPage(req, res, p) {
       ? `${COMM.TYPES[row.comm_type] || "Commercial property"} ${row.land_deal === "lease" ? "to let" : "for sale"} · ${priceText(row)} · ${row.area_name}`
       : `${row.land_deal === "lease" ? "Land for lease" : "Land for sale"} · ${landSize.split(" · ")[0]} · ${priceText(row)} · ${row.area_name}`)
     : `${fmtKes(row.price)}${unit} · ${row.bedrooms != null ? (row.bedrooms === 0 ? "Bedsitter" : row.bedrooms + " bedroom") + " · " : ""}${row.area_name}`;
+  const F = parseJson(row.features, {});
+  const kv = [
+    ["Price", priceText(row)],
+    [isLand ? "Size" : "Bedrooms", isLand ? landSize : row.bedrooms == null ? "" : row.bedrooms === 0 ? "Bedsitter" : row.bedrooms + " bedroom" + (row.bedrooms === 1 ? "" : "s")],
+    ["Area", `${row.area_name}, ${row.county} County`],
+    ["Listed by", `${row.contact_name || row.owner_name}${row.owner_verified ? " ✓" : ""}${(row.lister_role || "owner") === "owner" ? " (owner)" : row.lister_role === "agent" ? " (agent)" : " (caretaker)"}`],
+    ["Deposit", F.deposit], ["Service charge", F.serviceCharge]
+  ].filter(k => k[1]);
+  const gal = photos.slice(1, 5).map(id => cldEnabled() ? `<img src="${photoUrl(id, "c_fill,g_auto,w_400,h_300,q_auto")}" alt="${escapeHtml(row.title)}" loading="lazy" width="400" height="300">` : "").join("");
   const bodyHtml = `
-    ${image ? `<img src="${image}" alt="${escapeHtml(row.title)}" style="width:100%;border-radius:14px;aspect-ratio:1200/630;object-fit:cover">` : ""}
+    <div class="crumbs"><a href="/">Home</a> › <a href="/${catSlug}/${slugify(row.area_name)}">${escapeHtml(CATS[catSlug].label)} in ${escapeHtml(row.area_name)}</a></div>
+    ${image ? `<div class="lp-hero"><img src="${image}" alt="${escapeHtml(row.title)}" width="1200" height="630"></div>` : ""}
+    ${gal ? `<div class="lp-gal">${gal}</div>` : ""}
     <h1>${escapeHtml(row.title)}</h1>
-    ${row.admin_banner ? `<p style="background:#fdecea;border:1.5px solid #e7a9a2;border-radius:10px;padding:10px 12px;color:#8a2319;font-weight:700">⚠️ ${escapeHtml(row.admin_banner)}</p>` : ""}
-    <div class="card">
-      <div class="price">${escapeHtml(priceText(row))}</div>
-      ${isLand ? `<div class="meta">📐 ${escapeHtml(landSize)}</div><p style="background:#fff8ec;border:1px solid #f3dfb8;border-radius:10px;padding:10px 12px;color:#6b4712;font-size:.9rem"><b>Before paying anything:</b> ${row.category === "commercial" && row.land_deal === "lease" ? "view the premises and confirm the landlord owns or manages it" : "do an official search on Ardhisasa and visit the property with the owner"}.</p>` : ""}
-      <div class="meta">📍 ${escapeHtml(row.area_name)}, ${escapeHtml(row.county)} County
-        ${row.bedrooms != null ? ` · 🛏 ${row.bedrooms === 0 ? "Bedsitter" : row.bedrooms + " bedroom(s)"}` : ""}
-        · Listed by ${escapeHtml(row.contact_name || row.owner_name)}${row.owner_verified ? " ✓ verified owner" : ""}</div>
-      ${row.description ? `<p>${escapeHtml(row.description)}</p>` : ""}
-      <a class="cta" href="/browse?open=${row.id}">See photos &amp; contact the ${row.lister_role === "agent" ? "agent" : "owner"}</a>
-    </div>
-    <p><a href="/${catSlug}/${slugify(row.area_name)}">More ${escapeHtml(CATS[catSlug].label.toLowerCase())} in ${escapeHtml(row.area_name)} →</a></p>
+    <div class="lp-price">${escapeHtml(priceText(row))}</div>
+    ${row.admin_banner ? `<div class="safe" style="background:color-mix(in srgb,var(--danger) 12%,transparent);color:var(--danger)">⚠️ ${escapeHtml(row.admin_banner)}</div>` : ""}
+    <div class="lp-kv">${kv.map(([k, v]) => `<div><span>${k}</span><b>${escapeHtml(v)}</b></div>`).join("")}</div>
+    ${row.description ? `<p>${escapeHtml(row.description)}</p>` : ""}
+    ${isLand ? `<div class="safe"><b>Before paying anything:</b> ${row.category === "commercial" && row.land_deal === "lease" ? "view the premises and confirm the landlord owns or manages it" : "do an official search on Ardhisasa and visit the property with the owner"}.</div>` : `<div class="safe"><b>Never pay before viewing.</b> PataHome never asks for money.</div>`}
+    <div class="ctarow"><a class="cta" href="/browse?open=${row.id}">See all photos &amp; contact the ${row.lister_role === "agent" ? "agent" : row.lister_role === "caretaker" ? "caretaker" : "owner"}</a></div>
+    <p style="text-align:center"><a href="/${catSlug}/${slugify(row.area_name)}">More ${escapeHtml(CATS[catSlug].label.toLowerCase())} in ${escapeHtml(row.area_name)} →</a></p>
     ${areaLinksHtml()}`;
-  sendHtml(res, 200, pageShell({ title: `${shareTitle}: ${row.title} | PataHome`, description: desc, canonical, jsonLd, bodyHtml, image, imageAlt: row.title }));
+  const crumbsLd = { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Home", item: `${BASE_URL}/` },
+    { "@type": "ListItem", position: 2, name: `${CATS[catSlug].label} in ${row.area_name}`, item: `${BASE_URL}/${catSlug}/${slugify(row.area_name)}` },
+    { "@type": "ListItem", position: 3, name: row.title, item: canonical }] };
+  if (image) jsonLd.image = [image];
+  sendHtml(res, 200, pageShell({ title: `${shareTitle}: ${row.title} | PataHome`, description: desc, canonical, jsonLd: [jsonLd, crumbsLd], bodyHtml, image, imageAlt: row.title }));
 }
 router.add("GET", "/listing/:id", listingPage);
 router.add("GET", "/listing/:id/:slug", listingPage);
@@ -3529,7 +3520,7 @@ function landingPage(req, res, p) {
   const browseQ = `/browse?q=${encodeURIComponent(area.name)}&cat=${cat.db}${beds !== null ? "&beds=" + beds : ""}${cat.deal ? (cat.db === "land" ? "&landDeal=" : "&deal=") + cat.deal : ""}`;
   const bodyHtml = `
     <h1>${escapeHtml(what)} in ${escapeHtml(area.name)}, ${escapeHtml(area.county)} County</h1>
-    <p class="meta">${rows.length} listing${rows.length === 1 ? "" : "s"}${minPrice ? ` · from ${fmtKes(minPrice)}${cat.unit}` : ""} · direct from owners · updated daily</p>
+    <p class="sub-lead">${rows.length} listing${rows.length === 1 ? "" : "s"}${minPrice ? ` · from ${fmtKes(minPrice)}${cat.unit}` : ""} · direct from owners</p>
     ${cat.db !== "sale" && !DEAL_CATS.has(cat.db) ? `<div class="chips">${chip("", "All")}${Object.keys(BED_SLUGS).map(k => chip(k, BED_LABEL[k])).join("")}</div>` : ""}
     ${rows.length ? `<div class="grid">${rows.map((r) => {
       const ph = parsePhotos(r.photos)[0];
@@ -3542,10 +3533,10 @@ function landingPage(req, res, p) {
         ${r.category === "commercial" ? `<div class="meta">🏢 ${escapeHtml(commSize(r))}</div>` : ""}
         <div class="meta">📍 ${escapeHtml(r.area_name)}${r.bedrooms != null ? ` · 🛏 ${r.bedrooms === 0 ? "Bedsitter" : r.bedrooms + " BR"}` : ""}${(r.lister_role || "owner") === "owner" ? " · Direct owner" : " · Agent"}</div></div></a>`;
     }).join("")}</div>` : `<div class="card">No ${escapeHtml(what.toLowerCase())} listed here right now. <a href="${browseQ}">Search nearby areas</a> or set an alert on the browse page to hear about new ones first.</div>`}
-    <a class="cta" href="${browseQ}">Search, filter &amp; see these on the map</a>
+    <div class="ctarow"><a class="cta" href="${browseQ}">Search, filter &amp; see these on the map</a></div>
     ${nearby.length ? `<div class="links"><strong>Nearby in ${escapeHtml(area.county)}:</strong><br>${nearby.map(a => `<a href="/${p.catSlug}/${slugify(a.name)}${bedSlug ? "/" + bedSlug : ""}">${escapeHtml(a.name)}</a>`).join(" ")}</div>` : ""}
     ${areaLinksHtml()}`;
-  sendHtml(res, 200, pageShell({ title, description: desc, canonical, jsonLd, bodyHtml }));
+  sendHtml(res, 200, pageShell({ title, description: desc, canonical, jsonLd, bodyHtml, wide: true, noindex: !rows.length }));
 }
 router.add("GET", "/:catSlug/:areaSlug", landingPage);
 router.add("GET", "/:catSlug/:areaSlug/:beds", landingPage);
@@ -3562,30 +3553,35 @@ router.add("GET", "/areas", (req, res) => {
     title: "Browse Houses by Area | PataHome",
     description: "Browse rentals and houses for sale across Kenyan counties on PataHome, direct from verified owners.",
     canonical: `${BASE_URL}/areas`,
-    bodyHtml: `<h1>Browse by area</h1>${areaLinksHtml()}`
+    wide: true, bodyHtml: `<h1>Browse by area</h1><p class="sub-lead">Rentals, homes for sale and Airbnbs in every area we cover.</p>${areaLinksHtml()}`
   }));
 });
 
 /* ---- sitemap.xml + robots.txt ---- */
 
 router.add("GET", "/sitemap.xml", (req, res) => {
-  const areas = db.prepare("SELECT * FROM areas").all();
-  const listings = db.prepare("SELECT id, title FROM listings WHERE status='active'").all();
-  const urls = [`${BASE_URL}/`, `${BASE_URL}/browse`, `${BASE_URL}/areas`]
-    .concat(Object.keys(CATS).filter(cs => !DEAL_CATS.has(CATS[cs].db)).flatMap((cs) => areas.map((a) => `${BASE_URL}/${cs}/${slugify(a.name)}`)))
-    .concat(db.prepare("SELECT DISTINCT l.land_deal, a.name FROM listings l JOIN areas a ON a.id=l.area_id WHERE l.status='active' AND l.category='land'").all()
-      .map(r => `${BASE_URL}/${r.land_deal === "lease" ? "land-for-lease" : "land-for-sale"}/${slugify(r.name)}`))
-    .concat(db.prepare("SELECT DISTINCT l.land_deal, a.name FROM listings l JOIN areas a ON a.id=l.area_id WHERE l.status='active' AND l.category='commercial'").all()
-      .map(r => `${BASE_URL}/${r.land_deal === "lease" ? "commercial-to-let" : "commercial-for-sale"}/${slugify(r.name)}`))
-    .concat(db.prepare(`SELECT DISTINCT l.category, l.bedrooms, a.name FROM listings l JOIN areas a ON a.id=l.area_id
-      WHERE l.status='active' AND l.category!='sale' AND l.bedrooms IS NOT NULL`).all()
-      .map(r => `${BASE_URL}/${CAT_SLUG[r.category]}/${slugify(r.name)}/${Object.keys(BED_SLUGS).find(k => BED_SLUGS[k] === Math.min(r.bedrooms, 3))}`))
-    .concat(listings.map((l) => `${BASE_URL}/listing/${l.id}/${slugify(l.title)}`));
+  // Only pages with real content: empty area pages are left out (Google treats them as thin).
+  const day = d => String(d || "").slice(0, 10);
+  const listings = db.prepare("SELECT id, title, COALESCE(status_changed_at, created_at) AS mod FROM listings WHERE status='active'").all();
+  const combos = db.prepare(`SELECT l.category, l.land_deal, l.bedrooms, a.name, MAX(l.created_at) AS mod FROM listings l JOIN areas a ON a.id=l.area_id
+    WHERE l.status='active' GROUP BY l.category, l.land_deal, l.bedrooms, a.id`).all();
+  const seen = new Map();
+  const add = (u, mod) => { if (!seen.has(u) || (mod && mod > seen.get(u))) seen.set(u, mod || ""); };
+  add(`${BASE_URL}/`); add(`${BASE_URL}/browse`); add(`${BASE_URL}/areas`);
+  for (const r of combos) {
+    const cs = r.category === "land" ? (r.land_deal === "lease" ? "land-for-lease" : "land-for-sale")
+      : r.category === "commercial" ? (r.land_deal === "lease" ? "commercial-to-let" : "commercial-for-sale") : CAT_SLUG[r.category];
+    if (!cs) continue;
+    add(`${BASE_URL}/${cs}/${slugify(r.name)}`, day(r.mod));
+    if (r.bedrooms != null && r.category !== "sale" && r.category !== "land" && r.category !== "commercial")
+      add(`${BASE_URL}/${cs}/${slugify(r.name)}/${Object.keys(BED_SLUGS).find(k => BED_SLUGS[k] === Math.min(r.bedrooms, 3))}`, day(r.mod));
+  }
+  for (const l of listings) add(`${BASE_URL}/listing/${l.id}/${slugify(l.title)}`, day(l.mod));
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls.map((u) => `  <url><loc>${u}</loc></url>`).join("\n")}
+${[...seen].map(([u, m]) => `  <url><loc>${u}</loc>${m ? `<lastmod>${m}</lastmod>` : ""}</url>`).join("\n")}
 </urlset>`;
-  res.writeHead(200, { "Content-Type": "application/xml" });
+  res.writeHead(200, { "Content-Type": "application/xml", "Cache-Control": "public, max-age=3600" });
   res.end(xml);
 });
 
@@ -3658,14 +3654,20 @@ const server = http.createServer((req, res) => {
         if (!path.extname(file) && fs.existsSync(file + ".html")) file += ".html";
         if (file.startsWith(path.join(__dirname, "public")) && fs.existsSync(file) && fs.statSync(file).isFile()) {
           const ext = path.extname(file);
+          const noCache = ext === ".html" || ext === "" || ext === ".webmanifest" || path.basename(file) === "sw.js";
+          // text files are gzipped (much smaller on mobile data); versioned assets (?v=) are cached for a year
+          const text = [".html", ".css", ".js", ".svg", ".json", ".webmanifest", ".txt", ""].includes(ext);
+          let data = fs.readFileSync(file), enc = null;
+          if (text && /\bgzip\b/.test(req.headers["accept-encoding"] || "") && data.length > 1024) { data = zlib.gzipSync(data, { level: 6 }); enc = "gzip"; }
           res.writeHead(200, {
-            "Content-Type": MIME[ext] || "application/octet-stream",
+            "Content-Type": (MIME[ext] || "application/octet-stream") + (text && ext !== "" ? "; charset=utf-8" : ""),
+            ...(enc ? { "Content-Encoding": enc, "Vary": "Accept-Encoding" } : {}),
             // HTML must always revalidate so deploys show up immediately (browsers + Cloudflare edge)
             // HTML, the service worker and the app manifest must revalidate so updates reach installed apps
-            "Cache-Control": ext === ".html" || ext === "" || ext === ".webmanifest" || path.basename(file) === "sw.js" ? "no-cache, must-revalidate" : "public, max-age=86400",
+            "Cache-Control": noCache ? "no-cache, must-revalidate" : url.searchParams.has("v") ? "public, max-age=31536000, immutable" : "public, max-age=604800",
             ...(path.basename(file) === "sw.js" ? { "Service-Worker-Allowed": "/" } : {})
           });
-          return res.end(fs.readFileSync(file));
+          return res.end(data);
         }
       }
       send(res, 404, { error: "Not found" });

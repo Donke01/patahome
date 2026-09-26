@@ -23,6 +23,7 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://res.cloudinary.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="/ph.css?v=12">
@@ -404,7 +405,7 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" defer></script>
 <script src="/land.js?v=1"></script>
 <script src="/commercial.js?v=1"></script>
 <script src="/lightbox.js?v=20260923-1" defer></script>
@@ -866,7 +867,7 @@ const BED_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke
 const CLOCK_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
 const HEART_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 1 0-7.8 7.8L12 21.2l8.8-8.8a5.5 5.5 0 0 0 0-7.8z"/></svg>';
 // Cloudinary: crop the "whole photo" thumb to the card frame
-const cropUrl=(u,w,h)=>String(u||"").replace(/\/upload\/c_limit,[^/]+\//,`/upload/c_fill,g_auto,w_${w},h_${h},q_auto:good/`);
+const cropUrl=(u,w,h)=>String(u||"").replace(/\/upload\/c_limit,[^/]+\//,`/upload/c_fill,g_auto,w_${w},h_${h},q_auto:good,f_auto/`);
 function cardHTML(x,i){
     const c=CAT[x.cat];
     const d=userLoc?dist(userLoc[0],userLoc[1],x.lat,x.lng):null;
@@ -1358,11 +1359,13 @@ async function paintAccount(){
   render();
   if(P.get("open"))setTimeout(()=>{try{openDetail(+P.get("open"))}catch(e){}},400);
   if(P.get("notice")){setTimeout(()=>toast(P.get("notice")),700);history.replaceState(null,"",location.pathname)}
-  try{initMap()}catch(e){
+  // The map library loads after the page (defer) so listings show first.
+  const startMap=()=>{try{initMap()}catch(e){
     // Map library unavailable (slow/blocked CDN), hide the map gracefully, keep the site working
     document.getElementById("mapPanel").style.display="none";
     const fab=document.querySelector(".map-fab");if(fab)fab.style.display="none";
-  }
+  }};
+  if(window.L)startMap();else addEventListener("load",startMap,{once:true});
   try{animateStats()}catch(e){}
   if(inBrowser&&!reduceMotion&&document.getElementById("rotWord")){
     try{

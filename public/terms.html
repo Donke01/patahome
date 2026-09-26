@@ -8,26 +8,15 @@
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="canonical" href="https://patahome.co.ke/terms">
 <!-- DRAFT prepared as a starting point. Have a Kenyan advocate review before relying on it. -->
-<style>
-  :root{--brand:#0e7c5a;--brand-dark:#073d2e;--ink:#17201c;--muted:#5f6b66;--line:#e1e8e4}
-  body{margin:0;font-family:Inter,'Segoe UI',system-ui,sans-serif;color:var(--ink);background:#fff;line-height:1.65}
-  header{border-bottom:1px solid var(--line);padding:12px 18px;display:flex;align-items:center}
-  header a.logo{font-weight:800;font-size:1.2rem;color:var(--brand-dark);text-decoration:none}
-  header a.logo b{color:var(--brand)}
-  header a.back{margin-left:auto;color:var(--brand);font-weight:700;font-size:.85rem;text-decoration:none}
-  main{max-width:760px;margin:0 auto;padding:28px 18px 70px}
-  h1{font-size:1.8rem;letter-spacing:-.03em;margin:0 0 4px}
-  h2{font-size:1.1rem;margin:30px 0 6px;color:var(--brand-dark)}
-  .upd{color:var(--muted);font-size:.9rem}
-  .box{background:#fff8ec;border:1px solid #f3dfb8;border-radius:12px;padding:14px 16px;color:#6b4712}
-  a{color:var(--brand)}
-</style>
-<link rel="stylesheet" href="/dark.css?v=3">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/ph.css?v=12">
+<link rel="stylesheet" href="/page.css?v=1">
 </head>
-<body class="page-legal">
+<body class="ph sub page-legal">
 <script>try{if(localStorage.getItem("ph_theme")==="dark"){document.documentElement.classList.add("dark");document.body.classList.add("dark")}}catch(e){}</script>
-<header><a class="logo" href="/">Pata<b>Home</b></a><a class="back" href="/">← Home</a></header>
-<main>
+<header class="ph-header" id="hd"><div class="ph-wrap ph-hd"><a class="ph-logo" href="/" aria-label="PataHome home"><img src="/patahome-logo-transparent.png?v=20260921-2" alt="PataHome"></a><div class="header-actions"><a class="ph-btn ph-btn-line ph-btn-sm" href="/">Home</a></div></div></header>
+<main class="sub-main">
 <h1>Terms of Use</h1>
 <div class="upd">Last updated: 24 September 2026</div>
 
@@ -82,6 +71,7 @@
 <h2>11. Changes and contact</h2>
 <p>We may update these terms and will show the date above. Questions: <a href="mailto:info@patahome.co.ke">info@patahome.co.ke</a> · 0748 181 876. See also our <a href="/privacy">Privacy Policy</a>.</p>
 </main>
+<footer class="sub-foot"><b>PataHome</b> · Kenya<br><a href="/browse">Browse</a><a href="/areas">Areas</a><a href="/dashboard">List a property</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a></footer>
 <script src="/app.js?v=3" defer></script>
 </body>
 </html>
