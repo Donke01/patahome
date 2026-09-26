@@ -266,8 +266,8 @@ let HERO=[],heroI=0,heroT=null;
 // Portrait crop on phones (sharper, no zoomed-in landscape), wide crop on desktop.
 const PHONE=typeof matchMedia==="function"&&matchMedia("(max-width:900px)").matches;
 const HW=PHONE?Math.min(1080,Math.round((innerWidth-24)*(devicePixelRatio||1))):1920, HH=PHONE?Math.round(HW*1.05):1200;
-// Banner text for the stock photos (Admin → Homepage photos can set its own per photo)
-const STOCK_CAP=[["Open-plan living room","Apartment"],["Sunlit lounge","Modern home"],["Apartment block","Leafy estate"],["Bright living room","Family home"],["Master bedroom","Apartment"]];
+// Labels for the 5 stock photos, from their Unsplash source (Admin → Homepage photos sets labels for new photos)
+const STOCK_CAP=[["Living room","CySuites Apartment Hotel, Westlands"],["Sunlit living room","Collov Home Design"],["Apartment block","Shalom House, Nairobi"],["Living room","Collov Home Design"],["Bedroom","CySuites Apartment Hotel, Westlands"]];
 const STOCK_HERO=["photo-1658218635253-64728f6234be","photo-1600210492493-0946911123ea","photo-1651151084802-867d6a55dd25","photo-1600494448850-6013c64ba722","photo-1658218729615-167c32d70537"];
 async function paintHero(){
   let cfg=null;try{cfg=await api("/api/config")}catch(e){}

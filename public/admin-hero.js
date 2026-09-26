@@ -127,7 +127,7 @@
       <span class="${a.sc.colour >= 50 ? "good" : a.sc.colour < 30 ? "bad" : ""}">Colour ${Math.round(a.sc.colour)}</span></div>` : "";
   const badge = a => a ? (a.error ? `<span class="hs-badge g-x">?</span>` : `<span class="hs-badge ${a.grade[1]}">${a.score} · ${a.grade[0]}</span>`) : `<span class="hs-badge g-x">Checking…</span>`;
   // banner text shown on the stock photos when nothing custom is set (same as the homepage)
-  const STOCK_CAP = [["Open-plan living room", "Apartment"], ["Sunlit lounge", "Modern home"], ["Apartment block", "Leafy estate"], ["Bright living room", "Family home"], ["Master bedroom", "Apartment"]];
+  const STOCK_CAP = [["Living room", "CySuites Apartment Hotel, Westlands"], ["Sunlit living room", "Collov Home Design"], ["Apartment block", "Shalom House, Nairobi"], ["Living room", "Collov Home Design"], ["Bedroom", "CySuites Apartment Hotel, Westlands"]];
   const srcLabel = it => it.listing ? `Listing #${it.listing}` : it.upload ? "Upload" : /unsplash/.test(it.url || "") ? "Stock" : "Link";
 
   function paint() {
