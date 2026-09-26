@@ -260,7 +260,7 @@ async function paintHero(){
     HERO=cfg.heroImages.map(u=>({src:u.replace("/upload/",`/upload/c_fill,g_auto,w_${HW},h_${HH},q_auto:good/`)}));
   }else{
     const seen=new Set();
-    HERO=[...LISTINGS].filter(x=>x.photos.length).sort((a,b)=>(b.featured-a.featured)||(b.id-a.id))
+    HERO=[...LISTINGS].filter(x=>x.photos.length&&x.cat!=="land").sort((a,b)=>(b.featured-a.featured)||(b.id-a.id))
       .filter(x=>!seen.has(x.photos[0].full)&&seen.add(x.photos[0].full)).slice(0,5)
       .map(x=>({src:crop(x.photos[0].full||x.photos[0].thumb,HW,HH),x}));
   }
