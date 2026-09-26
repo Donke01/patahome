@@ -280,7 +280,7 @@
         <div class="site-card"><h3>⚙️ Settings</h3>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
             <div><label>Listing stays live (days)</label><input id="s_listing_ttl_days" type="number" min="7" max="365" value="${esc(st.listing_ttl_days)}"></div>
-            <div><label>Max photos per listing</label><input id="s_max_photos" type="number" min="1" max="20" value="${esc(st.max_photos)}"></div>
+            <div><label>Max photos per listing</label><input id="s_max_photos" type="number" min="1" max="60" value="${esc(st.max_photos)}"></div>
             <div><label>Sign out after idle (hours)</label><input id="s_session_idle_hours" type="number" step="0.25" min="0.25" max="72" value="${esc(st.session_idle_hours)}"></div>
             <div><label>Longest login (days)</label><input id="s_session_max_days" type="number" min="1" max="90" value="${esc(st.session_max_days)}"></div>
           </div>

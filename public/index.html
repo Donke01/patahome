@@ -249,7 +249,7 @@ const toHome=x=>({
     id:x.id,cat:x.category,title:x.title,area:x.area+", "+x.county,
     price:x.price,beds:x.bedrooms,posted:x.createdAt,featured:!!x.featured,
     owner:x.ownerName,verified:x.ownerVerified,role:x.listerRole||"owner",
-    photos:x.photoUrls||[],
+    photos:x.photoUrls||[],photoCount:x.photoCount||(x.photoUrls||[]).length,
     landDeal:x.landDeal,sizeValue:x.sizeValue,sizeUnit:x.sizeUnit,sizeAcres:x.sizeAcres,priceBasis:x.priceBasis,pricePerAcre:x.pricePerAcre,
     deal:x.deal,commType:x.commType,areaSqft:x.areaSqft,pricePerSqft:x.pricePerSqft,incomeMonth:x.incomeMonth,features:x.features||{}
   });
@@ -348,7 +348,7 @@ async function renderSugg(){
   let r;
   try{r=await api("/api/search?"+new URLSearchParams({q,cat,perPage:5}))}catch(e){return}
   if(seq!==suggSeq||document.getElementById("searchInput").value.trim()!==q)return;
-  const matches=r.listings.filter(x=>CAT[x.category]).map(x=>({id:x.id,cat:x.category,title:x.title,area:x.area+", "+x.county,price:x.price,photos:x.photoUrls||[],landDeal:x.landDeal,priceBasis:x.priceBasis,pricePerAcre:x.pricePerAcre,sizeAcres:x.sizeAcres,deal:x.deal,commType:x.commType,areaSqft:x.areaSqft,pricePerSqft:x.pricePerSqft,incomeMonth:x.incomeMonth}));
+  const matches=r.listings.filter(x=>CAT[x.category]).map(x=>({id:x.id,cat:x.category,title:x.title,area:x.area+", "+x.county,price:x.price,photos:x.photoUrls||[],photoCount:x.photoCount||(x.photoUrls||[]).length,landDeal:x.landDeal,priceBasis:x.priceBasis,pricePerAcre:x.pricePerAcre,sizeAcres:x.sizeAcres,deal:x.deal,commType:x.commType,areaSqft:x.areaSqft,pricePerSqft:x.pricePerSqft,incomeMonth:x.incomeMonth}));
   if(!matches.length){
     box.innerHTML=`<div class="sg-none">No matches yet, try other keywords, e.g. “bedsitter Kasarani” or “2br under 20k”</div>`;
     box.classList.add("show");return;
@@ -394,7 +394,7 @@ function renderLatest(){
         ${x.photos.length?`<img src="${esc(crop(x.photos[0].thumb,800,620))}" alt="${esc(x.title)}" loading="lazy">`:`<span class="blank">${ICONS[c.icon]}</span>`}
         <span class="kind">${esc(kindLabel(x))}</span>
         <button class="fav${favs.has(x.id)?" on":""}" type="button" aria-label="Save" aria-pressed="${favs.has(x.id)}" onclick="toggleFav(event,${x.id})">${HEART}</button>
-        ${x.photos.length>1?`<span class="count">${x.photos.length} photos</span>`:""}
+        ${(x.photoCount||x.photos.length)>1?`<span class="count">${x.photoCount||x.photos.length} photos</span>`:""}
       </div>
       <div class="meta">
         <div class="row"><h3>${esc(cleanTitle(x))}</h3><div class="price">${priceHTML(x)}</div></div>

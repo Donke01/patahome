@@ -258,7 +258,7 @@
     <label>Description <small id="eDescCount" style="text-transform:none;letter-spacing:0;font-weight:500"></small></label>
     <textarea id="eDesc" rows="4" oninput="descCount()" placeholder="What makes it good? e.g. Water 24/7, quiet compound, 5 min walk to the stage, tiled floors, big windows. Mention anything tenants should know (rules, move-in date)."></textarea>
     <div id="photoWrap" style="display:none">
-      <label>Photos (up to 5)</label>
+      <label>Photos <span id="photoCount" style="font-weight:400;text-transform:none;letter-spacing:0"></span></label>
       <div class="photo-grid" id="photoGrid"></div>
       <div class="up-prog" id="upProg" aria-live="polite"><div class="up-bar"><i id="upBar"></i></div><span id="upPct">0%</span></div>
       <div class="photo-note">JPG, PNG or WebP, up to 8&nbsp;MB each.</div>
@@ -885,7 +885,7 @@ const FAQS=[
   ["Is PataHome free?","Posting and receiving leads is free. Optional visibility boosts for your listings may be offered later."],
   ["How do I get the verified badge?","Open the account menu (your name, top right) → Verify my details → Request verification. Our team confirms your ID and property ownership, then your listings show the trusted green badge."],
   ["How do leads work?","When a renter or buyer taps Contact Owner on your listing, your phone number is shared with them and it counts as a lead. Their messages appear in your Feedback tab, reply promptly to close faster."],
-  ["Can I add photos?","Yes, up to 5 photos per listing (JPG, PNG or WebP, max 8 MB each). Listings with photos receive far more leads. Add them when creating or editing a listing."],
+  ["Can I add photos?","Yes, up to 60 photos per listing (JPG, PNG or WebP, max 8 MB each). Listings with photos receive far more leads. Add them when creating or editing a listing."],
   ["What are followers?","People who follow you from your listing pages. They're potential clients interested in your future posts, you can see their contacts in the Followers tab."],
   ["How do I mark a house as rented or sold?","Use the Mark rented or Mark sold button beside an active listing. We ask you to confirm, hide it from public search, preserve its leads and history, and let you relist it at any time."],
   ["How do I contact PataHome?","Use the Request Help tab, or email info@patahome.co.ke, we respond as fast as we can."]
@@ -1123,8 +1123,9 @@ function thumbUrl(id){
 }
 let uploads=[]; // in-flight photos: {key,preview,loaded,total,done,xhr}
 function renderPhotos(){
-  const max=(signCfg&&signCfg.maxPhotos)||5;
+  const max=(signCfg&&signCfg.maxPhotos)||60;
   uploadingCount=uploads.length;
+  if($("photoCount"))$("photoCount").textContent=`(${photoIds.length} of ${max}${uploads.length?`, ${uploads.length} uploading`:""})`;
   $("photoGrid").innerHTML=
     photoIds.map((id,i)=>`<div class="photo-cell"><div class="photo-th"><img src="${thumbUrl(id)}" alt="photo ${i+1}" loading="lazy"><button type="button" class="rm" onclick="removePhoto(${i})">✕</button>${i===0?'<span class="cover">Cover</span>':""}</div><select class="ph-lab" onchange="photoLabels['${id}']=this.value" aria-label="What is in photo ${i+1}?"><option value="">Label…</option>${PHOTO_LABELS.map(l=>`<option${photoLabels[id]===l?" selected":""}>${l}</option>`).join("")}</select></div>`).join("")+
     uploads.map(u=>`<div class="photo-th uploading${u.done?" done":""}" id="up-${u.key}"><img src="${u.preview}" alt=""><div class="ring" style="--p:${pctOf(u)}"><b>${u.done?"✓":pctOf(u)+"%"}</b></div>${u.done?"":`<button type="button" class="up-cancel" title="Cancel upload" onclick="cancelUpload('${u.key}')">✕</button>`}</div>`).join("")+
@@ -1199,7 +1200,7 @@ function sendToCloudinary(cfg,f,u){
   });
 }
 async function uploadPhotos(files){
-  const max=(signCfg&&signCfg.maxPhotos)||5, maxBytes=(signCfg&&signCfg.maxBytes)||8*1024*1024;
+  const max=(signCfg&&signCfg.maxPhotos)||60, maxBytes=(signCfg&&signCfg.maxBytes)||8*1024*1024;
   const room=max-photoIds.length-uploads.length;
   const picked=[...files].slice(0,room);
   if(files.length>room)toast(`Maximum ${max} photos per listing`);
@@ -1213,7 +1214,10 @@ async function uploadPhotos(files){
   try{cfg=await getSignCfg()}catch(e){toast(e.message);return}
   const batch=ok.map(f=>({f,u:{key:Math.random().toString(36).slice(2,9),preview:URL.createObjectURL(f),loaded:0,total:f.size,done:false}}));
   uploads.push(...batch.map(b=>b.u));renderPhotos();
-  await Promise.all(batch.map(async({f,u})=>{
+  // upload 4 at a time so a big batch doesn't choke a phone connection
+  const queue=batch.slice();
+  const one=async({f,u})=>{
+    if(u.cancelled)return;
     try{
       const d=await sendToCloudinary(cfg,f,u);
       u.loaded=u.total;u.done=true;renderPhotos();
@@ -1225,7 +1229,8 @@ async function uploadPhotos(files){
       URL.revokeObjectURL(u.preview);
       renderPhotos();
     }
-  }));
+  };
+  await Promise.all(Array.from({length:Math.min(4,queue.length)},async()=>{while(queue.length)await one(queue.shift())}));
 }
 
 /* ---------- add / edit ---------- */

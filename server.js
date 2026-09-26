@@ -15,7 +15,7 @@ const router = makeRouter();
    (which itself usually comes from an environment variable). */
 const SETTINGS_DEFAULTS = {
   listing_ttl_days: () => Math.max(7, +process.env.LISTING_TTL_DAYS || 60),
-  max_photos: () => 5,
+  max_photos: () => 60,
   session_idle_hours: () => Math.max(0.25, +process.env.SESSION_IDLE_HOURS || 4),
   session_max_days: () => Math.max(1, +process.env.SESSION_MAX_DAYS || 14),
   alerts_enabled: () => "1",          // new-listing alerts (email/SMS) to saved searches
@@ -28,7 +28,7 @@ const SETTINGS_DEFAULTS = {
   hero_images: () => ""               // homepage hero photos, one https URL per line, optional #listing=ID&enhance=1 (empty = the 5 stock photos)
 };
 const SETTING_RULES = {
-  listing_ttl_days: v => Math.min(365, Math.max(7, Math.round(+v))), max_photos: v => Math.min(20, Math.max(1, Math.round(+v))),
+  listing_ttl_days: v => Math.min(365, Math.max(7, Math.round(+v))), max_photos: v => Math.min(60, Math.max(1, Math.round(+v))),
   session_idle_hours: v => Math.min(72, Math.max(0.25, +v)), session_max_days: v => Math.min(90, Math.max(1, +v)),
   alerts_enabled: v => (v === true || v === "1" || v === 1) ? "1" : "0", sms_enabled: v => (v === true || v === "1" || v === 1) ? "1" : "0",
   announce_on: v => (v === true || v === "1" || v === 1) ? "1" : "0", announce_text: v => String(v || "").trim().slice(0, 240),
@@ -60,7 +60,7 @@ const CLD = {
   key: process.env.CLOUDINARY_API_KEY || "",
   secret: process.env.CLOUDINARY_API_SECRET || "",
   folder: "patahome/listings",
-  maxPhotos: 5
+  maxPhotos: 60
 };
 const cldEnabled = () => !!(CLD.cloud && CLD.key && CLD.secret);
 // Cloudinary signature: sha1 of sorted params + api_secret
@@ -108,6 +108,11 @@ const LISTING_SQL = `
   SELECT l.*, a.name AS area_name, a.county, u.name AS owner_name, u.verified AS owner_verified
   FROM listings l JOIN areas a ON a.id = l.area_id JOIN users u ON u.id = l.owner_id`;
 
+// Lists (search, homepage, similar) carry only the first few photos to stay light;
+// the full set comes from GET /api/listings/:id. photoCount is always the real total.
+const BRIEF_PHOTOS = 6;
+const brief = v => v.photoUrls && v.photoUrls.length > BRIEF_PHOTOS
+  ? { ...v, photos: v.photos.slice(0, BRIEF_PHOTOS), photoUrls: v.photoUrls.slice(0, BRIEF_PHOTOS) } : v;
 const listingView = (row, userLat, userLng) => ({
   id: row.id,
   category: row.category,
@@ -122,6 +127,7 @@ const listingView = (row, userLat, userLng) => ({
   status: row.status,
   statusChangedAt: row.status_changed_at || null,
   photos: parsePhotos(row.photos),
+  photoCount: parsePhotos(row.photos).length,
   photoUrls: cldEnabled() ? parsePhotos(row.photos).map(id => ({
     thumb: photoUrl(id, "c_limit,w_720,h_720,q_auto:eco"), // whole photo, no crop
     small: photoUrl(id, "c_fill,g_auto,w_420,h_320,q_auto:eco"), // gallery tiles
@@ -839,7 +845,7 @@ router.add("GET", "/api/listings", (req, res) => {
   if (lat != null && lng != null && q.radiusKm)
     rows = rows.filter(r => km(lat, lng, r.lat, r.lng) <= +q.radiusKm);
 
-  let out = rows.map(r => listingView(r, lat, lng));
+  let out = rows.map(r => brief(listingView(r, lat, lng)));
   const sort = q.sort || (lat != null ? "distance" : "newest");
   const by = {
     distance: (a, b) => (a.distanceKm ?? 1e9) - (b.distanceKm ?? 1e9),
@@ -966,7 +972,7 @@ router.add("GET", "/api/search", (req, res) => {
   const perPage = Math.min(Math.max(+q.perPage || 20, 1), 50), page = Math.max(+q.page || 1, 1);
   const slice = rows.slice((page - 1) * perPage, page * perPage);
   const out = { total: rows.length, page, perPage, hasMore: page * perPage < rows.length,
-    listings: slice.map(r => listingView(r, hasLoc ? lat : null, hasLoc ? lng : null)) };
+    listings: slice.map(r => brief(listingView(r, hasLoc ? lat : null, hasLoc ? lng : null))) };
   if (page === 1 && q.q && !q.ids) logSearch(q.q, rows.length);
   if (page === 1) {
     out.pins = rows.map(r => ({ id: r.id, lat: r.lat, lng: r.lng, price: r.price, category: r.category, title: r.title, area: `${r.area_name}, ${r.county}`,
@@ -1004,7 +1010,7 @@ router.add("GET", "/api/listings/:id/similar", (req, res, p) => {
   if (!row) return send(res, 404, { error: "Listing not found" });
   const rows = db.prepare(`${LISTING_SQL} WHERE l.status='active' AND l.category=? AND l.id!=? AND a.county=?
     ORDER BY (l.area_id=?) DESC, ABS(l.price - ?) ASC LIMIT 8`).all(row.category, row.id, row.county, row.area_id, row.price);
-  send(res, 200, { listings: rows.map(r => listingView(r)) });
+  send(res, 200, { listings: rows.map(r => brief(listingView(r))) });
 });
 router.add("GET", "/api/listings/:id", (req, res, p) => {
   const row = db.prepare(`${LISTING_SQL} WHERE l.id=?`).get(p.id);
@@ -1876,7 +1882,7 @@ function cleanFeatures(f) {
   if (n(f.serviceChargeKes, 0, 1e6) != null) out.serviceChargeKes = n(f.serviceChargeKes, 0, 1e6);
   if (f.photoLabels && typeof f.photoLabels === "object") {
     const pl = {};
-    for (const [id, lab] of Object.entries(f.photoLabels).slice(0, 30)) if (/^[\w\/-]{3,120}$/.test(id) && PHOTO_LABELS.includes(lab)) pl[id] = lab;
+    for (const [id, lab] of Object.entries(f.photoLabels).slice(0, 60)) if (/^[\w\/-]{3,120}$/.test(id) && PHOTO_LABELS.includes(lab)) pl[id] = lab;
     if (Object.keys(pl).length) out.photoLabels = pl;
   }
   for (const [k, allowed] of Object.entries(FEATURE_ENUMS)) if (allowed.includes(f[k])) out[k] = f[k];
@@ -3490,6 +3496,7 @@ function listingPage(req, res, p) {
     ["Price", priceText(row)],
     [isLand ? "Size" : "Bedrooms", isLand ? landSize : row.bedrooms == null ? "" : row.bedrooms === 0 ? "Bedsitter" : row.bedrooms + " bedroom" + (row.bedrooms === 1 ? "" : "s")],
     ["Area", `${row.area_name}, ${row.county} County`],
+    ["Photos", photos.length ? String(photos.length) : ""],
     ["Listed by", `${row.contact_name || row.owner_name}${row.owner_verified ? " ✓" : ""}${(row.lister_role || "owner") === "owner" ? " (owner)" : row.lister_role === "agent" ? " (agent)" : " (caretaker)"}`],
     ["Deposit", F.deposit], ["Service charge", F.serviceCharge]
   ].filter(k => k[1]);
@@ -3498,6 +3505,7 @@ function listingPage(req, res, p) {
     <div class="crumbs"><a href="/">Home</a> › <a href="/${catSlug}/${slugify(row.area_name)}">${escapeHtml(CATS[catSlug].label)} in ${escapeHtml(row.area_name)}</a></div>
     ${image ? `<div class="lp-hero"><img src="${image}" alt="${escapeHtml(row.title)}" width="1200" height="630"></div>` : ""}
     ${gal ? `<div class="lp-gal">${gal}</div>` : ""}
+    ${photos.length > 5 ? `<p class="lp-more"><a href="/browse?open=${row.id}">See all ${photos.length} photos →</a></p>` : ""}
     <h1>${escapeHtml(row.title)}</h1>
     <div class="lp-price">${escapeHtml(priceText(row))}</div>
     ${row.admin_banner ? `<div class="safe" style="background:color-mix(in srgb,var(--danger) 12%,transparent);color:var(--danger)">⚠️ ${escapeHtml(row.admin_banner)}</div>` : ""}

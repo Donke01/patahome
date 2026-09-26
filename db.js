@@ -436,5 +436,10 @@ CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY, value TEXT, updated_at TEXT NOT NULL DEFAULT (datetime('now')), updated_by INTEGER
 );
 `);
+// One-off: photos per listing went up to 60. Lift any older saved limit once; after that the admin setting rules.
+if (!db.prepare("SELECT 1 FROM settings WHERE key='mig_photos_60'").get()) {
+  db.exec("UPDATE settings SET value='60' WHERE key='max_photos' AND CAST(value AS INTEGER) < 60");
+  db.exec("INSERT OR IGNORE INTO settings (key,value) VALUES ('mig_photos_60','1')");
+}
 
 module.exports = db;

@@ -494,3 +494,22 @@ test("watermark: new photos and videos get the PataHome logo", async () => {
   assert.doesNotMatch((await call("GET", "/api/uploads/sign", null, t)).body.transformation, /watermark/);
   await call("PATCH", "/api/admin/settings", { watermark_on: "1" }, t);
 });
+test("photos: up to 60 per listing, lists carry a few plus the true count", async () => {
+  const t = await owner("photos60@example.com");
+  await call("POST", "/api/account/change-phone", { phone: "0712000161" }, t);
+  const ids = n => Array.from({ length: n }, (_, i) => `patahome/listings/p60_${i}`);
+  const cfg = (await call("GET", "/api/config")).body;
+  assert.equal(cfg.maxPhotos, 60);
+  const tooMany = await call("POST", "/api/listings", { category: "rent", title: "Many photos", areaId: areaId("Ruaka"), price: 30000, bedrooms: 2, photos: ids(61) }, t);
+  assert.equal(tooMany.status, 400);
+  const r = await call("POST", "/api/listings", { category: "rent", title: "Many photos flat", areaId: areaId("Ruaka"), price: 30500, bedrooms: 2, photos: ids(12) }, t);
+  assert.equal(r.status, 201);
+  assert.equal(r.body.photoCount, 12);
+  assert.equal(r.body.photoUrls.length, 12);
+  const full = (await call("GET", `/api/listings/${r.body.id}`)).body;
+  assert.equal(full.photoUrls.length, 12);
+  const s = (await call("GET", "/api/search?q=Ruaka&perPage=50")).body.listings.find(x => x.id === r.body.id);
+  assert.ok(s, "listing shows in search");
+  assert.equal(s.photoCount, 12);
+  assert.ok(s.photoUrls.length <= 6, "search results stay light");
+});

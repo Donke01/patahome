@@ -85,7 +85,7 @@
         </div>
         <div id="asCatBox"></div>
         <label>Description</label><textarea id="asDesc" rows="3" placeholder="What the owner told you: water, parking, deposit, directions…"></textarea>
-        <label>Photos (up to 5)</label><div class="ph-wall" id="asPhotos" style="grid-template-columns:repeat(auto-fill,minmax(110px,1fr))"></div>
+        <label>Photos (up to 60)</label><div class="ph-wall" id="asPhotos" style="grid-template-columns:repeat(auto-fill,minmax(110px,1fr))"></div>
         <input type="file" id="asFile" accept="image/jpeg,image/png,image/webp" multiple style="display:none" onchange="asUpload(this.files);this.value=''"></div>
       <div class="err" id="asErr"></div>
       <div class="actions"><button class="btn btn-primary" id="asSave" onclick="assistSave()">Publish listing</button><button class="btn btn-ghost" onclick="closeModal()">Cancel</button></div>`);
@@ -116,12 +116,12 @@
   function asPaint() {
     $("asPhotos").innerHTML = photos.map((p, i) => `<div class="ph-item"><img src="https://res.cloudinary.com/${signCfg ? signCfg.cloudName : ""}/image/upload/c_fill,w_220,h_165/${p}" alt=""><button class="btn btn-danger btn-sm" onclick="asDrop(${i})">Remove</button></div>`).join("") +
       (uploading ? `<div class="ph-item" style="justify-content:center;align-items:center;min-height:90px"><span class="muted">Uploading ${uploading}…</span></div>` : "") +
-      (photos.length + uploading < 5 ? `<button type="button" class="btn btn-ghost" style="min-height:90px" onclick="$('asFile').click()">+ Add photos</button>` : "");
+      (photos.length + uploading < ((typeof signCfg !== "undefined" && signCfg && signCfg.maxPhotos) || 60) ? `<button type="button" class="btn btn-ghost" style="min-height:90px" onclick="$('asFile').click()">+ Add photos</button>` : "");
   }
   window.asDrop = i => { photos.splice(i, 1); asPaint(); };
   window.asUpload = async files => {
     try { signCfg = await api("/api/uploads/sign"); } catch (e) { return toast(e.message); }
-    const list = [...files].slice(0, 5 - photos.length - uploading).filter(f => /^image\/(jpeg|png|webp)$/.test(f.type) && f.size <= (signCfg.maxBytes || 8e6));
+    const list = [...files].slice(0, (signCfg.maxPhotos || 60) - photos.length - uploading).filter(f => /^image\/(jpeg|png|webp)$/.test(f.type) && f.size <= (signCfg.maxBytes || 8e6));
     uploading += list.length; asPaint();
     await Promise.all(list.map(async f => {
       const fd = new FormData();

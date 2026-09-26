@@ -485,7 +485,7 @@ const toItem=x=>({
   landDeal:x.landDeal,sizeValue:x.sizeValue,sizeUnit:x.sizeUnit,sizeAcres:x.sizeAcres,priceBasis:x.priceBasis,pricePerAcre:x.pricePerAcre,
   leaseMin:x.leaseMin,exactPin:!!x.exactPin,docsChecked:!!x.docsChecked,
   confirmedAt:x.confirmedAt||x.createdAt,ref:x.ref||("PH-"+String(x.id).padStart(4,"0")),
-  photos:x.photoUrls||[]
+  photos:x.photoUrls||[],photoCount:x.photoCount||(x.photoUrls||[]).length
 });
 // Land shows its deal type instead of the generic category label
 /* ---------- listing presentation helpers ---------- */
@@ -939,7 +939,7 @@ function cardHTML(x,i){
         ${x.featured?`<span class="feat-badge">Featured</span>`:isNew?`<span class="new-badge">New</span>`:""}
         <button class="heart ${favs.has(x.id)?"on":""}" type="button" aria-label="Save" aria-pressed="${favs.has(x.id)}" onclick="event.stopPropagation();toggleFav(${x.id})">${HEART_SVG}</button>
         ${d!==null?`<span class="dist-badge">${d<1?Math.round(d*1000)+" m":d.toFixed(1)+" km"} away</span>`:""}
-        ${x.photos.length>1?`<span class="photo-count">${CAM}${x.photos.length}</span>`:""}
+        ${x.photoCount>1?`<span class="photo-count">${CAM}${x.photoCount}</span>`:""}
       </div>
       <div class="card-body">
         <div class="row"><div class="title">${esc(cleanTitle(x))}</div><div class="price">${priceHTML(x)}</div></div>
@@ -1148,6 +1148,8 @@ function openDetail(id){
   dMore.onclick=()=>{const o=dEl.classList.toggle("open");dMore.textContent=o?"Show less":"Read more"};
   buildDetailNav();
   loadSimilar(x);
+  // lists only carry the first few photos; fetch the full set for the gallery
+  if(x.photoCount>x.photos.length&&!x._full){x._full=1;api("/api/listings/"+x.id).then(r=>{x.photos=r.photoUrls||x.photos;x.photoCount=x.photos.length;if(galItem===x)renderGallery()}).catch(()=>{x._full=0})}
   document.getElementById("dVerify").style.display=x.verified===false?"none":"";
   document.getElementById("dContactBtn").textContent=x.role==="agent"?"Contact Agent":x.role==="caretaker"?"Contact Caretaker":"Contact Owner";
   document.getElementById("dListed").textContent=x.role==="agent"?"Agent":x.role==="caretaker"?"Caretaker / manager":"Listed by owner";
@@ -1366,7 +1368,7 @@ function renderGallery(){
 // Booking.com-style grid: one big photo + up to four small ones. Tapping any
 // tile opens the full-screen zoom viewer at that photo.
 function renderPhotoGrid(gEl,photos){
-  const n=photos.length, shown=Math.min(n,5);
+  const n=Math.max(photos.length,galItem.photoCount||0), shown=Math.min(photos.length,5);
   const tile=(p,i)=>{
     const more=(i===shown-1&&n>shown)?`<span class="pg-more">+${n-shown} photos</span>`:"";
     // mobile shows the big photo + 3 small; the 4th small tile carries "+N" there
