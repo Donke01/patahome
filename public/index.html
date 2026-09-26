@@ -390,9 +390,9 @@ function toggleFav(e,id){
 }
 function renderLatest(){
   const g=document.getElementById("latestGrid");
-  // newest first, but every category that has listings (land, commercial, Airbnb…) gets a spot
-  const byNew=[...LISTINGS].sort((a,b)=>b.id-a.id),pick=[];
-  for(const c of Object.keys(CAT)){const x=byNew.find(y=>y.cat===c);if(x)pick.push(x)}
+  // newest first, every category that has listings gets a spot (except land: not shown here)
+  const byNew=LISTINGS.filter(x=>x.cat!=="land").sort((a,b)=>b.id-a.id),pick=[];
+  for(const c of Object.keys(CAT)){if(c==="land")continue;const x=byNew.find(y=>y.cat===c);if(x)pick.push(x)}
   for(const x of byNew){if(pick.length>=6)break;if(!pick.includes(x))pick.push(x)}
   const list=pick.slice(0,6).sort((a,b)=>b.id-a.id);
   if(!list.length){g.innerHTML=`<div class="ph-empty">New listings will appear here soon.</div>`;return}
