@@ -3455,6 +3455,7 @@ ${jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd).replace(
 </head>
 <body class="ph sub page-seo">
 <script>try{if(localStorage.getItem("ph_theme")==="dark")document.documentElement.classList.add("dark")}catch(e){}</script>
+<script>try{history.scrollRestoration="manual";if(!location.hash){scrollTo(0,0);addEventListener("load",function(){scrollTo(0,0)})}}catch(e){}</script>
 <header class="ph-header"><div class="ph-wrap ph-hd"><a class="ph-logo" href="/" aria-label="PataHome home"><img src="/patahome-logo-transparent.png?v=20260921-2" alt="PataHome" width="110" height="46"></a>
 <nav class="ph-nav" aria-label="Main"><a href="/browse?cat=rent">Rent</a><a href="/browse?cat=sale">Buy</a><a href="/browse?cat=shortlet">Airbnb</a><a href="/browse?cat=land">Land</a><a href="/browse?cat=commercial">Commercial</a></nav>
 <div class="header-actions"><a class="ph-btn ph-btn-line ph-btn-sm" href="/browse">Browse homes</a></div></div></header>

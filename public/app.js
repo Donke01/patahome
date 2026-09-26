@@ -1,6 +1,23 @@
 /* Shared on every public page: app install + cookieless visit count + language.
    Loaded with `defer`, so it never blocks the page. */
 (function () {
+  /* ---- always start at the top: on refresh, and when the logo is tapped ---- */
+  try { if ("scrollRestoration" in history) history.scrollRestoration = "manual"; } catch (e) {}
+  function toTop() { if (!location.hash) window.scrollTo(0, 0); }
+  toTop();
+  window.addEventListener("load", toTop);
+  window.addEventListener("pageshow", function (e) { if (e.persisted) toTop(); });
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest && e.target.closest("a.ph-logo, a.logo, a[data-home]");
+    if (!a || e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
+    var u = new URL(a.href, location.href);
+    if (u.origin === location.origin && u.pathname === "/" && location.pathname === "/") {
+      e.preventDefault();
+      if (location.search || location.hash) history.replaceState(null, "", "/");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  });
+
   /* ---- visit counter (no cookies; see /api/pv on the server) ---- */
   try {
     navigator.sendBeacon && navigator.sendBeacon("/api/pv",
