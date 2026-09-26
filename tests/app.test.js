@@ -484,7 +484,7 @@ test("watermark: new photos and videos get the PataHome logo", async () => {
   const w = await call("GET", "/api/admin/watermark", null, t);
   assert.equal(w.body.ready, true, "logo stored in Cloudinary at start-up");
   const img = (await call("GET", "/api/uploads/sign", null, t)).body;
-  assert.match(img.transformation, /l_patahome:brand:watermark/); assert.equal(img.tags, "wm");
+  assert.match(img.transformation, /l_patahome:brand:watermark.*g_center/); assert.equal(img.tags, "wm,wm_c");
   const vid = (await call("GET", "/api/uploads/sign?kind=video", null, t)).body;
   assert.match(vid.eager, /l_patahome:brand:watermark.*\/mp4$/); assert.equal(vid.eager_async, "true");
   const doc = (await call("GET", "/api/uploads/sign?kind=verify", null, t)).body;

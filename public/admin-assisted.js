@@ -181,11 +181,11 @@
     const grid = document.querySelector("#panel .site-grid"); if (!grid) return;
     const j = w.job || {};
     grid.insertAdjacentHTML("afterbegin", `<div class="site-card"><h3>🖼 Watermark</h3>
-      <div class="muted">The PataHome logo is stamped on the bottom-right of every new photo the moment it's uploaded, and on every video.</div>
+      <div class="muted">The PataHome logo is stamped in the middle of every new photo (so it can't be cropped off) the moment it's uploaded, and on every video.</div>
       <div style="display:flex;gap:10px;align-items:center;margin:8px 0"><img src="/watermark.png" alt="" style="height:44px;background:#5b6b64;border-radius:8px;padding:4px">
         <span class="muted">${!w.cloudinary ? "Cloudinary isn't set up" : w.ready ? "✓ Logo stored in Cloudinary" : "Storing the logo in Cloudinary…"}</span></div>
       <label class="chk"><input type="checkbox" id="s_watermark_on" ${w.enabled ? "checked" : ""} onchange="saveSettings(['watermark_on'])"> Watermark new photos and videos</label>
-      <div class="actions"><button class="btn btn-ghost btn-sm" ${j.running ? "disabled" : ""} onclick="wmExisting()">${j.running ? "Stamping older photos…" : "Watermark older photos"}</button></div>
+      <div class="actions"><button class="btn btn-ghost btn-sm" ${j.running ? "disabled" : ""} onclick="wmExisting()">${j.running ? "Stamping older photos…" : "Add centre watermark to older photos"}</button></div>
       <div class="muted" id="wmStatus">${j.total || j.finishedAt ? `${j.done} of ${j.total} done${j.failed ? `, ${j.failed} failed` : ""}${j.finishedAt && !j.running ? " · finished" : ""}` : ""}</div></div>`);
     if (j.running) setTimeout(() => { if (tab === "site") NEW_LOADERS.site(); }, 4000);
   };
@@ -214,7 +214,7 @@
     catch (e) { toast(e.message); }
   };
   window.wmExisting = async function () {
-    if (!confirm("Stamp the PataHome logo on all photos uploaded before watermarking was switched on? This permanently changes those photos.")) return;
+    if (!confirm("Stamp the PataHome logo in the middle of every older listing photo? Photos with the old corner logo keep it too. This permanently changes those photos.")) return;
     try { await api("/api/admin/watermark/existing", { method: "POST" }); toast("Started, this can take a few minutes"); NEW_LOADERS.site(); }
     catch (e) { toast(e.message); }
   };

@@ -71,13 +71,15 @@ function cldSign(params) {
 // Incoming transformation: cap at 1280px, auto quality, keeps every stored image small
 const CLD_TRANSFORM = "c_limit,w_1280,h_1280,q_auto:good";
 /* Watermark: our white logo (public/watermark.png, stored in Cloudinary as
-   patahome/brand/watermark) in the bottom-right corner, 18% of the width, 70% opacity.
+   patahome/brand/watermark) in the middle of the photo, 34% of the width, 55% opacity,
+   so it can't be cropped off like a corner mark.
    Photos get it baked in the moment they're uploaded; videos get a watermarked
    copy made right after upload and only that copy is ever shown. */
 const WM_ID = "patahome:brand:watermark";
-const WM_LAYER = (w) => `l_${WM_ID}/c_scale,fl_relative,w_${w}/o_70/fl_layer_apply,g_south_east,x_24,y_24`;
-const CLD_TRANSFORM_WM = `c_limit,w_1280,h_1280/${WM_LAYER(0.18)}/q_auto:good`;
-const VIDEO_WM_T = `c_limit,w_1280/${WM_LAYER(0.2)}/q_auto,vc_auto`;
+const WM_LAYER = (w) => `l_${WM_ID}/c_scale,fl_relative,w_${w}/o_55/fl_layer_apply,g_center`;
+const WM_TAGS = "wm,wm_c"; // wm_c = centred mark
+const CLD_TRANSFORM_WM = `c_limit,w_1280,h_1280/${WM_LAYER(0.34)}/q_auto:good`;
+const VIDEO_WM_T = `c_limit,w_1280/${WM_LAYER(0.34)}/q_auto,vc_auto`;
 const watermarkOn = () => cldEnabled() && setting("watermark_on") === "1" && setting("watermark_asset") !== "";
 // f_auto: Cloudinary sends WebP/AVIF to browsers that support them (much smaller on phones)
 const photoUrl = (id, t) => `https://res.cloudinary.com/${CLD.cloud}/image/upload/${/(^|[,/])f_/.test(t) ? t : t + ",f_auto"}/${id}`;
@@ -138,7 +140,7 @@ const listingView = (row, userLat, userLng) => ({
   features: parseJson(row.features, {}),
   video: row.video && cldEnabled() ? {
     url: `https://res.cloudinary.com/${CLD.cloud}/video/upload/${setting("watermark_asset") ? VIDEO_WM_T : "q_auto,vc_auto,c_limit,w_1280"}/${row.video}.mp4`,
-    poster: `https://res.cloudinary.com/${CLD.cloud}/video/upload/so_1,c_limit,w_720${setting("watermark_asset") ? "/" + WM_LAYER(0.2) : ""}/${row.video}.jpg`
+    poster: `https://res.cloudinary.com/${CLD.cloud}/video/upload/so_1,c_limit,w_720${setting("watermark_asset") ? "/" + WM_LAYER(0.34) : ""}/${row.video}.jpg`
   } : null,
   nearby: row.nearby ? parseJson(row.nearby, null) : null,
   videoId: row.video || "",
@@ -1557,12 +1559,12 @@ router.add("GET", "/api/uploads/sign", (req, res) => {
   const timestamp = Math.floor(Date.now() / 1000);
   const wm = folder === CLD.folder && watermarkOn();
   const transformation = wm ? CLD_TRANSFORM_WM : CLD_TRANSFORM;
-  const params = { folder, timestamp, transformation, ...(wm ? { tags: "wm" } : {}) };
+  const params = { folder, timestamp, transformation, ...(wm ? { tags: WM_TAGS } : {}) };
   const moderation = folder === CLD.folder && CLD_MODERATION() ? CLD_MODERATION() : "";
   if (moderation) params.moderation = moderation;
   send(res, 200, {
     cloudName: CLD.cloud, apiKey: CLD.key, moderation,
-    timestamp, folder, transformation, ...(wm ? { tags: "wm" } : {}),
+    timestamp, folder, transformation, ...(wm ? { tags: WM_TAGS } : {}),
     signature: cldSign(params),
     maxPhotos: CLD.maxPhotos, maxBytes: 8 * 1024 * 1024
   });
@@ -3339,7 +3341,8 @@ async function ensureWatermark() {
 }
 setTimeout(() => ensureWatermark(), process.env.NODE_ENV === "test" ? 0 : 3000);
 
-// Re-stamp photos uploaded before watermarking existed (anything without the "wm" tag).
+// Stamp the centred mark on older photos (anything without the "wm_c" tag). Photos that already
+// have the old corner mark keep it; the centre one is added on top.
 const wmJob = { running: false, done: 0, failed: 0, total: 0, finishedAt: null };
 async function watermarkExisting() {
   const auth = { Authorization: "Basic " + Buffer.from(`${CLD.key}:${CLD.secret}`).toString("base64") };
@@ -3348,15 +3351,15 @@ async function watermarkExisting() {
   do {
     const r = await fetch(`https://api.cloudinary.com/v1_1/${CLD.cloud}/resources/image/upload?prefix=${encodeURIComponent(CLD.folder + "/")}&max_results=500&tags=true${cursor ? "&next_cursor=" + cursor : ""}`, { headers: auth });
     const d = await r.json();
-    for (const x of d.resources || []) if (!(x.tags || []).includes("wm")) todo.push(x.public_id);
+    for (const x of d.resources || []) if (!(x.tags || []).includes("wm_c")) todo.push(x.public_id);
     cursor = d.next_cursor || "";
   } while (cursor);
   wmJob.total = todo.length;
   for (const id of todo) {
     try {
-      const params = { public_id: id, overwrite: "true", invalidate: "true", tags: "wm", timestamp: Math.floor(Date.now() / 1000) };
+      const params = { public_id: id, overwrite: "true", invalidate: "true", tags: WM_TAGS, timestamp: Math.floor(Date.now() / 1000) };
       const fd = new FormData();
-      fd.append("file", `https://res.cloudinary.com/${CLD.cloud}/image/upload/${WM_LAYER(0.18)}/${id}`);
+      fd.append("file", `https://res.cloudinary.com/${CLD.cloud}/image/upload/${WM_LAYER(0.34)}/${id}`);
       for (const [k, v] of Object.entries(params)) fd.append(k, String(v));
       fd.append("api_key", CLD.key); fd.append("signature", cldSign(params));
       const r = await fetch(`https://api.cloudinary.com/v1_1/${CLD.cloud}/image/upload`, { method: "POST", body: fd, signal: AbortSignal.timeout(30000) });
