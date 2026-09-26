@@ -24,7 +24,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/ph.css?v=6">
+<link rel="stylesheet" href="/ph.css?v=7">
 <link rel="manifest" href="/manifest.webmanifest">
 </head>
 <body class="ph page-home on-hero">
@@ -252,7 +252,7 @@ async function loadData(){
 let HERO=[],heroI=0,heroT=null;
 // Portrait crop on phones (sharper, no zoomed-in landscape), wide crop on desktop.
 const PHONE=typeof matchMedia==="function"&&matchMedia("(max-width:900px)").matches;
-const HW=PHONE?Math.min(1080,Math.round((innerWidth-24)*(devicePixelRatio||1))):1920, HH=PHONE?Math.round(HW*1.25):1200;
+const HW=PHONE?Math.min(1080,Math.round((innerWidth-24)*(devicePixelRatio||1))):1920, HH=PHONE?Math.round(HW*1.05):1200;
 async function paintHero(){
   let cfg=null;try{cfg=await api("/api/config")}catch(e){}
   if(cfg&&cfg.heroImages&&cfg.heroImages.length){
