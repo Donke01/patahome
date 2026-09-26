@@ -260,7 +260,7 @@ async function sendEmailCode(userId, email) {
   return true;
 }
 function authEmailHtml({greeting,code,kind="verification"}) {
-  const intro=kind==="reset"?"Use this code to reset your PataHome password.":"Use this code to verify your PataHome account.";
+  const intro=kind==="reset"?"Use this code to reset your PataHome password.":kind==="security"?"Use this code to confirm a sensitive change or sign-in on PataHome.":"Use this code to verify your PataHome account.";
   return `<!doctype html><html><body style="margin:0;background:#f4faf7;font-family:Arial,sans-serif;color:#17352b"><div style="max-width:560px;margin:28px auto;background:#fff;border:1px solid #d9e9e0;border-radius:18px;overflow:hidden"><div style="padding:24px 28px;background:#063f2e;color:#fff"><img src="https://patahome.co.ke/patahome-logo-transparent.png" alt="PataHome" style="height:54px;width:auto;display:block;background:#fff;border-radius:10px;padding:4px"><p style="margin:16px 0 0;color:#bff3db;font-size:14px;font-weight:700;letter-spacing:.04em">Kwa sababu tunakujali</p></div><div style="padding:30px 28px"><h1 style="font-size:24px;margin:0 0 12px;color:#063f2e">${greeting}</h1><p style="font-size:16px;line-height:1.6;margin:0 0 8px">${intro}</p><p style="font-size:14px;color:#63766d;margin:0 0 22px">This code expires in <b>3 minutes</b>.</p><div style="font-size:36px;letter-spacing:10px;text-align:center;font-weight:800;color:#087b61;background:#e8f8f0;border:1px dashed #73c7a4;border-radius:14px;padding:18px 10px;margin:0 0 22px">${code}</div><p style="font-size:13px;color:#63766d;line-height:1.6">If you didn’t request this email, you can safely ignore it.</p></div><div style="padding:18px 28px;background:#f4faf7;color:#63766d;font-size:12px">Connect with homes that fit your life.<br><b style="color:#087b61">PataHome · patahome.co.ke</b></div></div></body></html>`;
 }
 /* Phone verification can be switched off without touching the Infobip config ,
@@ -315,7 +315,8 @@ async function sendStepUpCode(row, action, ch) {
   const what = STEP_UP_ACTIONS[action];
   if (ch.channel === "sms") await sendSms({ to: ch.to, text: `${code} is your PataHome security code to ${what}. Never share it. If this wasn't you, change your password.` });
   else await sendMail({ to: ch.to, subject: `${code} is your PataHome security code`,
-    text: `Hi ${row.name || ""},\n\nSomeone (hopefully you) asked to ${what} on PataHome.\n\nYour security code is: ${code}\n\nIt expires in 10 minutes. If this wasn't you, don't share the code, change your password and contact us at info@patahome.co.ke.\n\nPataHome · patahome.co.ke` });
+    text: `Hi ${row.name || ""},\n\nSomeone (hopefully you) asked to ${what} on PataHome.\n\nYour security code is: ${code}\n\nIt expires in 10 minutes. If this wasn't you, don't share the code, change your password and contact us at info@patahome.co.ke.\n\nPataHome · patahome.co.ke`,
+    html: authEmailHtml({greeting:`Good day ${String(row.name||"there").trim().split(/\s+/)[0]}!`,code,kind:"security"}) });
 }
 // Returns true when the request carries valid proof; otherwise responds and returns false.
 async function requireStepUp(req, res, u, action) {
@@ -525,7 +526,8 @@ async function startAdmin2fa(req, res, user) {
   try {
     if (ch.channel === "sms") await sendSms({ to: ch.to, text: `${code} is your PataHome admin login code. Never share it.` });
     else await sendMail({ to: ch.to, subject: `${code} is your PataHome admin login code`,
-      text: `Your PataHome admin login code is ${code}. It expires in 10 minutes.\n\nIf you didn't just try to sign in, change your password now.\n\nIP: ${clientIp(req)}\nDevice: ${String(req.headers["user-agent"] || "").slice(0, 160)}` });
+      text: `Your PataHome admin login code is ${code}. It expires in 10 minutes.\n\nIf you didn't just try to sign in, change your password now.\n\nIP: ${clientIp(req)}\nDevice: ${String(req.headers["user-agent"] || "").slice(0, 160)}`,
+      html: authEmailHtml({greeting:"Admin sign-in confirmation",code,kind:"security"}) });
   } catch (e) { console.error("admin 2fa send failed:", e.message); return send(res, 400, { error: "Couldn't send your login code, please try again" }); }
   send(res, 200, { twoFactor: { challenge, channel: ch.channel, target: ch.target } });
 }
@@ -1033,10 +1035,8 @@ function createListingFor(ownerId, body, res, extra) {
     if (pin) { lat = pin.lat; lng = pin.lng; pinned = 1; }
   }
   const photos = req.body.photos;
-  if (photos !== undefined) {
-    if (!Array.isArray(photos) || photos.length > CLD.maxPhotos || !photos.every(validPhotoId))
-      return send(res, 400, { error: `photos must be up to ${CLD.maxPhotos} uploaded photo ids` });
-  }
+  if (!Array.isArray(photos) || photos.length < 1 || photos.length > CLD.maxPhotos || !photos.every(validPhotoId))
+    return send(res, 400, { error: `Add at least one uploaded photo (up to ${CLD.maxPhotos} photos)` });
   const video = req.body.video ? String(req.body.video) : "";
   if (video && !validVideoId(video)) return send(res, 400, { error: "Invalid video" });
   const info = db.prepare(`INSERT INTO listings (owner_id,category,title,description,area_id,price,bedrooms,lat,lng,photos,lister_role,agent_fee,features,video)
@@ -1472,8 +1472,8 @@ router.add("PATCH", "/api/listings/:id", (req, res, p) => {
   }
   if (body.photos !== undefined) {
     const photos = body.photos;
-    if (!Array.isArray(photos) || photos.length > CLD.maxPhotos || !photos.every(validPhotoId))
-      return send(res, 400, { error: `photos must be up to ${CLD.maxPhotos} uploaded photo ids` });
+    if (!Array.isArray(photos) || photos.length < 1 || photos.length > CLD.maxPhotos || !photos.every(validPhotoId))
+      return send(res, 400, { error: `Keep at least one uploaded photo (up to ${CLD.maxPhotos} photos)` });
     // free storage for photos the owner removed
     for (const old of parsePhotos(row.photos)) if (!photos.includes(old)) cldDestroy(old);
     sets.push("photos=?"); params.push(JSON.stringify(photos));
@@ -2412,6 +2412,7 @@ router.add("POST", "/api/admin/photos/remove", (req, res) => {
   if (!l) return send(res, 404, { error: "Listing not found" });
   const photos = parsePhotos(l.photos);
   if (!photos.includes(publicId)) return send(res, 404, { error: "Photo not on this listing" });
+  if (photos.length < 2) return send(res, 400, { error: "Listings must keep at least one photo. Add a replacement before removing this one." });
   db.prepare("UPDATE listings SET photos=? WHERE id=?").run(JSON.stringify(photos.filter(x => x !== publicId)), l.id);
   cldDestroy(publicId);
   db.prepare("DELETE FROM photo_hashes WHERE public_id=?").run(publicId);

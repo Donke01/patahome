@@ -35,6 +35,10 @@ globalThis.fetch = async (url, opts = {}) => {
 let server, base;
 const lastCode = (to) => { const m = [...mails].reverse().find(x => !to || x.to === to); return m && (m.subject.match(/\b(\d{6})\b/) || [])[1]; };
 async function call(method, p, body, token, headers = {}) {
+  // Keep fixture listings realistic now that published listings require a photo.
+  // Tests that exercise the rejection path pass photos: [] explicitly.
+  if (method === "POST" && p === "/api/listings" && body && !Object.hasOwn(body, "photos"))
+    body = { ...body, photos: ["patahome/listings/test-photo"] };
   const r = await fetch(base + p, { method, redirect: "manual",
     headers: { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}), ...headers },
     body: body ? JSON.stringify(body) : undefined });
@@ -100,6 +104,9 @@ test("changing phone needs an emailed security code", async () => {
 test("listings: create, search, paging, direct-owner filter", async () => {
   const t = await owner("lister@example.com");
   await call("POST", "/api/account/change-phone", { phone: "0712000010" }, t);
+  const noPhoto = await call("POST", "/api/listings", { category: "rent", title: "No photo listing", areaId: areaId("Ruaka"), price: 1000, photos: [] }, t);
+  assert.equal(noPhoto.status, 400);
+  assert.match(noPhoto.body.error, /at least one.*photo/i);
   const bad = await call("POST", "/api/listings", { category: "rent", title: "x", areaId: areaId("Ruaka"), price: 1000, listerRole: "agent" }, t);
   assert.equal(bad.status, 400, "agents must state a fee");
   for (let i = 0; i < 23; i++) {
@@ -422,7 +429,7 @@ test("admin powers: roles, bans, sign-out, view-as, listing controls, blocklist,
 test("assisted listings: PataHome lists for an owner, nothing public mentions admin", async () => {
   const sup = (await call("POST", "/api/auth/login", { phone: "0700000001", password: "adminpass123" })).body.token;
   const base = { owner: { name: "Grace Atieno", phone: "0722555444" }, consent: { how: "call", note: "Called on 26 Sep" },
-    listing: { category: "rent", areaId: areaId("Ruaka"), title: "Quiet 2BR near the stage", price: 18000, bedrooms: 2 } };
+    listing: { category: "rent", areaId: areaId("Ruaka"), title: "Quiet 2BR near the stage", price: 18000, bedrooms: 2, photos: ["patahome/listings/owner-photo"] } };
   assert.equal((await call("POST", "/api/admin/assisted", { ...base, consent: {} }, sup)).status, 400, "consent is required");
   assert.equal((await call("POST", "/api/admin/assisted", { ...base, contact: { phone: "12ab" } }, sup)).status, 400);
 

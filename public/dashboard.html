@@ -257,10 +257,10 @@
     <label>Description (optional)</label>
     <textarea id="eDesc" rows="2" placeholder="Amenities, terms, directions…"></textarea>
     <div id="photoWrap" style="display:none">
-      <label>Photos (up to 5)</label>
+      <label>Photos (required · up to 5)</label>
       <div class="photo-grid" id="photoGrid"></div>
       <div class="up-prog" id="upProg" aria-live="polite"><div class="up-bar"><i id="upBar"></i></div><span id="upPct">0%</span></div>
-      <div class="photo-note">JPG, PNG or WebP, up to 8&nbsp;MB each.</div>
+      <div class="photo-note" id="photoNote">Add at least one clear photo of the property. JPG, PNG or WebP, up to 8&nbsp;MB each.</div>
       <input type="file" id="photoFile" accept="image/jpeg,image/png,image/webp" multiple style="display:none" onchange="uploadPhotos(this.files);this.value=''">
     </div>
     <div id="landWrap" style="display:none">
@@ -1108,10 +1108,11 @@ let uploads=[]; // in-flight photos: {key,preview,loaded,total,done,xhr}
 function renderPhotos(){
   const max=(signCfg&&signCfg.maxPhotos)||5;
   uploadingCount=uploads.length;
+  const unavailable=signCfg===false;
   $("photoGrid").innerHTML=
     photoIds.map((id,i)=>`<div class="photo-th"><img src="${thumbUrl(id)}" alt="photo ${i+1}" loading="lazy"><button type="button" class="rm" onclick="removePhoto(${i})">✕</button></div>`).join("")+
     uploads.map(u=>`<div class="photo-th uploading${u.done?" done":""}" id="up-${u.key}"><img src="${u.preview}" alt=""><div class="ring" style="--p:${pctOf(u)}"><b>${u.done?"✓":pctOf(u)+"%"}</b></div>${u.done?"":`<button type="button" class="up-cancel" title="Cancel upload" onclick="cancelUpload('${u.key}')">✕</button>`}</div>`).join("")+
-    (photoIds.length+uploads.length<max?`<button type="button" class="photo-add" onclick="$('photoFile').click()"><span>+</span>Add photo</button>`:"");
+    (photoIds.length+uploads.length<max?(unavailable?`<div class="photo-add" style="cursor:not-allowed;opacity:.72"><span>!</span>Photo uploads unavailable</div>`:`<button type="button" class="photo-add" onclick="$('photoFile').click()"><span>+</span>Add photo</button>`):"");
   updateOverall();
 }
 const pctOf=u=>u.total?Math.min(100,Math.round(u.loaded/u.total*100)):0;
@@ -1201,9 +1202,13 @@ async function uploadPhotos(files){
 /* ---------- add / edit ---------- */
 async function preparePhotoSection(){
   const on=await initPhotoUI();
-  $("photoWrap").style.display=on?"block":"none";
+  $("photoWrap").style.display="block";
   $("videoWrap").style.display=on?"block":"none";
+  $("photoNote").textContent=on
+    ? "Add at least one clear photo of the property. JPG, PNG or WebP, up to 8 MB each."
+    : "Add at least one photo to publish. Photo uploads are temporarily unavailable; try again shortly.";
   if(on){renderPhotos();renderVideo()}
+  else renderPhotos();
 }
 function openAdd(){
   editId=null;photoIds=[];uploads.forEach(u=>{u.cancelled=true;try{u.xhr&&u.xhr.abort()}catch{}});uploads=[];uploadingCount=0;saveLabel=null;$("emSave").disabled=false;
@@ -1488,7 +1493,12 @@ function feeText(){
 async function saveListing(){
   $("emErr").textContent="";
   if(uploads.length){$("emErr").textContent="Wait for photos to finish uploading…";return}
-  const photos=signCfg?{photos:photoIds}:{};
+  if(!photoIds.length){
+    $("emErr").textContent="Add at least one property photo before publishing.";
+    $("photoWrap").style.display="block";
+    return;
+  }
+  const photos={photos:photoIds};
   const isLand=curCat()==="land",isComm=curCat()==="commercial";
   const lister={listerRole,agentFee:feeText(),features:featureValues(),...(signCfg?{video:videoId}:{}),...(isLand?landValues():{}),...(isComm?commValues():{})};
   if(isLand&&!(lister.sizeValue>0)){$("emErr").textContent="Enter the land size";return}

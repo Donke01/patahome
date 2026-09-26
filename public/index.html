@@ -25,6 +25,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/ph.css?v=3">
+<link rel="stylesheet" href="/home-redesign.css?v=1">
 <link rel="manifest" href="/manifest.webmanifest">
 </head>
 <body class="ph page-home on-hero">
@@ -78,8 +79,14 @@
   <div class="fh-bg" id="fhBg" aria-hidden="true"></div>
   <div class="fh-shade" aria-hidden="true"></div>
   <div class="ph-wrap fh-in">
-    <h1>Find your next <em>home.</em></h1>
-    <p class="fh-lead">Rentals, homes, Airbnbs, land and shops across Kenya.</p>
+    <div class="brk-kicker">Kenya property, made simpler</div>
+    <div class="brk-mode-tabs" role="tablist" aria-label="What are you looking for?">
+      <a class="is-active" href="/browse" role="tab" aria-selected="true">Buy</a>
+      <a href="/browse?cat=rent" role="tab" aria-selected="false">Rent</a>
+      <a href="/browse?cat=sale" role="tab" aria-selected="false">New developments</a>
+    </div>
+    <h1>Find your next <em>move.</em></h1>
+    <p class="fh-lead">Search verified homes, land and commercial spaces across Kenya.</p>
     <div class="ph-search-wrap">
       <form class="ph-search" onsubmit="event.preventDefault();closeSugg();doSearch()" role="search">
         <div class="f grow"><label for="searchInput">Where</label><input id="searchInput" type="text" placeholder="Town, estate or county" autocomplete="off" oninput="onSearchInput()" onfocus="renderSugg()" onkeydown="if(event.key==='Escape')closeSugg()"></div>
@@ -89,6 +96,7 @@
       </form>
       <div class="sugg" id="sugg"></div>
     </div>
+    <div class="brk-search-note"><span><b>✓</b> Verified owners</span><span><b>◈</b> No viewing fees</span><span><b>✦</b> Fresh listings daily</span></div>
     <nav class="fh-chips" aria-label="Categories">
       <a href="/browse?cat=rent">Rent <small data-count="rent"></small></a>
       <a href="/browse?cat=sale">Buy <small data-count="sale"></small></a>
@@ -102,10 +110,19 @@
   <div class="fh-dots" id="fhDots" aria-hidden="true"></div>
 </section>
 
+<section class="brk-shortcuts" aria-label="Browse property types">
+  <div class="ph-wrap brk-shortcuts-in">
+    <a href="/browse?cat=rent"><span class="shortcut-icon">⌂</span><span><b>Homes to rent</b><small>Find your next address</small></span><i>→</i></a>
+    <a href="/browse?cat=sale"><span class="shortcut-icon">◇</span><span><b>Homes for sale</b><small>Buy with confidence</small></span><i>→</i></a>
+    <a href="/browse?cat=land"><span class="shortcut-icon">⌁</span><span><b>Land &amp; plots</b><small>Grow your next project</small></span><i>→</i></a>
+    <a href="/browse?cat=commercial"><span class="shortcut-icon">▦</span><span><b>Commercial space</b><small>Work, trade, invest</small></span><i>→</i></a>
+  </div>
+</section>
+
 <section class="ph-block">
   <div class="ph-wrap">
     <div class="ph-sec-head reveal">
-      <h2 class="ph-h2">New this week</h2>
+      <div><div class="ph-eyebrow">Fresh on PataHome</div><h2 class="ph-h2">Recent listings</h2></div>
       <a class="ph-link" href="/browse">See all</a>
     </div>
     <div class="ph-grid" id="latestGrid">
@@ -113,6 +130,20 @@
       <div class="ph-card ph-skel"><div class="ph-photo"></div><div class="line" style="width:70%"></div><div class="line" style="width:45%"></div></div>
       <div class="ph-card ph-skel"><div class="ph-photo"></div><div class="line" style="width:70%"></div><div class="line" style="width:45%"></div></div>
     </div>
+  </div>
+</section>
+
+<section class="ph-block brk-rail" aria-label="Homes for sale">
+  <div class="ph-wrap">
+    <div class="ph-sec-head reveal"><div><div class="ph-eyebrow">Buy</div><h2 class="ph-h2">Homes for sale</h2></div><a class="ph-link" href="/browse?cat=sale">See all</a></div>
+    <div class="ph-grid" id="saleGrid"><div class="ph-card ph-skel"><div class="ph-photo"></div><div class="line" style="width:70%"></div><div class="line" style="width:45%"></div></div></div>
+  </div>
+</section>
+
+<section class="ph-block brk-rail" aria-label="Homes for rent">
+  <div class="ph-wrap">
+    <div class="ph-sec-head reveal"><div><div class="ph-eyebrow">Rent</div><h2 class="ph-h2">Homes to rent</h2></div><a class="ph-link" href="/browse?cat=rent">See all</a></div>
+    <div class="ph-grid" id="rentGrid"><div class="ph-card ph-skel"><div class="ph-photo"></div><div class="line" style="width:70%"></div><div class="line" style="width:45%"></div></div></div>
   </div>
 </section>
 
@@ -202,6 +233,8 @@ const CAT={
 const catLabel=x=>x.cat==="land"?(x.landDeal==="lease"?"Land for lease":"Land for sale")
   :x.cat==="commercial"?((window.PH_COMM&&PH_COMM.TYPES[x.commType]||"Commercial").split(" / ")[0]+(x.deal==="lease"?" to let":" for sale")):CAT[x.cat].label;
 const kindLabel=x=>x.cat==="land"?"Land":x.cat==="commercial"?(x.deal==="lease"?"To let":"Commercial"):x.cat==="rent"?"Rent":x.cat==="sale"?"For sale":"Airbnb";
+const placeholderFor=x=>x.cat==="land"?"/patahome-placeholder-land.jpg":x.cat==="commercial"?"/patahome-placeholder-apartment.jpg":x.cat==="sale"?"/patahome-placeholder-home.jpg":"/patahome-placeholder-apartment.jpg";
+const placeholderHTML=x=>`<img class="placeholder-photo" src="${placeholderFor(x)}" alt="Illustrative ${kindLabel(x).toLowerCase()} image" loading="lazy"><span class="placeholder-label">Illustrative image</span>`;
 function priceHTML(x){
   if(x.cat==="commercial"&&window.PH_COMM){const p=PH_COMM.priceLabel(x);return `${esc(p.main)}${p.extra?` <small>${esc(p.extra)}</small>`:""}`}
   if(x.cat==="land"&&window.PH_LAND){const p=PH_LAND.priceLabel(x);return `${esc(p.main)}${p.extra?` <small>${esc(p.extra)}</small>`:""}`}
@@ -333,7 +366,7 @@ async function renderSugg(){
   }
   box.innerHTML=matches.map(x=>{
     const c=CAT[x.cat];
-    const th=x.photos.length?`<img src="${esc(crop(x.photos[0].thumb,120,120))}" alt="">`:ICONS[c.icon];
+    const th=x.photos.length?`<img src="${esc(crop(x.photos[0].thumb,120,120))}" alt="">`:`<img src="${placeholderFor(x)}" alt=""><span class="placeholder-label">Illustrative</span>`;
     return `<div class="sg" onmousedown="event.preventDefault()" onclick="pickSugg(${x.id})">
       <span class="sg-th" style="background:${c.tint}">${th}</span>
       <span class="sg-main"><span class="sg-t">${esc(x.title)}</span><span class="sg-s">${esc(x.area)} · ${esc(catLabel(x))}</span></span>
@@ -369,7 +402,7 @@ function renderLatest(){
     const who=x.role==="agent"?"Agent listing":x.role==="caretaker"?"Caretaker":x.verified?`<span class="v">✓ Verified owner</span>`:`<span class="v">✓ Direct owner</span>`;
     return `<a class="ph-card reveal" href="/browse?open=${x.id}">
       <div class="ph-photo">
-        ${x.photos.length?`<img src="${esc(crop(x.photos[0].thumb,800,620))}" alt="${esc(x.title)}" loading="lazy">`:`<span class="blank">${ICONS[c.icon]}</span>`}
+        ${x.photos.length?`<img src="${esc(crop(x.photos[0].thumb,800,620))}" alt="${esc(x.title)}" loading="lazy">`:placeholderHTML(x)}
         <span class="kind">${esc(kindLabel(x))}</span>
         <button class="fav${favs.has(x.id)?" on":""}" type="button" aria-label="Save" aria-pressed="${favs.has(x.id)}" onclick="toggleFav(event,${x.id})">${HEART}</button>
         ${x.photos.length>1?`<span class="count">${x.photos.length} photos</span>`:""}
@@ -379,6 +412,20 @@ function renderLatest(){
         <div class="where">${esc(x.area)}</div>
         <div class="facts">${size?`<span>${esc(size)}</span>`:""}${x.cat==="land"||x.cat==="commercial"?`<span>${esc(catLabel(x))}</span>`:""}<span>${who}</span></div>
       </div>
+    </a>`;
+  }).join("");
+  armReveal(g);
+}
+function renderCategoryRail(id,cat){
+  const g=document.getElementById(id); if(!g)return;
+  const list=LISTINGS.filter(x=>x.cat===cat).sort((a,b)=>(b.featured-a.featured)||(b.id-a.id)).slice(0,3);
+  if(!list.length){g.innerHTML='<div class="ph-empty">New listings in this category will appear here soon.</div>';return}
+  g.innerHTML=list.map(x=>{
+    const c=CAT[x.cat],size=sizeOrBeds(x);
+    const who=x.role==="agent"?"Agent listing":x.role==="caretaker"?"Caretaker":x.verified?`<span class="v">✓ Verified owner</span>`:`<span class="v">✓ Direct owner</span>`;
+    return `<a class="ph-card reveal" href="/browse?open=${x.id}">
+      <div class="ph-photo">${x.photos.length?`<img src="${esc(crop(x.photos[0].thumb,800,620))}" alt="${esc(x.title)}" loading="lazy">`:placeholderHTML(x)}<span class="kind">${esc(kindLabel(x))}</span><button class="fav${favs.has(x.id)?" on":""}" type="button" aria-label="Save" aria-pressed="${favs.has(x.id)}" onclick="toggleFav(event,${x.id})">${HEART}</button>${x.photos.length>1?`<span class="count">${x.photos.length} photos</span>`:""}</div>
+      <div class="meta"><div class="row"><h3>${esc(x.title)}</h3><div class="price">${priceHTML(x)}</div></div><div class="where">${esc(x.area)}</div><div class="facts">${size?`<span>${esc(size)}</span>`:""}<span>${who}</span></div></div>
     </a>`;
   }).join("");
   armReveal(g);
@@ -482,6 +529,7 @@ document.addEventListener("click",e=>{if(!e.target.closest("#navPop,#hamBtn"))do
   try{paintHero()}catch(e){}
   try{paintCounts()}catch(e){}
   try{renderLatest()}catch(e){}
+  try{renderCategoryRail("saleGrid","sale");renderCategoryRail("rentGrid","rent")}catch(e){}
   try{renderAreaDiscovery()}catch(e){}
 })();
 </script>

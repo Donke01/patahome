@@ -85,7 +85,8 @@
         </div>
         <div id="asCatBox"></div>
         <label>Description</label><textarea id="asDesc" rows="3" placeholder="What the owner told you: water, parking, deposit, directions…"></textarea>
-        <label>Photos (up to 5)</label><div class="ph-wall" id="asPhotos" style="grid-template-columns:repeat(auto-fill,minmax(110px,1fr))"></div>
+        <label>Photos (required · up to 5)</label><div class="ph-wall" id="asPhotos" style="grid-template-columns:repeat(auto-fill,minmax(110px,1fr))"></div>
+        <div class="muted" style="margin-top:6px">Add at least one clear property photo before publishing.</div>
         <input type="file" id="asFile" accept="image/jpeg,image/png,image/webp" multiple style="display:none" onchange="asUpload(this.files);this.value=''"></div>
       <div class="err" id="asErr"></div>
       <div class="actions"><button class="btn btn-primary" id="asSave" onclick="assistSave()">Publish listing</button><button class="btn btn-ghost" onclick="closeModal()">Cancel</button></div>`);
@@ -136,6 +137,7 @@
   window.assistSave = async function () {
     $("asErr").textContent = "";
     if (uploading) { $("asErr").textContent = "Wait for the photos to finish uploading"; return; }
+    if (!photos.length) { $("asErr").textContent = "Add at least one property photo before publishing"; return; }
     const c = $("asCat").value, ct = readContact();
     const listing = { category: c, areaId: +$("asArea").value, title: $("asTitle").value.trim(), price: +$("asPrice").value,
       description: $("asDesc").value.trim(), photos, listerRole: ct.listerRole, agentFee: ct.agentFee };

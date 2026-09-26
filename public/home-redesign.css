@@ -1,0 +1,79 @@
+/* Local BuyRentKenya-inspired homepage pass. The PataHome palette and copy stay
+   distinct; this file only changes the homepage composition. */
+body.page-home .ph-header.over{background:var(--surface);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-bottom-color:var(--line)}
+body.page-home .ph-header.over .ph-logo img{filter:none}
+body.page-home .ph-header.over .ph-nav a,
+body.page-home .ph-header.over .ph-signin{color:var(--text)}
+body.page-home .ph-header.over .ph-nav a:hover,
+body.page-home .ph-header.over .ph-signin:hover{color:var(--heading)}
+body.page-home .ph-header.over .ph-icon-btn,
+body.page-home .ph-header.over .ph-btn-line,
+body.page-home .ph-header.over .acct-chip{background:var(--surface);border-color:var(--line);color:var(--heading)}
+
+body.page-home .fh{min-height:auto;align-items:initial;color:var(--ink);background:var(--bg);padding:118px 0 74px;overflow:visible}
+body.page-home .fh::before,body.page-home .fh::after{content:"";position:absolute;border-radius:50%;pointer-events:none;filter:blur(2px)}
+body.page-home .fh::before{width:420px;height:420px;right:-170px;top:60px;background:radial-gradient(circle,rgba(184,146,74,.14),rgba(184,146,74,0) 68%)}
+body.page-home .fh::after{width:360px;height:360px;left:-170px;bottom:-130px;background:radial-gradient(circle,rgba(14,75,106,.1),rgba(14,75,106,0) 68%)}
+body.page-home .fh-bg,body.page-home .fh-shade,body.page-home .fh-dots,body.page-home .fh-cap{display:none}
+body.page-home .fh-in{padding:0 32px;text-align:center;display:flex;flex-direction:column;align-items:center}
+body.page-home .brk-kicker{font-size:.73rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin-bottom:18px}
+body.page-home .brk-mode-tabs{display:inline-flex;align-items:center;gap:3px;padding:4px;background:var(--surface);border:1px solid var(--line);border-radius:var(--pill);box-shadow:var(--shadow);margin-bottom:28px}
+body.page-home .brk-mode-tabs a{padding:10px 18px;border-radius:var(--pill);font-size:.84rem;font-weight:600;color:var(--muted);white-space:nowrap}
+body.page-home .brk-mode-tabs a:hover{color:var(--heading);background:var(--surface-2)}
+body.page-home .brk-mode-tabs a.is-active{background:var(--primary);color:var(--on-primary)}
+body.page-home .fh h1{max-width:none;color:var(--heading);font-size:clamp(2.7rem,6vw,5.2rem);text-shadow:none;line-height:1.02}
+body.page-home .fh h1 em{color:var(--accent)}
+body.page-home .fh-lead{color:var(--text);max-width:38rem;margin-top:16px}
+body.page-home .fh .ph-search-wrap{width:min(100%,920px);max-width:none;margin-top:32px}
+body.page-home .fh .ph-search{border-color:var(--line);box-shadow:var(--shadow-lg);text-align:left}
+body.page-home .fh-chips{justify-content:center;margin-top:20px}
+body.page-home .fh-chips a{background:var(--surface);border-color:var(--line);color:var(--text)}
+body.page-home .fh-chips a:hover{background:var(--surface-2);border-color:var(--accent);color:var(--heading)}
+.brk-search-note{display:flex;justify-content:center;gap:22px;flex-wrap:wrap;margin-top:18px;color:var(--muted);font-size:.75rem}
+.brk-search-note span{display:inline-flex;align-items:center;gap:5px}
+.brk-search-note b{color:var(--accent);font-size:.9rem}
+.placeholder-photo{width:100%;height:100%;object-fit:cover;display:block;filter:saturate(.82)}
+.placeholder-label{position:absolute;left:10px;bottom:10px;padding:4px 8px;border-radius:999px;background:rgba(14,42,59,.68);color:#fff;font-size:.62rem;font-weight:600;letter-spacing:.02em;backdrop-filter:blur(5px)}
+.sg-th{position:relative}.sg-th .placeholder-label{left:4px;bottom:4px;font-size:.48rem;padding:2px 4px}
+
+.brk-shortcuts{background:var(--surface);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.brk-shortcuts-in{display:grid;grid-template-columns:repeat(4,1fr);gap:0}
+.brk-shortcuts a{display:flex;align-items:center;gap:12px;padding:22px 20px;border-right:1px solid var(--line);color:var(--heading);transition:background .2s}
+.brk-shortcuts a:first-child{border-left:1px solid var(--line)}
+.brk-shortcuts a:hover{background:var(--surface-2)}
+.brk-shortcuts b{display:block;font-size:.9rem;font-weight:600}
+.brk-shortcuts small{display:block;font-size:.74rem;color:var(--muted);margin-top:2px}
+.brk-shortcuts i{margin-left:auto;color:var(--accent);font-size:1.2rem;font-style:normal}
+.shortcut-icon{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--accent-soft);color:var(--on-accent-soft);font-size:1.1rem;flex-shrink:0}
+.brk-rail{padding-top:58px;padding-bottom:26px}
+.brk-rail + .brk-rail{padding-top:38px}
+.brk-rail .ph-sec-head{margin-bottom:24px}
+.brk-rail .ph-eyebrow{margin-bottom:8px}
+
+@media(max-width:900px){
+  body.page-home .fh{padding-top:104px;padding-bottom:52px}
+  .brk-shortcuts-in{grid-template-columns:repeat(2,1fr)}
+  .brk-shortcuts a:nth-child(2){border-right:0}
+  .brk-shortcuts a:nth-child(n+3){border-top:1px solid var(--line)}
+}
+@media(max-width:640px){
+  body.page-home .fh-in{padding:0 18px}
+  body.page-home .brk-mode-tabs{max-width:100%;overflow:auto}
+  body.page-home .brk-mode-tabs a{padding:9px 13px;font-size:.78rem}
+  body.page-home .fh h1{font-size:clamp(2.45rem,12vw,3.5rem)}
+  body.page-home .fh-lead{font-size:.95rem}
+  .brk-search-note{gap:10px 14px;font-size:.69rem}
+  body.page-home .fh .ph-search{border-radius:18px;display:grid;grid-template-columns:1fr 1fr;padding:7px}
+  body.page-home .fh .ph-search .f{padding:8px 12px;border-right:0;border-bottom:1px solid var(--line)}
+  body.page-home .fh .ph-search .f.grow{grid-column:1/-1}
+  body.page-home .fh .ph-search .go{grid-column:1/-1;width:100%;height:44px;border-radius:12px;display:flex;gap:8px}
+  body.page-home .fh .ph-search .go .lbl{display:inline;font-size:.86rem;font-weight:600}
+  body.page-home .fh-chips{justify-content:flex-start;overflow-x:auto;flex-wrap:nowrap;width:100%;padding-bottom:4px}
+  body.page-home .fh-chips a{flex-shrink:0}
+  .brk-shortcuts-in{padding-left:14px;padding-right:14px}
+  .brk-shortcuts a{padding:17px 8px;gap:9px}
+  .brk-shortcuts b{font-size:.79rem}
+  .brk-shortcuts small{font-size:.67rem}
+  .shortcut-icon{width:30px;height:30px;font-size:.95rem}
+  .brk-rail{padding-top:42px}
+}

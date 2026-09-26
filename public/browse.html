@@ -655,7 +655,7 @@ async function renderSugg(){
   const total=r.total;
   box.innerHTML=matches.map(x=>{
     const c=CAT[x.cat];
-    const th=x.photos.length?`<img src="${x.photos[0].thumb}" alt="">`:ICONS[c.gal[0]];
+    const th=x.photos.length?`<img src="${x.photos[0].thumb}" alt="">`:`<img src="${placeholderFor(x)}" alt=""><span class="placeholder-label">Illustrative</span>`;
     return `<div class="sg" onmousedown="event.preventDefault()" onclick="pickSugg(${x.id})">
       <span class="sg-th" style="background:${c.grad}">${th}</span>
       <span class="sg-main"><span class="sg-t">${esc(x.title)}</span><span class="sg-s">${esc(x.area)} · ${c.label}</span></span>
@@ -867,6 +867,7 @@ const CLOCK_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stro
 const HEART_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 1 0-7.8 7.8L12 21.2l8.8-8.8a5.5 5.5 0 0 0 0-7.8z"/></svg>';
 // Cloudinary: crop the "whole photo" thumb to the card frame
 const cropUrl=(u,w,h)=>String(u||"").replace(/\/upload\/c_limit,[^/]+\//,`/upload/c_fill,g_auto,w_${w},h_${h},q_auto:good/`);
+const placeholderFor=x=>x.cat==="land"?"/patahome-placeholder-land.jpg":x.cat==="commercial"?"/patahome-placeholder-apartment.jpg":x.cat==="sale"?"/patahome-placeholder-home.jpg":"/patahome-placeholder-apartment.jpg";
 function cardHTML(x,i){
     const c=CAT[x.cat];
     const d=userLoc?dist(userLoc[0],userLoc[1],x.lat,x.lng):null;
@@ -876,7 +877,7 @@ function cardHTML(x,i){
     const t=trustLine(x);
     return `<div class="card" style="animation-delay:${Math.min(i*50,400)}ms" onclick="openDetail(${x.id})" role="link" tabindex="0" onkeydown="if(event.key==='Enter')openDetail(${x.id})">
       <div class="card-img">
-        ${x.photos.length?`<img class="ph" src="${esc(cropUrl(x.photos[0].thumb,800,620))}" alt="${esc(x.title)}" loading="lazy">`:`<span class="wm">${ICONS[c.gal[0]]}</span>`}
+        ${x.photos.length?`<img class="ph" src="${esc(cropUrl(x.photos[0].thumb,800,620))}" alt="${esc(x.title)}" loading="lazy">`:`<img class="ph placeholder-photo" src="${placeholderFor(x)}" alt="Illustrative ${esc(c.label).toLowerCase()} image" loading="lazy"><span class="placeholder-label">Illustrative image</span>`}
         <span class="badge ${c.badge}">${esc(catLabel(x))}</span>
         ${x.featured?`<span class="feat-badge">Featured</span>`:isNew?`<span class="new-badge">New</span>`:""}
         <button class="heart ${favs.has(x.id)?"on":""}" type="button" aria-label="Save" aria-pressed="${favs.has(x.id)}" onclick="event.stopPropagation();toggleFav(${x.id})">${HEART_SVG}</button>
@@ -1228,8 +1229,8 @@ function renderGallery(){
   if(hasPhotos){renderPhotoGrid(gEl,galItem.photos);return}
   const slides=hasPhotos
     ?galItem.photos.map((p,i)=>`<div class="slide ${i===galIdx?"on":""}" style="background:#0d1512;cursor:zoom-in" onclick="openZoom(${i})" title="Tap to view full screen"><img class="ph-bg" src="${p.thumb}" alt="" aria-hidden="true" loading="lazy"><img class="ph-full" src="${p.full}" alt="photo ${i+1}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain" loading="lazy"></div>`).join("")
-    :c.gal.map((e,i)=>`<div class="slide ${i===galIdx?"on":""}" style="background:${c.grad}">${ICONS[e]}</div>`).join("");
-  const n=hasPhotos?galItem.photos.length:c.gal.length;
+    :`<div class="slide on placeholder-gallery"><img src="${placeholderFor(galItem)}" alt="Illustrative ${esc(c.label).toLowerCase()} image"><span class="placeholder-label">Illustrative image · owner photos not uploaded</span></div>`;
+  const n=hasPhotos?galItem.photos.length:1;
   document.getElementById("gallery").innerHTML=slides+
     (hasPhotos?`<button class="gal-zoom" onclick="openZoom(galIdx)" aria-label="View full screen">⤢ Full screen</button>`:"")+
     (n>1?`<button class="gal-nav gal-prev" onclick="galStep(-1)">‹</button>
