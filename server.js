@@ -25,7 +25,7 @@ const SETTINGS_DEFAULTS = {
   maintenance_message: () => "We're doing some quick maintenance, please try again in a little while.",
   watermark_on: () => "1",            // stamp the PataHome logo on new photos and videos
   watermark_asset: () => "",          // set once the logo is stored in Cloudinary
-  hero_images: () => ""               // homepage hero photos, one https URL per line (empty = newest listing photos)
+  hero_images: () => ""               // homepage hero photos, one https URL per line, optional #listing=ID&enhance=1 (empty = the 5 stock photos)
 };
 const SETTING_RULES = {
   listing_ttl_days: v => Math.min(365, Math.max(7, Math.round(+v))), max_photos: v => Math.min(20, Math.max(1, Math.round(+v))),
@@ -36,7 +36,7 @@ const SETTING_RULES = {
   pause_listings: v => (v === true || v === "1" || v === 1) ? "1" : "0", pause_signups: v => (v === true || v === "1" || v === 1) ? "1" : "0",
   maintenance_message: v => String(v || "").trim().slice(0, 240),
   watermark_on: v => (v === true || v === "1" || v === 1) ? "1" : "0",
-  hero_images: v => String(v || "").split(/[\s,]+/).filter(u => /^https:\/\/[^\s"'<>()]{8,400}$/.test(u)).slice(0, 6).join("\n")
+  hero_images: v => String(v || "").split(/[\r\n]+/).map(u => u.trim()).filter(u => /^https:\/\/[^\s"'<>()]{8,500}$/.test(u)).slice(0, 8).join("\n")
 };
 const settingsCache = new Map();
 function setting(key) {

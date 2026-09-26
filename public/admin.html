@@ -215,6 +215,7 @@
     <button class="tab" data-tab="growth" data-cap="view" onclick="setTab('growth')">Growth</button>
     <button class="tab" data-tab="traffic" data-cap="view" onclick="setTab('traffic')">Traffic</button>
     <button class="tab" data-tab="photos" data-cap="moderate" onclick="setTab('photos')">Photos</button>
+    <button class="tab" data-tab="hero" data-cap="super" onclick="setTab('hero')">Homepage photos</button>
     <button class="tab" data-tab="site" data-cap="moderate" onclick="setTab('site')">Site</button>
     <button class="tab" data-tab="message" data-cap="super" onclick="setTab('message')">Message users</button>
     <button class="tab" data-tab="audit" data-cap="super" onclick="setTab('audit')">Audit log</button>
@@ -349,7 +350,7 @@ function tickUpdated(){
 setInterval(tickUpdated,5000);
 setInterval(()=>{if(token&&$("dash").style.display!=="none"&&!document.hidden)refresh().catch(()=>{})},30000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&token&&$("dash").style.display!=="none")refresh().catch(()=>{})});
-const EXTRA_TABS=["traffic","photos","backups","growth","site","audit","message","assisted"];
+const EXTRA_TABS=["traffic","photos","backups","growth","site","audit","message","assisted","hero"];
 function setTab(t){
   tab=t;
   document.querySelectorAll(".tab[data-tab]").forEach(b=>b.classList.toggle("on",b.dataset.tab===t));
@@ -538,6 +539,7 @@ async function reviewVerif(id,approve){
 <script src="/land.js?v=2"></script>
 <script src="/commercial.js?v=2"></script>
 <script src="/admin-powers.js?v=3"></script>
-<script src="/admin-assisted.js?v=4"></script>
+<script src="/admin-assisted.js?v=5"></script>
+<script src="/admin-hero.js?v=2"></script>
 </body>
 </html>

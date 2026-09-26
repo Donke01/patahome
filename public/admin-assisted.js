@@ -188,15 +188,6 @@
       <div class="actions"><button class="btn btn-ghost btn-sm" ${j.running ? "disabled" : ""} onclick="wmExisting()">${j.running ? "Stamping older photos…" : "Watermark older photos"}</button></div>
       <div class="muted" id="wmStatus">${j.total || j.finishedAt ? `${j.done} of ${j.total} done${j.failed ? `, ${j.failed} failed` : ""}${j.finishedAt && !j.running ? " · finished" : ""}` : ""}</div></div>`);
     if (j.running) setTimeout(() => { if (tab === "site") NEW_LOADERS.site(); }, 4000);
-    // Homepage hero photos
-    let st = {}; try { st = await api("/api/admin/settings"); } catch (e) {}
-    heroList = (st.hero_images || "").split("\n").filter(Boolean);
-    grid.insertAdjacentHTML("afterbegin", `<div class="site-card"><h3>🏠 Homepage photos</h3>
-      <div class="muted">Big photos behind the homepage search. Use wide, bright shots (landscape, at least 1600px). Up to 6, they fade from one to the next. Leave empty to use the newest listing photos.</div>
-      <div id="heroGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0"></div>
-      <input type="file" id="heroFile" accept="image/jpeg,image/png,image/webp" multiple style="display:none" onchange="heroUpload(this.files);this.value=''">
-      <div class="actions"><button class="btn btn-ghost btn-sm" onclick="$('heroFile').click()">Upload photos</button><button class="btn btn-primary btn-sm" onclick="heroSave()">Save</button></div></div>`);
-    heroPaint();
   };
   let heroList = [], heroBusy = 0;
   function heroPaint() {

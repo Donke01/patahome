@@ -245,18 +245,19 @@ const inBrowser=typeof requestAnimationFrame==="function";
 const reduceMotion=typeof matchMedia==="function"&&matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /* ================= DATA ================= */
-async function loadData(){
-  const [areas,res,stats]=await Promise.all([api("/api/areas"),api("/api/listings?perPage=20&sort=newest"),api("/api/stats/listings").catch(()=>null)]);
-  STATS=stats;
-  for(const a of areas)AREAS[a.name+", "+a.county]=[a.lat,a.lng];
-  LISTINGS=res.listings.filter(x=>CAT[x.category]).map(x=>({
+const toHome=x=>({
     id:x.id,cat:x.category,title:x.title,area:x.area+", "+x.county,
     price:x.price,beds:x.bedrooms,posted:x.createdAt,featured:!!x.featured,
     owner:x.ownerName,verified:x.ownerVerified,role:x.listerRole||"owner",
     photos:x.photoUrls||[],
     landDeal:x.landDeal,sizeValue:x.sizeValue,sizeUnit:x.sizeUnit,sizeAcres:x.sizeAcres,priceBasis:x.priceBasis,pricePerAcre:x.pricePerAcre,
     deal:x.deal,commType:x.commType,areaSqft:x.areaSqft,pricePerSqft:x.pricePerSqft,incomeMonth:x.incomeMonth,features:x.features||{}
-  }));
+  });
+async function loadData(){
+  const [areas,res,stats]=await Promise.all([api("/api/areas"),api("/api/listings?perPage=20&sort=newest"),api("/api/stats/listings").catch(()=>null)]);
+  STATS=stats;
+  for(const a of areas)AREAS[a.name+", "+a.county]=[a.lat,a.lng];
+  LISTINGS=res.listings.filter(x=>CAT[x.category]).map(toHome);
 }
 
 /* ================= HERO ================= */
@@ -268,19 +269,18 @@ const HW=PHONE?Math.min(1080,Math.round((innerWidth-24)*(devicePixelRatio||1))):
 const STOCK_HERO=["photo-1658218635253-64728f6234be","photo-1600210492493-0946911123ea","photo-1651151084802-867d6a55dd25","photo-1600494448850-6013c64ba722","photo-1658218729615-167c32d70537"];
 async function paintHero(){
   let cfg=null;try{cfg=await api("/api/config")}catch(e){}
-  if(cfg&&cfg.heroImages&&cfg.heroImages.length){
-    HERO=cfg.heroImages.map(u=>({src:/images\.unsplash\.com/.test(u)?u.split("?")[0]+`?auto=format&fit=crop&w=${HW}&h=${HH}&q=80`:u.replace("/upload/",`/upload/c_fill,g_auto,w_${HW},h_${HH},q_auto:good,f_auto/`)}));
-  }else{
-    // Professional stock photos (free Unsplash licence) alternate with real listing photos,
-    // so the first impression is strong and visitors still see real homes with prices.
-    const stock=STOCK_HERO.map(id=>({src:`https://images.unsplash.com/${id}?auto=format&fit=crop&w=${HW}&h=${HH}&q=80`}));
-    const seen=new Set();
-    const real=[...LISTINGS].filter(x=>x.photos.length>=5&&x.cat!=="land").sort((a,b)=>(b.featured-a.featured)||(b.id-a.id))
-      .filter(x=>!seen.has(x.photos[0].full)&&seen.add(x.photos[0].full)).slice(0,3)
-      .map(x=>({src:crop(x.photos[0].full||x.photos[0].thumb,HW,HH),x}));
-    HERO=[];for(let i=0;i<Math.max(stock.length,real.length);i++){if(stock[i])HERO.push(stock[i]);if(real[i])HERO.push(real[i])}
-  }
+  // Each entry may carry options after "#": listing=<id> (show that listing's price card), enhance=1 (Cloudinary auto-improve)
+  const size=(u,opt)=>/images\.unsplash\.com/.test(u)?u.split("?")[0]+`?auto=format&fit=crop&w=${HW}&h=${HH}&q=80`
+    :u.replace("/upload/",`/upload/c_fill,g_auto,w_${HW},h_${HH},q_auto:good,f_auto${opt.enhance?",e_improve":""}/`);
+  const lines=cfg&&cfg.heroImages&&cfg.heroImages.length?cfg.heroImages:STOCK_HERO.map(id=>`https://images.unsplash.com/${id}`);
+  HERO=lines.map(line=>{
+    const [u,frag]=String(line).split("#");const opt=Object.fromEntries(new URLSearchParams(frag||""));
+    const lid=+opt.listing||0,x=lid?LISTINGS.find(y=>y.id===lid):null;
+    return {src:size(u,opt),x:x||null,lid};
+  });
   if(!HERO.length)return;
+  // listings picked in Admin that aren't among the newest ones: fetch them for the price card
+  HERO.filter(h=>h.lid&&!h.x).forEach(h=>api("/api/listings/"+h.lid).then(r=>{if(CAT[r.category]&&r.status!=="removed")h.x=toHome(r)}).catch(()=>{}));
   try{localStorage.setItem("ph_hero"+(PHONE?"_m":""),HERO[0].src)}catch(e){}
   const bg=document.getElementById("fhBg");
   bg.innerHTML=HERO.map((h,i)=>`<div class="fh-img${i===0?" on":""}" data-i="${i}"></div>`).join("");
