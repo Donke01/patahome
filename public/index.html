@@ -26,7 +26,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/ph.css?v=12">
+<link rel="stylesheet" href="/ph.css?v=13">
 <link rel="manifest" href="/manifest.webmanifest">
 </head>
 <body class="ph page-home on-hero">
@@ -266,6 +266,8 @@ let HERO=[],heroI=0,heroT=null;
 // Portrait crop on phones (sharper, no zoomed-in landscape), wide crop on desktop.
 const PHONE=typeof matchMedia==="function"&&matchMedia("(max-width:900px)").matches;
 const HW=PHONE?Math.min(1080,Math.round((innerWidth-24)*(devicePixelRatio||1))):1920, HH=PHONE?Math.round(HW*1.05):1200;
+// Banner text for the stock photos (Admin → Homepage photos can set its own per photo)
+const STOCK_CAP=[["Homes worth coming home to","Rentals across Kenya, straight from owners"],["Light, space and room to settle","Browse verified homes near you"],["Your next home is on PataHome","Free viewings. Never pay before you see it"],["Find it, view it, move in","Book a free viewing in a few taps"],["Kwa sababu tunakujali","Because we care about where you live"]];
 const STOCK_HERO=["photo-1658218635253-64728f6234be","photo-1600210492493-0946911123ea","photo-1651151084802-867d6a55dd25","photo-1600494448850-6013c64ba722","photo-1658218729615-167c32d70537"];
 async function paintHero(){
   let cfg=null;try{cfg=await api("/api/config")}catch(e){}
@@ -276,8 +278,9 @@ async function paintHero(){
   HERO=lines.map(line=>{
     const [u,frag]=String(line).split("#");const opt=Object.fromEntries(new URLSearchParams(frag||""));
     const lid=+opt.listing||0,x=lid?LISTINGS.find(y=>y.id===lid):null;
-    return {src:size(u,opt),x:x||null,lid};
+    return {src:size(u,opt),x:x||null,lid,cap:opt.caption||"",sub:opt.sub||""};
   });
+  if(!(cfg&&cfg.heroImages&&cfg.heroImages.length))HERO.forEach((h,i)=>{const c=STOCK_CAP[i%STOCK_CAP.length];h.cap=c[0];h.sub=c[1]});
   if(!HERO.length)return;
   // listings picked in Admin that aren't among the newest ones: fetch them for the price card
   HERO.filter(h=>h.lid&&!h.x).forEach(h=>api("/api/listings/"+h.lid).then(r=>{if(CAT[r.category]&&r.status!=="removed")h.x=toHome(r)}).catch(()=>{}));
@@ -299,8 +302,12 @@ function showHero(i){
     document.getElementById("fh").classList.add("ready");
     heroI=i;
     const cap=document.getElementById("fhCap");
-    if(h.x){cap.hidden=false;cap.href="/browse?open="+h.x.id;cap.innerHTML=`<b>${priceHTML(h.x)}</b><span>${esc(cleanTitle(h.x))}</span>`}
-    else cap.hidden=true;
+    // banner card: PataHome mark + what's in the photo (a listing's price and name, or the photo's caption)
+    const mark='<img class="fh-cap-logo" src="/patahome-mark.png" alt="" width="54" height="32">';
+    if(h.x){cap.href="/browse?open="+h.x.id;cap.innerHTML=`${mark}<span class="fh-cap-t"><em>${esc(h.cap||"Featured home")} · ${esc(String(h.x.area||"").split(",")[0])}</em><b>${priceHTML(h.x)}</b><span>${esc(cleanTitle(h.x))}</span><i>View home →</i></span>`}
+    else if(h.cap||h.sub){cap.href="/browse";cap.innerHTML=`${mark}<span class="fh-cap-t"><em>PataHome</em><b>${esc(h.cap)}</b>${h.sub?`<span>${esc(h.sub)}</span>`:""}<i>Browse homes →</i></span>`}
+    cap.hidden=!(h.x||h.cap||h.sub);
+    cap.classList.remove("in");void cap.offsetWidth;cap.classList.add("in");
     if(HERO.length>1){const n=new Image();n.src=HERO[(i+1)%HERO.length].src}
   };
   pre.src=h.src;

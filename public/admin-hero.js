@@ -30,6 +30,7 @@
   .hs-m span{font-size:.68rem;padding:2px 7px;border-radius:99px;background:#eef2f0;color:#3a4a44}
   .hs-m span.bad{background:#fdecea;color:#9b2c24}.hs-m span.good{background:#e3f4ec;color:#1f6e52}
   .hs-why{font-size:.74rem;color:#5f6b66;line-height:1.4}
+  .hs-capf{display:grid;gap:4px}.hs-capf input{font-size:.78rem;padding:6px 8px;margin:0}
   .hs-act{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto}
   .hs-act .btn{min-height:30px;padding:4px 10px;font-size:.74rem}
   .hs-tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px;font-size:.84rem}
@@ -125,6 +126,8 @@
       <span class="${a.sc.exposure >= 70 ? "good" : a.sc.exposure < 45 ? "bad" : ""}">Light ${Math.round(a.sc.exposure)}</span>
       <span class="${a.sc.colour >= 50 ? "good" : a.sc.colour < 30 ? "bad" : ""}">Colour ${Math.round(a.sc.colour)}</span></div>` : "";
   const badge = a => a ? (a.error ? `<span class="hs-badge g-x">?</span>` : `<span class="hs-badge ${a.grade[1]}">${a.score} · ${a.grade[0]}</span>`) : `<span class="hs-badge g-x">Checking…</span>`;
+  // banner text shown on the stock photos when nothing custom is set (same as the homepage)
+  const STOCK_CAP = [["Homes worth coming home to", "Rentals across Kenya, straight from owners"], ["Light, space and room to settle", "Browse verified homes near you"], ["Your next home is on PataHome", "Free viewings. Never pay before you see it"], ["Find it, view it, move in", "Book a free viewing in a few taps"], ["Kwa sababu tunakujali", "Because we care about where you live"]];
   const srcLabel = it => it.listing ? `Listing #${it.listing}` : it.upload ? "Upload" : /unsplash/.test(it.url || "") ? "Stock" : "Link";
 
   function paint() {
@@ -132,6 +135,7 @@
     el.innerHTML = lineup.length ? lineup.map((it, i) => `<div class="hs-it">
         <div class="hs-ph"><img src="${esc(thumbUrl(it.url))}" alt="" loading="lazy"><span class="phone"><img src="${esc(phoneUrl(it.url))}" alt="" loading="lazy"></span>${badge(it.a)}<span class="hs-src">${srcLabel(it)}</span><span class="hs-num">${i + 1}</span></div>
         <div class="hs-bd">${chips(it.a)}<div class="hs-why">${it.a ? esc(it.a.error || it.a.why.join(" · ")) : ""}</div>
+        <div class="hs-capf"><input maxlength="60" placeholder="${it.listing ? "Banner label (optional, e.g. New this week)" : "Banner title, e.g. Modern living in Kilimani"}" value="${esc(it.caption || "")}" oninput="hsCap(${i},'caption',this.value)"><input maxlength="80" placeholder="${it.listing ? "Shows the price and home name" : "Short line under it (optional)"}" value="${esc(it.sub || "")}" ${it.listing ? "disabled" : ""} oninput="hsCap(${i},'sub',this.value)"></div>
         <label style="font-size:.76rem;display:flex;gap:6px;align-items:center;margin:0;text-transform:none;letter-spacing:0;font-weight:500"><input type="checkbox" ${it.enhance ? "checked" : ""} onchange="hsEnhance(${i},this.checked)"> Auto-enhance${it.a && it.a.canEnhance ? " (recommended)" : ""}</label>
         <div class="hs-act"><button class="btn btn-ghost" ${i === 0 ? "disabled" : ""} onclick="hsMove(${i},-1)">↑ Earlier</button><button class="btn btn-ghost" ${i === lineup.length - 1 ? "disabled" : ""} onclick="hsMove(${i},1)">↓ Later</button><button class="btn btn-ghost" onclick="hsRemove(${i})">Remove</button></div></div></div>`).join("")
       : `<div class="muted">No photos yet. The homepage will show the 5 stock photos.</div>`;
@@ -233,6 +237,7 @@
   window.hsMove = (i, d) => { const j = i + d; if (j < 0 || j >= lineup.length) return; [lineup[i], lineup[j]] = [lineup[j], lineup[i]]; paint(); };
   window.hsRemove = i => { const [it] = lineup.splice(i, 1); if (it && it.url) cands.push({ url: it.url, listing: it.listing, a: it.a }); markDupes(); paint(); };
   window.hsEnhance = (i, v) => { lineup[i].enhance = v; };
+  window.hsCap = (i, k, v) => { lineup[i][k] = v; };
   window.hsBest = () => {
     // fill empty slots with the best-scoring, non-duplicate, wide photos
     const pick = cands.filter(c => c.a && !c.a.error && !c.dupOf && c.a.ratio >= 1.1 && c.a.score >= 70 && !c.upload).sort((a, b) => b.a.score - a.a.score);
@@ -240,11 +245,13 @@
     paint(); toast(n ? `Added ${n} top photo${n === 1 ? "" : "s"}. Save to put them live.` : "No checked photos scored 70+ yet");
   };
   window.hsSave = async () => {
-    const lines = lineup.map(it => it.url + ((it.listing || it.enhance) ? "#" + new URLSearchParams({ ...(it.listing ? { listing: it.listing } : {}), ...(it.enhance ? { enhance: 1 } : {}) }) : ""));
+    const lines = lineup.map(it => { const o = { ...(it.listing ? { listing: it.listing } : {}), ...(it.enhance ? { enhance: 1 } : {}),
+      ...((it.caption || "").trim() ? { caption: it.caption.trim().slice(0, 60) } : {}), ...(!it.listing && (it.sub || "").trim() ? { sub: it.sub.trim().slice(0, 80) } : {}) };
+      return it.url + (Object.keys(o).length ? "#" + new URLSearchParams(o) : ""); });
     try { await api("/api/admin/settings", { method: "PATCH", body: JSON.stringify({ hero_images: lines.join("\n") }) }); toast(lines.length ? "Homepage photos are live" : "Back to the 5 stock photos"); }
     catch (e) { toast(e.message); }
   };
-  window.hsReset = () => { if (!confirm("Go back to the 5 stock photos?")) return; lineup = STOCK.map(u => ({ url: u })); lineup.forEach(it => check(it, analysisUrl(it.url), { scalable: /images\.unsplash\.com/.test(it.url) })); paint(); };
+  window.hsReset = () => { if (!confirm("Go back to the 5 stock photos?")) return; lineup = STOCK.map((u, i) => ({ url: u, caption: STOCK_CAP[i % STOCK_CAP.length][0], sub: STOCK_CAP[i % STOCK_CAP.length][1] })); lineup.forEach(it => check(it, analysisUrl(it.url), { scalable: /images\.unsplash\.com/.test(it.url) })); paint(); };
   window.hsFilter = () => { F.min = +$("hsMin").value; F.landscape = $("hsLand").checked; F.dupes = $("hsDup").checked; $("hsMinV").textContent = F.min; paintCands(); };
 
   /* ---------- the tab ---------- */
@@ -252,10 +259,11 @@
   NEW_LOADERS.hero = async function () {
     let st = {}; try { st = await api("/api/admin/settings"); } catch (e) { $("panel").innerHTML = `<div style="padding:30px;color:var(--red)">Only the super admin can change homepage photos.</div>`; return; }
     const saved = (st.hero_images || "").split("\n").filter(Boolean);
-    lineup = (saved.length ? saved : STOCK).map(line => { const [u, frag] = line.split("#"); const o = Object.fromEntries(new URLSearchParams(frag || "")); return { url: u, listing: +o.listing || 0, enhance: o.enhance === "1" }; });
+    lineup = (saved.length ? saved : STOCK).map(line => { const [u, frag] = line.split("#"); const o = Object.fromEntries(new URLSearchParams(frag || "")); return { url: u, listing: +o.listing || 0, enhance: o.enhance === "1", caption: o.caption || "", sub: o.sub || "" }; });
+    if (!saved.length) lineup.forEach((it, i) => { const c = STOCK_CAP[i % STOCK_CAP.length]; it.caption = c[0]; it.sub = c[1]; });
     $("panel").innerHTML = `<div class="hs-wrap">
       <div class="hs-card"><h3>🏠 On the homepage now <small class="muted" id="hsAvg"></small></h3>
-        <div class="muted">Shown in this order, fading every 7 seconds. The small inset shows how each photo crops on a phone. Listing photos show that home's price card.</div>
+        <div class="muted">Shown in this order, fading every 7 seconds. The small inset shows how each photo crops on a phone. Each photo gets a banner card with the PataHome logo: listing photos show that home's price, other photos show the title and line you type.</div>
         <div class="hs-row" id="hsLineup"></div>
         <div class="hs-tools"><button class="btn btn-primary" onclick="hsSave()">Save &amp; put live</button><button class="btn btn-ghost" onclick="hsBest()">Fill with the best photos</button><button class="btn btn-ghost" onclick="hsReset()">Reset to stock photos</button></div>
       </div>

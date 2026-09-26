@@ -613,3 +613,27 @@ html.dark .fh{background:#1b2a33}
   .fh-list-in{align-items:center}
   .ph-ft{grid-template-columns:1fr 1fr}
 }
+
+/* ===== hero banner card v2: white card with the PataHome mark ===== */
+.fh-cap{display:flex;align-items:center;gap:14px;max-width:340px;padding:14px 18px 14px 14px;border-radius:18px;background:rgba(255,255,255,.95);border:1px solid rgba(255,255,255,.7);color:#0E2A3B;box-shadow:0 18px 40px -12px rgba(8,22,32,.45);-webkit-backdrop-filter:none;backdrop-filter:none;text-decoration:none}
+.fh-cap:hover{background:#fff}
+.fh-cap.in{animation:fhCapIn .6s var(--ease,ease) both}
+@keyframes fhCapIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.fh-cap-logo{flex:0 0 auto;width:54px;height:auto;display:block}
+.fh-cap-t{display:block;min-width:0;padding-left:14px;border-left:1px solid rgba(14,42,59,.12);white-space:normal!important;overflow:visible!important;opacity:1!important;margin:0!important;font-size:inherit!important}
+@media (min-width:1101px){.fh-cap{top:28px;right:28px;bottom:auto;max-width:340px}}
+.fh-cap-t em{display:block;font-style:normal;font-size:.66rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#0f7a5a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fh-cap .fh-cap-t b{display:block;margin-top:3px;font-family:var(--serif);font-weight:500;font-size:1.12rem;line-height:1.2;color:#0E2A3B}
+.fh-cap .fh-cap-t b small{font-family:var(--sans);font-size:.75rem;color:#5b6b75;opacity:1}
+.fh-cap .fh-cap-t>span{display:block;margin-top:2px;font-size:.8rem;color:#43525c;opacity:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fh-cap-t i{display:block;margin-top:6px;font-style:normal;font-size:.76rem;font-weight:600;color:#0E2A3B}
+@media (max-width:1100px){.fh-cap:not([hidden]){display:flex}}
+@media (max-width:900px){
+  .fh-cap:not([hidden]){display:flex;gap:10px;padding:9px 12px 9px 9px;border-radius:14px;background:rgba(255,255,255,.94);border-color:rgba(255,255,255,.7);max-width:min(280px,76%)}
+  .fh-cap-logo{width:40px}
+  .fh-cap-t{padding-left:10px}
+  .fh-cap .fh-cap-t b{font-size:.95rem}
+  .fh-cap .fh-cap-t>span{font-size:.72rem}
+  .fh-cap-t i{display:none}
+}
+@media (prefers-reduced-motion:reduce){.fh-cap.in{animation:none}}
