@@ -5,7 +5,7 @@
   const CAT = { rent: "Rent", sale: "Sale", shortlet: "Airbnb", land: "Land", commercial: "Commercial" };
   const HOW = { call: "Phone call", whatsapp: "WhatsApp", sms: "SMS", in_person: "In person", written: "Written / signed" };
   const when = s => s ? esc(String(s).replace("T", " ").slice(0, 16)) : "-";
-  let photos = [], uploading = 0, signCfg = null;
+  let photos = [], videoId = "", uploading = 0, videoUploading = false, signCfg = null;
 
   NEW_LOADERS.assisted = async function () {
     const rows = await api("/api/admin/assisted");
@@ -56,7 +56,7 @@
   };
 
   window.assistForm = async function () {
-    photos = []; uploading = 0;
+    photos = []; videoId = ""; uploading = 0; videoUploading = false;
     const ar = await api("/api/areas");
     openModal(`<h2>List for an owner</h2>
       <div class="muted">The listing goes on the owner's own PataHome account (made quietly if they don't have one). Visitors see an ordinary listing.</div>
@@ -85,9 +85,10 @@
         </div>
         <div id="asCatBox"></div>
         <label>Description</label><textarea id="asDesc" rows="3" placeholder="What the owner told you: water, parking, deposit, directions…"></textarea>
-        <label>Photos (required · up to 5)</label><div class="ph-wall" id="asPhotos" style="grid-template-columns:repeat(auto-fill,minmax(110px,1fr))"></div>
-        <div class="muted" style="margin-top:6px">Add at least one clear property photo before publishing.</div>
-        <input type="file" id="asFile" accept="image/jpeg,image/png,image/webp" multiple style="display:none" onchange="asUpload(this.files);this.value=''"></div>
+        <label>Media (required · add a photo or video tour)</label><div class="ph-wall" id="asPhotos" style="grid-template-columns:repeat(auto-fill,minmax(110px,1fr))"></div>
+        <div id="asVideo"></div>
+        <div class="muted" style="margin-top:6px">Add at least one clear property photo or a short video tour.</div>
+        <input type="file" id="asFile" accept="image/jpeg,image/png,image/webp" multiple style="display:none" onchange="asUpload(this.files);this.value=''"><input type="file" id="asVideoFile" accept="video/mp4,video/quicktime,video/webm,video/3gpp" style="display:none" onchange="asUploadVideo(this.files[0]);this.value=''"></div>
       <div class="err" id="asErr"></div>
       <div class="actions"><button class="btn btn-primary" id="asSave" onclick="assistSave()">Publish listing</button><button class="btn btn-ghost" onclick="closeModal()">Cancel</button></div>`);
     asCatFields(); asPaint();
@@ -118,6 +119,9 @@
     $("asPhotos").innerHTML = photos.map((p, i) => `<div class="ph-item"><img src="https://res.cloudinary.com/${signCfg ? signCfg.cloudName : ""}/image/upload/c_fill,w_220,h_165/${p}" alt=""><button class="btn btn-danger btn-sm" onclick="asDrop(${i})">Remove</button></div>`).join("") +
       (uploading ? `<div class="ph-item" style="justify-content:center;align-items:center;min-height:90px"><span class="muted">Uploading ${uploading}…</span></div>` : "") +
       (photos.length + uploading < 5 ? `<button type="button" class="btn btn-ghost" style="min-height:90px" onclick="$('asFile').click()">+ Add photos</button>` : "");
+    $("asVideo").innerHTML = videoUploading ? `<div class="muted" style="margin-top:8px">Uploading video tour…</div>` : videoId
+      ? `<div class="ph-item" style="display:flex;align-items:center;gap:8px;margin-top:8px"><span>▶ Video tour added</span><button type="button" class="btn btn-danger btn-sm" onclick="videoId='';asPaint()">Remove</button></div>`
+      : `<button type="button" class="btn btn-ghost" style="margin-top:8px" onclick="$('asVideoFile').click()">+ Add video tour</button>`;
   }
   window.asDrop = i => { photos.splice(i, 1); asPaint(); };
   window.asUpload = async files => {
@@ -133,14 +137,28 @@
       finally { uploading--; asPaint(); }
     }));
   };
+  window.asUploadVideo = async file => {
+    if (!file) return;
+    let cfg; try { cfg = await api("/api/uploads/sign?kind=video"); } catch (e) { return toast(e.message); }
+    if (file.size > cfg.maxBytes) return toast("Video is over 80 MB, trim it or record a shorter tour");
+    videoUploading = true; asPaint();
+    const fd = new FormData(); fd.append("file", file); fd.append("api_key", cfg.apiKey); fd.append("timestamp", cfg.timestamp); fd.append("signature", cfg.signature); fd.append("folder", cfg.folder);
+    if (cfg.eager) { fd.append("eager", cfg.eager); fd.append("eager_async", cfg.eager_async); }
+    try {
+      const r = await fetch(`https://api.cloudinary.com/v1_1/${cfg.cloudName}/video/upload`, { method: "POST", body: fd });
+      const d = await r.json(); if (!r.ok || !d.public_id) throw new Error((d.error && d.error.message) || "Video upload failed");
+      videoId = d.public_id;
+    } catch (e) { toast(e.message || "Video upload failed"); }
+    finally { videoUploading = false; asPaint(); }
+  };
 
   window.assistSave = async function () {
     $("asErr").textContent = "";
-    if (uploading) { $("asErr").textContent = "Wait for the photos to finish uploading"; return; }
-    if (!photos.length) { $("asErr").textContent = "Add at least one property photo before publishing"; return; }
+    if (uploading || videoUploading) { $("asErr").textContent = "Wait for media to finish uploading"; return; }
+    if (!photos.length && !videoId) { $("asErr").textContent = "Add at least one property photo or video tour before publishing"; return; }
     const c = $("asCat").value, ct = readContact();
     const listing = { category: c, areaId: +$("asArea").value, title: $("asTitle").value.trim(), price: +$("asPrice").value,
-      description: $("asDesc").value.trim(), photos, listerRole: ct.listerRole, agentFee: ct.agentFee };
+      description: $("asDesc").value.trim(), photos, video: videoId, listerRole: ct.listerRole, agentFee: ct.agentFee };
     if (["rent", "sale", "shortlet"].includes(c) && $("asBeds").value !== "") listing.bedrooms = +$("asBeds").value;
     if (c === "land") Object.assign(listing, { landDeal: $("asDeal").value, priceBasis: $("asBasisSel").value, sizeValue: +$("asSize").value, sizeUnit: $("asUnit").value });
     if (c === "commercial") Object.assign(listing, { commType: $("asType").value, deal: $("asDeal").value, priceBasis: $("asBasisSel").value, sizeValue: $("asSize").value === "" ? "" : +$("asSize").value, sizeUnit: $("asUnit").value });

@@ -257,10 +257,10 @@
     <label>Description (optional)</label>
     <textarea id="eDesc" rows="2" placeholder="Amenities, terms, directions…"></textarea>
     <div id="photoWrap" style="display:none">
-      <label>Photos (required · up to 5)</label>
+      <label>Media (required · add a photo or video tour)</label>
       <div class="photo-grid" id="photoGrid"></div>
       <div class="up-prog" id="upProg" aria-live="polite"><div class="up-bar"><i id="upBar"></i></div><span id="upPct">0%</span></div>
-      <div class="photo-note" id="photoNote">Add at least one clear photo of the property. JPG, PNG or WebP, up to 8&nbsp;MB each.</div>
+      <div class="photo-note" id="photoNote">Add at least one clear photo or a short video tour. You can add both.</div>
       <input type="file" id="photoFile" accept="image/jpeg,image/png,image/webp" multiple style="display:none" onchange="uploadPhotos(this.files);this.value=''">
     </div>
     <div id="landWrap" style="display:none">
@@ -864,11 +864,11 @@ async function submitTicket(){
   }catch(e){$("hErr").textContent=e.message}
 }
 const FAQS=[
-  ["How do I post a listing?","Open My Listings and click + New Listing. Fill in the category, area, price and photos, then Publish, it goes live on the site immediately."],
+  ["How do I post a listing?","Open My Listings and click + New Listing. Fill in the category, area, price and at least one photo or video tour, then Publish, it goes live on the site immediately."],
   ["Is PataHome free?","Posting and receiving leads is free. Optional visibility boosts for your listings may be offered later."],
   ["How do I get the verified badge?","Open the account menu (your name, top right) → Verify my details → Request verification. Our team confirms your ID and property ownership, then your listings show the trusted green badge."],
   ["How do leads work?","When a renter or buyer taps Contact Owner on your listing, your phone number is shared with them and it counts as a lead. Their messages appear in your Feedback tab, reply promptly to close faster."],
-  ["Can I add photos?","Yes, up to 5 photos per listing (JPG, PNG or WebP, max 8 MB each). Listings with photos receive far more leads. Add them when creating or editing a listing."],
+  ["Can I add photos?","Yes, up to 5 photos per listing (JPG, PNG or WebP, max 8 MB each), plus a short video tour. Every listing needs at least one photo or video tour."],
   ["What are followers?","People who follow you from your listing pages. They're potential clients interested in your future posts, you can see their contacts in the Followers tab."],
   ["How do I mark a house as rented or sold?","Use the Mark rented or Mark sold button beside an active listing. We ask you to confirm, hide it from public search, preserve its leads and history, and let you relist it at any time."],
   ["How do I contact PataHome?","Use the Request Help tab, or email info@patahome.co.ke, we respond as fast as we can."]
@@ -1027,7 +1027,7 @@ function renderTable(){
       else if(x.category==="land"&&window.PH_LAND){const p=PH_LAND.priceLabel(x);price=esc(p.main);extra=esc(PH_LAND.sizeLabel(x.sizeValue,x.sizeUnit,x.sizeAcres))}
       else{price=fmt(x.price)+(x.category==="rent"?" <small>/month</small>":x.category==="shortlet"?" <small>/night</small>":"");extra=x.bedrooms===0?"Bedsitter":x.bedrooms?x.bedrooms+" bedroom"+(x.bedrooms===1?"":"s"):""}
       const docs=x.docsStatus==="checked"?'<span style="color:var(--ok)">✓ Documents checked</span>':x.docsStatus==="pending"?"<span>Documents being checked…</span>":"";
-      const ph=x.photoUrls&&x.photoUrls[0]?x.photoUrls[0].thumb.replace(/\/upload\/c_limit,[^/]+\//,"/upload/c_fill,g_auto,w_300,h_225,q_auto/"):"";
+      const ph=x.photoUrls&&x.photoUrls[0]?x.photoUrls[0].thumb.replace(/\/upload\/c_limit,[^/]+\//,"/upload/c_fill,g_auto,w_300,h_225,q_auto/"):x.video&&x.video.poster?x.video.poster.replace(/\/upload\/[^/]+\//,"/upload/c_fill,g_auto,w_300,h_225,q_auto/"):"";
       return `
     <div class="lst-item">
       <a class="lst-ph" href="/browse?open=${x.id}" title="See it as visitors do">${ph?`<img src="${esc(ph)}" alt="" loading="lazy">`:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>'}</a>
@@ -1052,7 +1052,7 @@ function renderTable(){
 function renderHealth(){
   const el=$("healthPanel");if(!el)return;
   if(!myListings.length){el.innerHTML=`<h3>Listing health</h3><p class="pane-sub">Publish a listing to get a score.</p>`;return}
-  const checks=myListings.map(x=>{const issues=[];if(!x.title||x.title.length<12)issues.push("clearer title");if(!x.description||x.description.length<60)issues.push("more description");if(!x.photos||!x.photos.length)issues.push("photos");if(x.status!=="active")issues.push("relist");return {x,issues}});
+  const checks=myListings.map(x=>{const issues=[];if(!x.title||x.title.length<12)issues.push("clearer title");if(!x.description||x.description.length<60)issues.push("more description");if((!x.photos||!x.photos.length)&&!x.video)issues.push("photo or video");if(x.status!=="active")issues.push("relist");return {x,issues}});
   const needs=checks.filter(c=>c.issues.length),score=Math.round((checks.reduce((s,c)=>s+(c.issues.length?Math.max(35,100-c.issues.length*20):100),0)/checks.length));
   el.innerHTML=`<div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap"><div><h3 style="margin:0 0 4px">Listing health</h3><p class="pane-sub" style="margin:0">Better listings get more contacts.</p></div><strong style="font-size:1.35rem;color:${score>=80?'var(--green)':score>=60?'#9a6017':'var(--red)'}">${score}%</strong></div><div style="height:8px;background:var(--line);border-radius:99px;margin:14px 0"><i style="display:block;width:${score}%;height:100%;background:var(--green);border-radius:99px"></i></div>${needs.length?`<div class="area">${needs.slice(0,3).map(c=>`<button class="btn btn-ghost btn-sm" style="margin:3px 5px 0 0" onclick="openEdit(${c.x.id})">${esc(c.x.title)} · Add ${c.issues.slice(0,2).join(" + ")}</button>`).join("")}</div>`:`<div style="color:var(--green-dark);font-weight:700;font-size:.84rem">All listings are in good shape.</div>`}`;
 }
@@ -1205,8 +1205,8 @@ async function preparePhotoSection(){
   $("photoWrap").style.display="block";
   $("videoWrap").style.display=on?"block":"none";
   $("photoNote").textContent=on
-    ? "Add at least one clear photo of the property. JPG, PNG or WebP, up to 8 MB each."
-    : "Add at least one photo to publish. Photo uploads are temporarily unavailable; try again shortly.";
+    ? "Add at least one clear photo or a short video tour. You can add both. JPG, PNG or WebP up to 8 MB each; video tours up to 90 seconds."
+    : "Add at least one photo or video tour to publish. Media uploads are temporarily unavailable; try again shortly.";
   if(on){renderPhotos();renderVideo()}
   else renderPhotos();
 }
@@ -1493,8 +1493,9 @@ function feeText(){
 async function saveListing(){
   $("emErr").textContent="";
   if(uploads.length){$("emErr").textContent="Wait for photos to finish uploading…";return}
-  if(!photoIds.length){
-    $("emErr").textContent="Add at least one property photo before publishing.";
+  if(videoUp){$("emErr").textContent="Wait for the video to finish uploading…";return}
+  if(!photoIds.length&&!videoId){
+    $("emErr").textContent="Add at least one property photo or video tour before publishing.";
     $("photoWrap").style.display="block";
     return;
   }
@@ -1503,7 +1504,6 @@ async function saveListing(){
   const lister={listerRole,agentFee:feeText(),features:featureValues(),...(signCfg?{video:videoId}:{}),...(isLand?landValues():{}),...(isComm?commValues():{})};
   if(isLand&&!(lister.sizeValue>0)){$("emErr").textContent="Enter the land size";return}
   if(isComm&&lister.priceBasis==="sqft_month"&&!(lister.sizeValue>0)){$("emErr").textContent="Enter the floor area to quote a price per sq ft";return}
-  if(videoUp){$("emErr").textContent="Wait for the video to finish uploading…";return}
   if(listerRole==="agent"&&!lister.agentFee){$("emErr").textContent="State your fee to the tenant, or choose “No fee to tenant”";return}
   setSaveBusy(editId==null?"Publishing…":"Saving…");
   try{

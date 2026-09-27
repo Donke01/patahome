@@ -824,6 +824,7 @@ router.add("GET", "/api/listings", (req, res) => {
     else { where.push("l.bedrooms = ?"); params.push(+q.bedrooms); }
   }
   if (q.q) { where.push("(l.title LIKE ? OR l.description LIKE ? OR a.name LIKE ?)"); params.push(`%${q.q}%`, `%${q.q}%`, `%${q.q}%`); }
+  if (q.media === "1") where.push("(COALESCE(l.photos,'') NOT IN ('','[]') OR COALESCE(l.video,'') <> '')");
 
   let rows = db.prepare(`${LISTING_SQL} WHERE ${where.join(" AND ")}`).all(...params);
 
@@ -903,6 +904,7 @@ function searchScore(r, tokens) {
 router.add("GET", "/api/search", (req, res) => {
   const q = req.query;
   const where = ["l.status = 'active'"], params = [];
+  if (q.media === "1") where.push("(COALESCE(l.photos,'') NOT IN ('','[]') OR COALESCE(l.video,'') <> '')");
   if (q.cat && q.cat !== "all") { where.push("l.category = ?"); params.push(String(q.cat)); }
   if (q.price) {
     const [lo, hi] = String(q.price).split("-").map(Number);
@@ -1034,11 +1036,12 @@ function createListingFor(ownerId, body, res, extra) {
     if (pin && pin.error) return send(res, 400, { error: pin.error });
     if (pin) { lat = pin.lat; lng = pin.lng; pinned = 1; }
   }
-  const photos = req.body.photos;
-  if (!Array.isArray(photos) || photos.length < 1 || photos.length > CLD.maxPhotos || !photos.every(validPhotoId))
-    return send(res, 400, { error: `Add at least one uploaded photo (up to ${CLD.maxPhotos} photos)` });
+  const photos = req.body.photos === undefined ? [] : req.body.photos;
+  if (!Array.isArray(photos) || photos.length > CLD.maxPhotos || !photos.every(validPhotoId))
+    return send(res, 400, { error: `Photos must be up to ${CLD.maxPhotos} uploaded photo ids` });
   const video = req.body.video ? String(req.body.video) : "";
   if (video && !validVideoId(video)) return send(res, 400, { error: "Invalid video" });
+  if (!photos.length && !video) return send(res, 400, { error: "Add at least one photo or video tour before publishing" });
   const info = db.prepare(`INSERT INTO listings (owner_id,category,title,description,area_id,price,bedrooms,lat,lng,photos,lister_role,agent_fee,features,video)
     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
     .run(u.id, category, title.trim(), description || "", areaId, +price,
@@ -1472,14 +1475,20 @@ router.add("PATCH", "/api/listings/:id", (req, res, p) => {
   }
   if (body.photos !== undefined) {
     const photos = body.photos;
-    if (!Array.isArray(photos) || photos.length < 1 || photos.length > CLD.maxPhotos || !photos.every(validPhotoId))
-      return send(res, 400, { error: `Keep at least one uploaded photo (up to ${CLD.maxPhotos} photos)` });
+    if (!Array.isArray(photos) || photos.length > CLD.maxPhotos || !photos.every(validPhotoId))
+      return send(res, 400, { error: `Photos must be up to ${CLD.maxPhotos} uploaded photo ids` });
+    const nextVideo = body.video !== undefined ? String(body.video || "") : String(row.video || "");
+    if (!photos.length && !nextVideo) return send(res, 400, { error: "Keep at least one photo or video tour on the listing" });
     // free storage for photos the owner removed
     for (const old of parsePhotos(row.photos)) if (!photos.includes(old)) cldDestroy(old);
     sets.push("photos=?"); params.push(JSON.stringify(photos));
   }
   if (!sets.length) return send(res, 400, { error: "Nothing to update" });
   if (body.photos !== undefined || body.price !== undefined) setTimeout(() => runScamChecks(row.id), 0);
+  const resultingPhotos = body.photos !== undefined ? body.photos : parsePhotos(row.photos);
+  const resultingVideo = body.video !== undefined ? String(body.video || "") : String(row.video || "");
+  if (!resultingPhotos.length && !resultingVideo)
+    return send(res, 400, { error: "Keep at least one photo or video tour on the listing" });
   // Any owner edit (or relisting) counts as "still available".
   if (body.status === undefined || String(body.status) === "active") sets.push("confirmed_at=datetime('now')", "reminded_at=NULL");
   db.prepare(`UPDATE listings SET ${sets.join(",")} WHERE id=?`).run(...params, row.id);
@@ -2412,7 +2421,7 @@ router.add("POST", "/api/admin/photos/remove", (req, res) => {
   if (!l) return send(res, 404, { error: "Listing not found" });
   const photos = parsePhotos(l.photos);
   if (!photos.includes(publicId)) return send(res, 404, { error: "Photo not on this listing" });
-  if (photos.length < 2) return send(res, 400, { error: "Listings must keep at least one photo. Add a replacement before removing this one." });
+  if (photos.length < 2 && !l.video) return send(res, 400, { error: "Listings must keep at least one photo or video tour. Add a replacement before removing this one." });
   db.prepare("UPDATE listings SET photos=? WHERE id=?").run(JSON.stringify(photos.filter(x => x !== publicId)), l.id);
   cldDestroy(publicId);
   db.prepare("DELETE FROM photo_hashes WHERE public_id=?").run(publicId);
@@ -3476,7 +3485,11 @@ function listingPage(req, res, p) {
     additionalType: "https://schema.org/RealEstateListing"
   };
   const photos = parsePhotos(row.photos);
-  const image = photos.length && cldEnabled() ? photoUrl(photos[0], "c_fill,g_auto,w_1200,h_630,q_auto:good,f_jpg") : null;
+  const image = photos.length && cldEnabled()
+    ? photoUrl(photos[0], "c_fill,g_auto,w_1200,h_630,q_auto:good,f_jpg")
+    : row.video && cldEnabled()
+      ? `https://res.cloudinary.com/${CLD.cloud}/video/upload/so_1,c_fill,g_auto,w_1200,h_630,q_auto:good/${row.video}.jpg`
+      : null;
   const shareTitle = isLand
     ? (row.category === "commercial"
       ? `${COMM.TYPES[row.comm_type] || "Commercial property"} ${row.land_deal === "lease" ? "to let" : "for sale"} · ${priceText(row)} · ${row.area_name}`
@@ -3493,7 +3506,7 @@ function listingPage(req, res, p) {
         ${row.bedrooms != null ? ` · 🛏 ${row.bedrooms === 0 ? "Bedsitter" : row.bedrooms + " bedroom(s)"}` : ""}
         · Listed by ${escapeHtml(row.contact_name || row.owner_name)}${row.owner_verified ? " ✓ verified owner" : ""}</div>
       ${row.description ? `<p>${escapeHtml(row.description)}</p>` : ""}
-      <a class="cta" href="/browse?open=${row.id}">See photos &amp; contact the ${row.lister_role === "agent" ? "agent" : "owner"}</a>
+      <a class="cta" href="/browse?open=${row.id}">See listing media &amp; contact the ${row.lister_role === "agent" ? "agent" : "owner"}</a>
     </div>
     <p><a href="/${catSlug}/${slugify(row.area_name)}">More ${escapeHtml(CATS[catSlug].label.toLowerCase())} in ${escapeHtml(row.area_name)} →</a></p>
     ${areaLinksHtml()}`;

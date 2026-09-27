@@ -262,12 +262,15 @@ async function api(path,opts={}){
 }
 // Cloudinary: swap the "whole photo" transform for a crop sized to the frame.
 const crop=(u,w,h)=>String(u||"").replace(/\/upload\/c_limit,[^/]+\//,`/upload/c_fill,g_auto,w_${w},h_${h},q_auto:good/`);
+const posterCrop=(u,w,h)=>String(u||"").replace(/\/upload\/[^/]+\//,`/upload/c_fill,g_auto,w_${w},h_${h},q_auto:good/`);
+const mediaSrc=(x,w,h)=>x.photos&&x.photos.length?crop(x.photos[0].full||x.photos[0].thumb,w,h):x.video&&x.video.poster?posterCrop(x.video.poster,w,h):"";
+const hasVideoOnly=x=>!!(x.video&&!x.photos.length);
 const inBrowser=typeof requestAnimationFrame==="function";
 const reduceMotion=typeof matchMedia==="function"&&matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /* ================= DATA ================= */
 async function loadData(){
-  const [areas,res,stats]=await Promise.all([api("/api/areas"),api("/api/listings?perPage=20&sort=newest"),api("/api/stats/listings").catch(()=>null)]);
+  const [areas,res,stats]=await Promise.all([api("/api/areas"),api("/api/listings?perPage=50&sort=newest&media=1"),api("/api/stats/listings").catch(()=>null)]);
   STATS=stats;
   for(const a of areas)AREAS[a.name+", "+a.county]=[a.lat,a.lng];
   LISTINGS=res.listings.filter(x=>CAT[x.category]).map(x=>({
@@ -275,9 +278,10 @@ async function loadData(){
     price:x.price,beds:x.bedrooms,posted:x.createdAt,featured:!!x.featured,
     owner:x.ownerName,verified:x.ownerVerified,role:x.listerRole||"owner",
     photos:x.photoUrls||[],
+    video:x.video||null,
     landDeal:x.landDeal,sizeValue:x.sizeValue,sizeUnit:x.sizeUnit,sizeAcres:x.sizeAcres,priceBasis:x.priceBasis,pricePerAcre:x.pricePerAcre,
     deal:x.deal,commType:x.commType,areaSqft:x.areaSqft,pricePerSqft:x.pricePerSqft,incomeMonth:x.incomeMonth
-  }));
+  })).filter(x=>mediaSrc(x,1920,1200));
 }
 
 /* ================= HERO ================= */
@@ -289,9 +293,9 @@ async function paintHero(){
     HERO=cfg.heroImages.map(u=>({src:u.replace("/upload/","/upload/c_fill,g_auto,w_1920,h_1200,q_auto:good/")}));
   }else{
     const seen=new Set();
-    HERO=[...LISTINGS].filter(x=>x.photos.length).sort((a,b)=>(b.featured-a.featured)||(b.id-a.id))
-      .filter(x=>!seen.has(x.photos[0].full)&&seen.add(x.photos[0].full)).slice(0,5)
-      .map(x=>({src:crop(x.photos[0].full||x.photos[0].thumb,1920,1200),x}));
+    HERO=[...LISTINGS].filter(x=>mediaSrc(x,1920,1200)).sort((a,b)=>(b.featured-a.featured)||(b.id-a.id))
+      .filter(x=>{const src=mediaSrc(x,1920,1200);return !seen.has(src)&&seen.add(src)}).slice(0,5)
+      .map(x=>({src:mediaSrc(x,1920,1200),x}));
   }
   if(!HERO.length)return;
   const bg=document.getElementById("fhBg");
@@ -318,8 +322,7 @@ function showHero(i){
 }
 function paintCounts(){
   const n={};for(const x of LISTINGS)n[x.cat]=(n[x.cat]||0)+1;
-  const by=STATS&&STATS.byCat||null;
-  document.querySelectorAll("[data-count]").forEach(el=>{const v=by?by[el.dataset.count]:n[el.dataset.count];el.textContent=v?v:""});
+  document.querySelectorAll("[data-count]").forEach(el=>{const v=n[el.dataset.count];el.textContent=v?v:""});
 }
 
 /* ================= SEARCH ================= */
@@ -357,16 +360,16 @@ async function renderSugg(){
   if(q.length<2){closeSugg();return}
   const seq=++suggSeq,cat=document.getElementById("catSel").value||"all";
   let r;
-  try{r=await api("/api/search?"+new URLSearchParams({q,cat,perPage:5}))}catch(e){return}
+  try{r=await api("/api/search?"+new URLSearchParams({q,cat,perPage:5,media:1}))}catch(e){return}
   if(seq!==suggSeq||document.getElementById("searchInput").value.trim()!==q)return;
-  const matches=r.listings.filter(x=>CAT[x.category]).map(x=>({id:x.id,cat:x.category,title:x.title,area:x.area+", "+x.county,price:x.price,photos:x.photoUrls||[],landDeal:x.landDeal,priceBasis:x.priceBasis,pricePerAcre:x.pricePerAcre,sizeAcres:x.sizeAcres,deal:x.deal,commType:x.commType,areaSqft:x.areaSqft,pricePerSqft:x.pricePerSqft,incomeMonth:x.incomeMonth}));
+  const matches=r.listings.filter(x=>CAT[x.category]).map(x=>({id:x.id,cat:x.category,title:x.title,area:x.area+", "+x.county,price:x.price,photos:x.photoUrls||[],video:x.video||null,landDeal:x.landDeal,priceBasis:x.priceBasis,pricePerAcre:x.pricePerAcre,sizeAcres:x.sizeAcres,deal:x.deal,commType:x.commType,areaSqft:x.areaSqft,pricePerSqft:x.pricePerSqft,incomeMonth:x.incomeMonth})).filter(x=>mediaSrc(x,120,120));
   if(!matches.length){
     box.innerHTML=`<div class="sg-none">No matches yet, try other keywords, e.g. “bedsitter Kasarani” or “2br under 20k”</div>`;
     box.classList.add("show");return;
   }
   box.innerHTML=matches.map(x=>{
     const c=CAT[x.cat];
-    const th=x.photos.length?`<img src="${esc(crop(x.photos[0].thumb,120,120))}" alt="">`:`<img src="${placeholderFor(x)}" alt=""><span class="placeholder-label">Illustrative</span>`;
+    const th=mediaSrc(x,120,120)?`<img src="${esc(mediaSrc(x,120,120))}" alt="">`:`<img src="${placeholderFor(x)}" alt=""><span class="placeholder-label">Illustrative</span>`;
     return `<div class="sg" onmousedown="event.preventDefault()" onclick="pickSugg(${x.id})">
       <span class="sg-th" style="background:${c.tint}">${th}</span>
       <span class="sg-main"><span class="sg-t">${esc(x.title)}</span><span class="sg-s">${esc(x.area)} · ${esc(catLabel(x))}</span></span>
@@ -402,8 +405,8 @@ function renderLatest(){
     const who=x.role==="agent"?"Agent listing":x.role==="caretaker"?"Caretaker":x.verified?`<span class="v">✓ Verified owner</span>`:`<span class="v">✓ Direct owner</span>`;
     return `<a class="ph-card reveal" href="/browse?open=${x.id}">
       <div class="ph-photo">
-        ${x.photos.length?`<img src="${esc(crop(x.photos[0].thumb,800,620))}" alt="${esc(x.title)}" loading="lazy">`:placeholderHTML(x)}
-        <span class="kind">${esc(kindLabel(x))}</span>
+        ${mediaSrc(x,800,620)?`<img src="${esc(mediaSrc(x,800,620))}" alt="${esc(x.title)}" loading="lazy">`:placeholderHTML(x)}
+        <span class="kind">${esc(kindLabel(x))}</span>${hasVideoOnly(x)?`<span class="video-badge">▶ Video tour</span>`:""}
         <button class="fav${favs.has(x.id)?" on":""}" type="button" aria-label="Save" aria-pressed="${favs.has(x.id)}" onclick="toggleFav(event,${x.id})">${HEART}</button>
         ${x.photos.length>1?`<span class="count">${x.photos.length} photos</span>`:""}
       </div>
@@ -424,7 +427,7 @@ function renderCategoryRail(id,cat){
     const c=CAT[x.cat],size=sizeOrBeds(x);
     const who=x.role==="agent"?"Agent listing":x.role==="caretaker"?"Caretaker":x.verified?`<span class="v">✓ Verified owner</span>`:`<span class="v">✓ Direct owner</span>`;
     return `<a class="ph-card reveal" href="/browse?open=${x.id}">
-      <div class="ph-photo">${x.photos.length?`<img src="${esc(crop(x.photos[0].thumb,800,620))}" alt="${esc(x.title)}" loading="lazy">`:placeholderHTML(x)}<span class="kind">${esc(kindLabel(x))}</span><button class="fav${favs.has(x.id)?" on":""}" type="button" aria-label="Save" aria-pressed="${favs.has(x.id)}" onclick="toggleFav(event,${x.id})">${HEART}</button>${x.photos.length>1?`<span class="count">${x.photos.length} photos</span>`:""}</div>
+      <div class="ph-photo">${mediaSrc(x,800,620)?`<img src="${esc(mediaSrc(x,800,620))}" alt="${esc(x.title)}" loading="lazy">`:placeholderHTML(x)}<span class="kind">${esc(kindLabel(x))}</span>${hasVideoOnly(x)?`<span class="video-badge">▶ Video tour</span>`:""}<button class="fav${favs.has(x.id)?" on":""}" type="button" aria-label="Save" aria-pressed="${favs.has(x.id)}" onclick="toggleFav(event,${x.id})">${HEART}</button>${x.photos.length>1?`<span class="count">${x.photos.length} photos</span>`:""}</div>
       <div class="meta"><div class="row"><h3>${esc(x.title)}</h3><div class="price">${priceHTML(x)}</div></div><div class="where">${esc(x.area)}</div><div class="facts">${size?`<span>${esc(size)}</span>`:""}<span>${who}</span></div></div>
     </a>`;
   }).join("");

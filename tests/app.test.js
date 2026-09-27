@@ -107,6 +107,12 @@ test("listings: create, search, paging, direct-owner filter", async () => {
   const noPhoto = await call("POST", "/api/listings", { category: "rent", title: "No photo listing", areaId: areaId("Ruaka"), price: 1000, photos: [] }, t);
   assert.equal(noPhoto.status, 400);
   assert.match(noPhoto.body.error, /at least one.*photo/i);
+  const videoOnly = await call("POST", "/api/listings", { category: "rent", title: "Video tour only", areaId: areaId("Ruaka"), price: 12000, photos: [], video: "patahome/videos/tour-one" }, t);
+  assert.equal(videoOnly.status, 201);
+  assert.equal(videoOnly.body.photoUrls.length, 0);
+  assert.match(videoOnly.body.video.poster, /tour-one\.jpg$/);
+  assert.equal((await call("PATCH", `/api/listings/${videoOnly.body.id}`, { photos: [], video: "" }, t)).status, 400);
+  assert.equal((await call("PATCH", `/api/listings/${videoOnly.body.id}`, { photos: [], video: "patahome/videos/tour-two" }, t)).status, 200);
   const bad = await call("POST", "/api/listings", { category: "rent", title: "x", areaId: areaId("Ruaka"), price: 1000, listerRole: "agent" }, t);
   assert.equal(bad.status, 400, "agents must state a fee");
   for (let i = 0; i < 23; i++) {
