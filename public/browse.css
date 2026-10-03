@@ -70,30 +70,41 @@ select.loc-btn{-webkit-appearance:none;appearance:none;padding-right:36px;max-wi
 .more-spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--line-2);border-top-color:var(--heading);animation:brSpin .8s linear infinite;display:inline-block}
 @keyframes brSpin{to{transform:rotate(360deg)}}
 
-/* listing card — same anatomy as the homepage card */
-.card{display:block;cursor:pointer;min-width:0;animation:brIn .5s var(--ease) both}
+/* listing card: editorial card from 600px up, compact thumbnail-left row on phones (see the max-width:599px block at the end) */
+.card{position:relative;display:flex;flex-direction:column;cursor:pointer;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:0 1px 2px rgba(14,42,59,.04),0 10px 24px rgba(14,42,59,.06);transition:box-shadow .25s,transform .25s;animation:brIn .5s var(--ease) both}
+.card:hover{box-shadow:0 1px 2px rgba(14,42,59,.05),0 18px 36px rgba(14,42,59,.12);transform:translateY(-2px)}
+.card:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 @keyframes brIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-.card-img{position:relative;aspect-ratio:4/3.1;border-radius:var(--r-lg);overflow:hidden;background:var(--surface-2)}
+.card-img{position:relative;aspect-ratio:4/3;overflow:hidden;background:var(--surface-2)}
 .card-img img.ph{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .6s var(--ease)}
 .card:hover .card-img img.ph{transform:scale(1.035)}
 .card-img .wm{position:absolute;inset:0;display:grid;place-items:center;color:var(--line-2)}
 .card-img .wm svg{width:64px;height:64px;stroke-width:1}
 .card-img .badge{position:absolute;top:14px;left:14px;background:var(--chip);color:var(--heading);font-size:.66rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:6px 11px;border-radius:var(--pill);max-width:calc(100% - 80px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.card-img .feat-badge,.card-img .new-badge{position:absolute;top:48px;left:14px;background:var(--accent);color:#fff;font-size:.62rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:4px 9px;border-radius:var(--pill)}
-.card-img .heart{position:absolute;top:12px;right:12px;width:38px;height:38px;border-radius:50%;background:var(--chip);display:grid;place-items:center;border:0;cursor:pointer;color:var(--heading);transition:transform .2s}
-.card-img .heart:hover{transform:scale(1.08)}
-.card-img .heart svg{width:18px;height:18px}
-.card-img .heart.on{color:#C2453A}.card-img .heart.on svg{fill:currentColor}
-.card-img .photo-count,.card-img .dist-badge{position:absolute;bottom:14px;background:rgba(14,42,59,.62);color:#fff;font-size:.72rem;padding:4px 10px;border-radius:var(--pill);display:inline-flex;align-items:center;gap:5px;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
-.card-img .photo-count{right:14px}.card-img .photo-count svg{width:13px;height:13px}
-.card-img .dist-badge{left:14px}
-.card-body{padding:16px 4px 0}
-.card-body .row{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+.card-img .feat-badge,.card-img .new-badge{position:absolute;top:48px;left:14px;background:var(--accent);color:#0E2A3B;font-size:.62rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:4px 9px;border-radius:var(--pill)}
+.card .heart{position:absolute;top:10px;right:10px;z-index:2;width:44px;height:44px;border-radius:50%;background:var(--chip);display:grid;place-items:center;border:0;cursor:pointer;color:var(--heading);transition:transform .2s}
+.card .heart:hover{transform:scale(1.08)}
+.card .heart svg{width:19px;height:19px}
+.card .heart.on{color:#C2453A}.card .heart.on svg{fill:currentColor}
+.card-img .photo-count{position:absolute;right:14px;bottom:14px;background:rgba(14,42,59,.62);color:#fff;font-size:.72rem;padding:4px 10px;border-radius:var(--pill);display:inline-flex;align-items:center;gap:5px;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+.card-img .photo-count svg{width:13px;height:13px}
+.card-img .video-badge{position:absolute;left:14px;bottom:14px;display:inline-flex;align-items:center;gap:8px;background:rgba(14,42,59,.82);color:#fff;font-size:.78rem;font-weight:600;padding:6px 12px 6px 6px;border-radius:var(--pill)}
+.card-img .video-badge i{width:22px;height:22px;border-radius:50%;background:#fff;color:#0E2A3B;display:grid;place-items:center}
+.card-img .video-badge svg{width:10px;height:10px;margin-left:2px}
+.card-body{flex:1;display:flex;flex-direction:column;gap:6px;padding:18px 20px 16px;min-width:0}
+.card-body .kicker{display:none}
+.card-body .price{font-size:1.4rem;font-weight:700;letter-spacing:-.02em;color:var(--heading);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-body .price small{font-size:.8rem;font-weight:400;letter-spacing:0;color:var(--muted)}
 .card-body .title{font-family:var(--serif);font-weight:500;font-size:1.16rem;line-height:1.25;color:var(--heading);letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-.card-body .price{font-weight:600;color:var(--heading);white-space:nowrap;font-size:.96rem}
-.card-body .price small{font-weight:400;color:var(--muted);font-size:.78rem}
-.card-body .where{color:var(--muted);font-size:.88rem;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.card-body .meta{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:.8rem;color:var(--text)}
+.card-body .where{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:.86rem;min-width:0}
+.card-body .where svg{width:14px;height:14px;flex:none}
+.card-body .where span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card-body .facts{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:4px;font-size:.82rem;color:var(--text)}
+.card-body .facts span{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.card-body .facts span::before{content:"";flex:none;width:5px;height:5px;background:var(--accent);transform:rotate(45deg)}
+.card-body .foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:auto;padding-top:12px;border-top:1px solid var(--line);font-size:.78rem;color:var(--muted)}
+.card-body .foot .listing-trust{font-size:inherit;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card-body .foot>span:last-child{white-space:nowrap}
 .listing-trust{font-size:.8rem;color:var(--ok)}
 .listing-trust::before{content:"✓ "}
 .listing-trust.unverified{color:var(--text)}
@@ -450,4 +461,34 @@ html.dark .leaflet-popup-content-wrapper,html.dark .leaflet-popup-tip{background
   .dm-near{grid-template-columns:1fr}
   .dm-facts{gap:10px 20px}.dm-facts span,.dm-vid{font-size:.86rem}
   .dm-amen-cols{grid-template-columns:1fr 1fr;gap:20px}
+}
+
+/* ---- polish (Oct 2026) ---- */
+/* sideways-scrolling rows fade at the right edge while there's more to see */
+.tabs.more,.filters.more{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 48px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 48px),transparent)}
+/* tablets: two cards per row instead of one giant card per screen */
+@media (min-width:600px) and (max-width:900px){.cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:30px 18px}}
+/* phones: compact rows, about three listings per screen */
+@media (max-width:599px){
+  .cards{gap:12px}
+  .card{flex-direction:row;align-items:stretch;gap:14px;padding:10px;border-radius:18px;box-shadow:0 6px 16px rgba(14,42,59,.05)}
+  .card:hover{transform:none}
+  .card-img{flex:0 0 112px;width:112px;aspect-ratio:auto;min-height:118px;border-radius:12px}
+  .card-img .wm svg{width:36px;height:36px}
+  .card-img .badge,.card-img .photo-count{display:none}
+  .card-img .feat-badge,.card-img .new-badge{top:6px;left:6px;font-size:.56rem;padding:3px 7px}
+  .card-img .video-badge{left:6px;bottom:6px;gap:5px;font-size:.66rem;padding:3px 8px 3px 3px}
+  .card-img .video-badge i{width:16px;height:16px}
+  .card-img .video-badge svg{width:7px;height:7px}
+  .card .heart{top:auto;bottom:6px;right:6px;background:var(--surface);border:1px solid var(--line)}
+  .card .heart svg{width:17px;height:17px}
+  .card-body{gap:3px;padding:2px 0 0}
+  .card-body .kicker{display:block;font-size:.62rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--on-accent-soft)}
+  .card-body .title{font-size:1.02rem;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .card-body .where{font-size:.78rem}
+  .card-body .where svg{display:none}
+  .card-body .facts{flex-wrap:nowrap;overflow:hidden;gap:0 10px;margin-top:1px;font-size:.74rem}
+  .card-body .facts span::before{width:4px;height:4px}
+  .card-body .price{order:9;margin-top:auto;padding:6px 50px 2px 0;font-size:1.06rem}
+  .card-body .foot{display:none}
 }

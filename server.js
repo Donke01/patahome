@@ -80,6 +80,9 @@ const WM_LAYER = (w) => `l_${WM_ID}/c_scale,fl_relative,w_${w}/o_55/fl_layer_app
 const WM_TAGS = "wm,wm_c"; // wm_c = centred mark
 const CLD_TRANSFORM_WM = `c_limit,w_1280,h_1280/${WM_LAYER(0.34)}/q_auto:good`;
 const VIDEO_WM_T = `c_limit,w_1280/${WM_LAYER(0.34)}/q_auto,vc_auto`;
+// A still from a listing video. Same leading "c_limit,…" shape as photo thumbs (with so_auto
+// in front), so the pages' crop helpers can turn it into a card-sized frame.
+const videoPoster = (id) => `https://res.cloudinary.com/${CLD.cloud}/video/upload/so_auto,c_limit,w_720,h_720,q_auto:eco${setting("watermark_asset") ? "/" + WM_LAYER(0.34) : ""}/${id}.jpg`;
 const watermarkOn = () => cldEnabled() && setting("watermark_on") === "1" && setting("watermark_asset") !== "";
 // f_auto: Cloudinary sends WebP/AVIF to browsers that support them (much smaller on phones)
 const photoUrl = (id, t) => `https://res.cloudinary.com/${CLD.cloud}/image/upload/${/(^|[,/])f_/.test(t) ? t : t + ",f_auto"}/${id}`;
@@ -140,8 +143,13 @@ const listingView = (row, userLat, userLng) => ({
   features: parseJson(row.features, {}),
   video: row.video && cldEnabled() ? {
     url: `https://res.cloudinary.com/${CLD.cloud}/video/upload/${setting("watermark_asset") ? VIDEO_WM_T : "q_auto,vc_auto,c_limit,w_1280"}/${row.video}.mp4`,
-    poster: `https://res.cloudinary.com/${CLD.cloud}/video/upload/so_1,c_limit,w_720${setting("watermark_asset") ? "/" + WM_LAYER(0.34) : ""}/${row.video}.jpg`
+    // so_auto lets Cloudinary pick a representative frame (the 1s frame is often a blurry pan)
+    poster: videoPoster(row.video)
   } : null,
+  // the image a card should show: first photo, else a frame from the video, else none
+  cover: cldEnabled()
+    ? (parsePhotos(row.photos).length ? photoUrl(parsePhotos(row.photos)[0], "c_limit,w_720,h_720,q_auto:eco") : row.video ? videoPoster(row.video) : "")
+    : "",
   nearby: row.nearby ? parseJson(row.nearby, null) : null,
   videoId: row.video || "",
   ...(row.category === "land" ? {
@@ -3453,7 +3461,7 @@ ${imageAlt ? `<meta property="og:image:alt" content="${escapeHtml(imageAlt)}">` 
 ${noindex ? '<meta name="robots" content="noindex">' : ""}
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="preconnect" href="https://res.cloudinary.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/ph.css?v=17">
+<link rel="stylesheet" href="/ph.css?v=18">
 <link rel="stylesheet" href="/page.css?v=1">
 <script>try{navigator.sendBeacon("/api/pv",new Blob([JSON.stringify({path:location.pathname,ref:document.referrer})],{type:"application/json"}))}catch(e){}</script>
 ${jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd).replace(/</g, "\\u003c")}</script>` : ""}
