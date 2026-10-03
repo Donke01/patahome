@@ -26,7 +26,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/ph.css?v=17">
+<link rel="stylesheet" href="/ph.css?v=18">
 <link rel="manifest" href="/manifest.webmanifest">
 </head>
 <body class="ph page-home on-hero">
@@ -112,9 +112,9 @@
       <a class="ph-link" href="/browse">See all</a>
     </div>
     <div class="ph-grid" id="latestGrid">
-      <div class="ph-card ph-skel"><div class="ph-photo"></div><div class="line" style="width:70%"></div><div class="line" style="width:45%"></div></div>
-      <div class="ph-card ph-skel"><div class="ph-photo"></div><div class="line" style="width:70%"></div><div class="line" style="width:45%"></div></div>
-      <div class="ph-card ph-skel"><div class="ph-photo"></div><div class="line" style="width:70%"></div><div class="line" style="width:45%"></div></div>
+      <div class="ph-card sheet ph-skel"><div class="ph-photo"></div></div>
+      <div class="ph-card sheet ph-skel"><div class="ph-photo"></div></div>
+      <div class="ph-card sheet ph-skel"><div class="ph-photo"></div></div>
     </div>
   </div>
 </section>
@@ -241,7 +241,7 @@ async function api(path,opts={}){
   return d;
 }
 // Cloudinary: swap the "whole photo" transform for a crop sized to the frame.
-const crop=(u,w,h)=>String(u||"").replace(/\/upload\/c_limit,[^/]+\//,`/upload/c_fill,g_auto,w_${w},h_${h},q_auto:good,f_auto/`);
+const crop=(u,w,h)=>String(u||"").replace(/\/upload\/(so_[^,/]+,)?c_limit,[^/]+\//,`/upload/$1c_fill,g_auto,w_${w},h_${h},q_auto:good,f_auto/`);
 const inBrowser=typeof requestAnimationFrame==="function";
 const reduceMotion=typeof matchMedia==="function"&&matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -251,6 +251,7 @@ const toHome=x=>({
     price:x.price,beds:x.bedrooms,posted:x.createdAt,featured:!!x.featured,
     owner:x.ownerName,verified:x.ownerVerified,role:x.listerRole||"owner",
     photos:x.photoUrls||[],photoCount:x.photoCount||(x.photoUrls||[]).length,
+    cover:x.cover||((x.photoUrls||[])[0]||{}).thumb||"",video:!!x.video,
     landDeal:x.landDeal,sizeValue:x.sizeValue,sizeUnit:x.sizeUnit,sizeAcres:x.sizeAcres,priceBasis:x.priceBasis,pricePerAcre:x.pricePerAcre,
     deal:x.deal,commType:x.commType,areaSqft:x.areaSqft,pricePerSqft:x.pricePerSqft,incomeMonth:x.incomeMonth,features:x.features||{}
   });
@@ -359,14 +360,14 @@ async function renderSugg(){
   let r;
   try{r=await api("/api/search?"+new URLSearchParams({q,cat,perPage:5}))}catch(e){return}
   if(seq!==suggSeq||document.getElementById("searchInput").value.trim()!==q)return;
-  const matches=r.listings.filter(x=>CAT[x.category]).map(x=>({id:x.id,cat:x.category,title:x.title,area:x.area+", "+x.county,price:x.price,beds:x.bedrooms,features:x.features||{},photos:x.photoUrls||[],photoCount:x.photoCount||(x.photoUrls||[]).length,landDeal:x.landDeal,priceBasis:x.priceBasis,pricePerAcre:x.pricePerAcre,sizeAcres:x.sizeAcres,deal:x.deal,commType:x.commType,areaSqft:x.areaSqft,pricePerSqft:x.pricePerSqft,incomeMonth:x.incomeMonth}));
+  const matches=r.listings.filter(x=>CAT[x.category]).map(x=>({id:x.id,cat:x.category,title:x.title,area:x.area+", "+x.county,price:x.price,beds:x.bedrooms,features:x.features||{},cover:x.cover||((x.photoUrls||[])[0]||{}).thumb||"",photos:x.photoUrls||[],photoCount:x.photoCount||(x.photoUrls||[]).length,landDeal:x.landDeal,priceBasis:x.priceBasis,pricePerAcre:x.pricePerAcre,sizeAcres:x.sizeAcres,deal:x.deal,commType:x.commType,areaSqft:x.areaSqft,pricePerSqft:x.pricePerSqft,incomeMonth:x.incomeMonth}));
   if(!matches.length){
     box.innerHTML=`<div class="sg-none">No matches yet, try other keywords, e.g. “bedsitter Kasarani” or “2br under 20k”</div>`;
     box.classList.add("show");return;
   }
   box.innerHTML=matches.map(x=>{
     const c=CAT[x.cat];
-    const th=x.photos.length?`<img src="${esc(crop(x.photos[0].thumb,120,120))}" alt="">`:ICONS[c.icon];
+    const th=x.cover?`<img src="${esc(crop(x.cover,120,120))}" alt="">`:ICONS[c.icon];
     return `<div class="sg" onmousedown="event.preventDefault()" onclick="pickSugg(${x.id})">
       <span class="sg-th" style="background:${c.tint}">${th}</span>
       <span class="sg-main"><span class="sg-t">${esc(cleanTitle(x))}</span><span class="sg-s">${esc(x.area)} · ${esc(catLabel(x))}</span></span>
@@ -405,17 +406,21 @@ function renderLatest(){
   g.innerHTML=list.map(x=>{
     const c=CAT[x.cat],size=sizeOrBeds(x);
     const who=x.role==="agent"?"Agent listing":x.role==="caretaker"?"Caretaker":x.verified?`<span class="v">✓ Verified owner</span>`:`<span class="v">✓ Direct owner</span>`;
-    return `<a class="ph-card" href="/browse?open=${x.id}">
+    const n=x.photoCount||x.photos.length;
+    const fresh=Date.now()-Date.parse(String(x.posted||"").replace(" ","T")+"Z")<2*864e5;
+    const chips=[size,x.cat==="land"||x.cat==="commercial"?catLabel(x):""].filter(Boolean);
+    return `<a class="ph-card sheet" href="/browse?open=${x.id}">
       <div class="ph-photo">
-        ${x.photos.length?`<img src="${esc(crop(x.photos[0].thumb,800,620))}" alt="${esc(x.title)}" loading="lazy">`:`<span class="blank">${ICONS[c.icon]}</span>`}
-        <span class="kind">${esc(kindLabel(x))}</span>
+        ${x.cover?`<img src="${esc(crop(x.cover,640,800))}" alt="${esc(x.title)}" loading="lazy">`:`<span class="blank">${ICONS[c.icon]}</span>`}
+        <div class="tags"><span class="kind">${esc(kindLabel(x))}</span>${x.featured?`<span class="new">Featured</span>`:fresh?`<span class="new">New</span>`:""}</div>
         <button class="fav${favs.has(x.id)?" on":""}" type="button" aria-label="Save" aria-pressed="${favs.has(x.id)}" onclick="toggleFav(event,${x.id})">${HEART}</button>
-        ${(x.photoCount||x.photos.length)>1?`<span class="count">${x.photoCount||x.photos.length} photos</span>`:""}
-      </div>
-      <div class="meta">
-        <div class="row"><h3>${esc(cleanTitle(x))}</h3><div class="price">${priceHTML(x)}</div></div>
-        <div class="where">${esc(x.area)}</div>
-        <div class="facts">${size?`<span>${esc(size)}</span>`:""}${x.cat==="land"||x.cat==="commercial"?`<span>${esc(catLabel(x))}</span>`:""}<span>${who}</span></div>
+        ${!n&&x.video?`<span class="play" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 4.5l13 7.5-13 7.5z"/></svg></span>`:""}
+        <div class="sheet-info">
+          <div class="where">${esc(x.area)}</div>
+          <h3>${esc(cleanTitle(x))}</h3>
+          <div class="row"><div class="price">${priceHTML(x)}</div><div class="chips">${chips.map(t=>`<span>${esc(t)}</span>`).join("")}${!n&&x.video?`<span>Video</span>`:n>1?`<span>${n} photos</span>`:""}</div></div>
+          <div class="who">${who}</div>
+        </div>
       </div>
     </a>`;
   }).join("");
@@ -440,7 +445,9 @@ async function renderAreaDiscovery(){
   const countOf=area=>STATS?((STATS.byArea.find(b=>b.area+", "+b.county===area)||{}).n||0):LISTINGS.filter(x=>x.area===area).length;
   let rows=Object.entries(AREAS).map(([area,[lat,lng]])=>({area,lat,lng,count:countOf(area),km:null}));
   if(!rows.length){document.getElementById("areaSec").style.display="none";return}
-  const N=innerWidth<=900?4:8;
+  // two full rows for whatever column count the grid has, so no card sits alone on a row
+  const cols=Math.max(1,getComputedStyle(rail).gridTemplateColumns.split(" ").filter(Boolean).length);
+  const N=Math.min(cols*2,Math.max(cols,rows.length-rows.length%cols));
   const draw=()=>{
     rail.innerHTML=rows.slice(0,N).map(({area,count,km})=>{
       const [name,county]=area.split(", ");
@@ -526,6 +533,6 @@ document.addEventListener("click",e=>{if(!e.target.closest("#navPop,#hamBtn"))do
 })();
 </script>
 <script src="/i18n.js?v=4" defer></script>
-<script src="/app.js?v=6" defer></script>
+<script src="/app.js?v=7" defer></script>
 </body>
 </html>

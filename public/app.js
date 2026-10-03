@@ -7,6 +7,19 @@
   toTop();
   window.addEventListener("load", toTop);
   window.addEventListener("pageshow", function (e) { if (e.persisted) toTop(); });
+  /* ---- floating chat buttons tuck away while scrolling down (they sat on top of
+     card hearts and prices), and come back on scroll up, near the top, or at the end ---- */
+  (function () {
+    var lastY = window.scrollY || 0, ticking = false;
+    function update() {
+      ticking = false;
+      var y = window.scrollY || 0, atEnd = y + window.innerHeight >= document.documentElement.scrollHeight - 80;
+      if (y < 120 || atEnd || y < lastY - 6) document.body.classList.remove("fab-tuck");
+      else if (y > lastY + 6) document.body.classList.add("fab-tuck");
+      if (Math.abs(y - lastY) > 6) lastY = y;
+    }
+    window.addEventListener("scroll", function () { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
+  })();
   document.addEventListener("click", function (e) {
     var a = e.target.closest && e.target.closest("a.ph-logo, a.logo, a[data-home]");
     if (!a || e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;

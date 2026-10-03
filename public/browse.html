@@ -26,8 +26,8 @@
 <link rel="preconnect" href="https://res.cloudinary.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="stylesheet" href="/ph.css?v=17">
-<link rel="stylesheet" href="/browse.css?v=6">
+<link rel="stylesheet" href="/ph.css?v=18">
+<link rel="stylesheet" href="/browse.css?v=7">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#0B5D3B">
 </head>
@@ -486,7 +486,8 @@ const toItem=x=>({
   landDeal:x.landDeal,sizeValue:x.sizeValue,sizeUnit:x.sizeUnit,sizeAcres:x.sizeAcres,priceBasis:x.priceBasis,pricePerAcre:x.pricePerAcre,
   leaseMin:x.leaseMin,exactPin:!!x.exactPin,docsChecked:!!x.docsChecked,
   confirmedAt:x.confirmedAt||x.createdAt,ref:x.ref||("PH-"+String(x.id).padStart(4,"0")),
-  photos:x.photoUrls||[],photoCount:x.photoCount||(x.photoUrls||[]).length
+  photos:x.photoUrls||[],photoCount:x.photoCount||(x.photoUrls||[]).length,
+  cover:x.cover||((x.photoUrls||[])[0]||{}).thumb||""
 });
 // Land shows its deal type instead of the generic category label
 /* ---------- listing presentation helpers ---------- */
@@ -714,7 +715,7 @@ async function renderSugg(){
   const total=r.total;
   box.innerHTML=matches.map(x=>{
     const c=CAT[x.cat];
-    const th=x.photos.length?`<img src="${x.photos[0].thumb}" alt="">`:ICONS[c.gal[0]];
+    const th=x.cover?`<img src="${esc(cropUrl(x.cover,120,120))}" alt="">`:ICONS[c.gal[0]];
     return `<div class="sg" onmousedown="event.preventDefault()" onclick="pickSugg(${x.id})">
       <span class="sg-th" style="background:${c.grad}">${th}</span>
       <span class="sg-main"><span class="sg-t">${esc(x.title)}</span><span class="sg-s">${esc(x.area)} · ${c.label}</span></span>
@@ -842,8 +843,26 @@ function renderTabs(){
   const counts={all:COUNTS.all||0};
   for(const c of Object.keys(CAT))counts[c]=COUNTS[c]||0;
   const t=document.getElementById("tabs");
+  // empty categories are hidden (a row of "0"s makes the site look empty); the active one always shows
   t.innerHTML=[["all","All Listings"],...Object.entries(CAT).map(([k,v])=>[k,v.label])]
+    .filter(([k])=>k==="all"||counts[k]>0||activeCat===k)
     .map(([k,lab])=>`<button class="tab ${activeCat===k?"active":""}" onclick="activeCat='${k}';render()">${lab}<span class="count">${counts[k]}</span></button>`).join("");
+  markOverflow(t);
+}
+/* The owner's own title is shown under the clean one only when it says something new
+   ("two bedroom ensuite" adds "ensuite"; plain "Bedsitter" or "4 bedroom house" add nothing). */
+const TITLE_FILLER=new Set("a an the in at for of and with to rent sale house home unit flat apartment room rooms bedroom bedrooms bed beds br bdr bd one two three four five six 1 2 3 4 5 6 bedsitter studio by x plot plots acre acres land".split(" "));
+function ownTitleAdds(own,clean){
+  const words=t=>String(t||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim().split(" ").filter(Boolean);
+  const have=new Set(words(clean));
+  return words(own).some(w=>!have.has(w)&&!TITLE_FILLER.has(w)&&!/^\d+(br|bd|bdr|bed)?$/.test(w));
+}
+/* rows that scroll sideways on phones (tabs, filters) fade at the edge while there's more to see */
+function markOverflow(el){
+  if(!el)return;
+  const set=()=>el.classList.toggle("more",el.scrollWidth-el.clientWidth-el.scrollLeft>4);
+  if(!el.dataset.ovf){el.dataset.ovf=1;el.addEventListener("scroll",set,{passive:true});window.addEventListener("resize",set)}
+  requestAnimationFrame(set);
 }
 /* ---- keyword search: every word must match a field; synonyms + price shorthand; relevance-ranked ---- */
 const STOPWORDS=new Set(["in","near","at","the","a","an","for","and","with","to","of","under","below","max","na","ya","kwa","karibu","house","houses","home","homes","nyumba","property","kenya"]);
@@ -922,30 +941,42 @@ function searchQuery(page){
 }
 const PIN_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11a7 7 0 0 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>';
 const BED_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9V6M2 9h20v9M2 9v9M22 12H2M6 9V7.5A1.5 1.5 0 0 1 7.5 6h3A1.5 1.5 0 0 1 12 7.5V9"/></svg>';
+const PLAY_SVG='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5l13 7.5-13 7.5z"/></svg>';
 const CLOCK_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
 const HEART_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 1 0-7.8 7.8L12 21.2l8.8-8.8a5.5 5.5 0 0 0 0-7.8z"/></svg>';
 // Cloudinary: crop the "whole photo" thumb to the card frame
-const cropUrl=(u,w,h)=>String(u||"").replace(/\/upload\/c_limit,[^/]+\//,`/upload/c_fill,g_auto,w_${w},h_${h},q_auto:good,f_auto/`);
+// (video stills start "so_auto,c_limit,…": keep the frame pick, swap the sizing)
+const cropUrl=(u,w,h)=>String(u||"").replace(/\/upload\/(so_[^,/]+,)?c_limit,[^/]+\//,`/upload/$1c_fill,g_auto,w_${w},h_${h},q_auto:good,f_auto/`);
 function cardHTML(x,i){
+    // One markup, two layouts (browse.css): a tall editorial card from 600px up,
+    // a compact thumbnail-left row on phones so several listings fit on screen.
     const c=CAT[x.cat];
     const d=userLoc?dist(userLoc[0],userLoc[1],x.lat,x.lng):null;
     const isNew=/today/.test(x.posted);
     const CAM='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h3l2-2h6l2 2h3v13H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
-    const size=x.cat==="commercial"?commSize(x):x.cat==="land"&&window.PH_LAND?PH_LAND.sizeLabel(x.sizeValue,x.sizeUnit,x.sizeAcres):x.beds!==null&&x.beds!==undefined?(x.beds===0?"Bedsitter":x.beds+(x.beds===1?" bedroom":" bedrooms")):"";
+    const PIN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>';
+    const size=x.cat==="commercial"?commSize(x):x.cat==="land"&&window.PH_LAND?PH_LAND.sizeLabel(x.sizeValue,x.sizeUnit,x.sizeAcres):x.beds!==null&&x.beds!==undefined?(x.beds===0?"Bedsitter":x.beds+(x.beds===1?" bed":" beds")):"";
+    const f=x.features||{};
+    const facts=[size,f.bathrooms?f.bathrooms+(f.bathrooms===1?" bath":" baths"):"",
+      f.water247?"Water 24/7":f.wifi?"Wi-Fi":f.borehole?"Borehole":f.parking?"Parking":x.cat==="land"&&x.exactPin?"Exact pin":"",
+      d!==null?(d<1?Math.round(d*1000)+" m":d.toFixed(1)+" km")+" away":""].filter(Boolean);
     const t=trustLine(x);
+    const n=x.photoCount||0;
     return `<div class="card" style="animation-delay:${Math.min(i*50,400)}ms" onclick="openDetail(${x.id})" role="link" tabindex="0" onkeydown="if(event.key==='Enter')openDetail(${x.id})">
       <div class="card-img">
-        ${x.photos.length?`<img class="ph" src="${esc(cropUrl(x.photos[0].thumb,800,620))}" alt="${esc(x.title)}" loading="lazy">`:`<span class="wm">${ICONS[c.gal[0]]}</span>`}
+        ${x.cover?`<img class="ph" src="${esc(cropUrl(x.cover,800,620))}" alt="${esc(x.title)}" loading="lazy">`:`<span class="wm">${ICONS[c.gal[0]]}</span>`}
         <span class="badge ${c.badge}">${esc(catLabel(x))}</span>
         ${x.featured?`<span class="feat-badge">Featured</span>`:isNew?`<span class="new-badge">New</span>`:""}
-        <button class="heart ${favs.has(x.id)?"on":""}" type="button" aria-label="Save" aria-pressed="${favs.has(x.id)}" onclick="event.stopPropagation();toggleFav(${x.id})">${HEART_SVG}</button>
-        ${d!==null?`<span class="dist-badge">${d<1?Math.round(d*1000)+" m":d.toFixed(1)+" km"} away</span>`:""}
-        ${x.photoCount>1?`<span class="photo-count">${CAM}${x.photoCount}</span>`:""}
+        ${!n&&x.video?`<span class="video-badge"><i>${PLAY_SVG}</i>Video tour</span>`:n>1?`<span class="photo-count">${CAM}${n}</span>`:""}
       </div>
+      <button class="heart ${favs.has(x.id)?"on":""}" type="button" aria-label="Save" aria-pressed="${favs.has(x.id)}" onclick="event.stopPropagation();toggleFav(${x.id})">${HEART_SVG}</button>
       <div class="card-body">
-        <div class="row"><div class="title">${esc(cleanTitle(x))}</div><div class="price">${priceHTML(x)}</div></div>
-        <div class="where">${esc(x.area)}</div>
-        <div class="meta">${size?`<span>${esc(size)}</span>`:""}<span>${esc(x.posted)}</span><span class="listing-trust ${t.cls}">${esc(t.txt)}</span></div>
+        <div class="kicker">${esc(catLabel(x))}</div>
+        <div class="price">${priceHTML(x)}</div>
+        <div class="title">${esc(cleanTitle(x))}</div>
+        <div class="where">${PIN}<span>${esc(x.area)}</span></div>
+        ${facts.length?`<div class="facts">${facts.map(v=>`<span>${esc(v)}</span>`).join("")}</div>`:""}
+        <div class="foot"><span class="listing-trust ${t.cls}">${esc(t.txt)}</span><span>${esc(x.posted)}</span></div>
       </div>
     </div>`;
   }
@@ -1051,7 +1082,7 @@ function openDetail(id){
   const ct=cleanTitle(x);
   document.getElementById("dTitle").textContent=ct;
   const own=String(x.title||"").trim();
-  document.getElementById("dOwnTitle").textContent=own&&own.toLowerCase()!==ct.toLowerCase()?"“"+own+"”":"";
+  document.getElementById("dOwnTitle").textContent=ownTitleAdds(own,ct)?"“"+own+"”":"";
   document.getElementById("dAvail").innerHTML=`<b>✓ Available</b> · confirmed ${esc(agoTxt(x.confirmedAt))}`;
   document.getElementById("dRef").textContent="Ref "+x.ref;
   const d=userLoc?dist(userLoc[0],userLoc[1],x.lat,x.lng):null;
@@ -1204,7 +1235,7 @@ async function loadSimilar(x){
   if(!items.length)return;
   document.getElementById("dSimTitle").textContent="More homes in "+String(x.area).split(",")[0]+" and nearby";
   row.innerHTML=items.map(y=>`<a class="dm-sim" href="?open=${y.id}" onclick="event.preventDefault();openDetail(${y.id})">
-    <span class="ph">${y.photos.length?`<img src="${esc(y.photos[0].small||y.photos[0].thumb)}" alt="" loading="lazy">`:""}</span>
+    <span class="ph">${y.cover?`<img src="${esc(y.photos.length?(y.photos[0].small||y.photos[0].thumb):cropUrl(y.cover,420,320))}" alt="" loading="lazy">`:""}</span>
     <b>${priceHTML(y)}</b><span class="t">${esc(cleanTitle(y))}</span></a>`).join("");
   box.hidden=false;
 }
@@ -1486,6 +1517,7 @@ async function paintAccount(){
   if(P.get("price"))document.getElementById("priceFilter").value=P.get("price");
   if(P.get("beds")!==null&&P.get("beds")!==undefined&&P.get("beds")!=="")document.getElementById("bedFilter").value=P.get("beds");
   render();
+  markOverflow(document.querySelector(".filters"));
   if(P.get("open"))setTimeout(()=>{try{openDetail(+P.get("open"))}catch(e){}},400);
   if(P.get("notice")){setTimeout(()=>toast(P.get("notice")),700);history.replaceState(null,"",location.pathname)}
   // The map library loads after the page (defer) so listings show first.
@@ -1533,6 +1565,6 @@ function toggleNav(e){if(e)e.stopPropagation();document.getElementById("navPop")
 document.addEventListener("click",e=>{if(!e.target.closest("#navPop,#hamBtn"))document.getElementById("navPop").classList.remove("show")});
 </script>
 <script src="/i18n.js?v=4" defer></script>
-<script src="/app.js?v=6" defer></script>
+<script src="/app.js?v=7" defer></script>
 </body>
 </html>
