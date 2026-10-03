@@ -27,7 +27,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="/ph.css?v=18">
-<link rel="stylesheet" href="/browse.css?v=7">
+<link rel="stylesheet" href="/browse.css?v=8">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#0B5D3B">
 </head>
@@ -1387,6 +1387,8 @@ function renderGallery(){
   const gEl=document.getElementById("gallery");
   gEl.className="gallery";
   if(hasPhotos){renderPhotoGrid(gEl,galItem.photos);return}
+  if(galItem.video){renderVideoHero(gEl);return}
+  renderNoMedia(gEl);return;
   const slides=hasPhotos
     ?galItem.photos.map((p,i)=>`<div class="slide ${i===galIdx?"on":""}" style="background:#0d1512;cursor:zoom-in" onclick="openZoom(${i})" title="Tap to view full screen"><img class="ph-bg" src="${p.thumb}" alt="" aria-hidden="true" loading="lazy"><img class="ph-full" src="${p.full}" alt="photo ${i+1}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain" loading="lazy"></div>`).join("")
     :c.gal.map((e,i)=>`<div class="slide ${i===galIdx?"on":""}" style="background:${c.grad}">${ICONS[e]}</div>`).join("");
@@ -1396,6 +1398,41 @@ function renderGallery(){
     (n>1?`<button class="gal-nav gal-prev" onclick="galStep(-1)">‹</button>
      <button class="gal-nav gal-next" onclick="galStep(1)">›</button>
      <div class="dots">${Array.from({length:n},(_,i)=>`<span class="dot ${i===galIdx?"on":""}"></span>`).join("")}</div>`:"");
+}
+// Video-only listing: the tour IS the gallery. A still with a big play button,
+// tapping it plays the video right there.
+function renderVideoHero(gEl){
+  const x=galItem;
+  gEl.className="gallery gal-video";
+  gEl.innerHTML=`<button type="button" class="gv-still" onclick="playInline()" aria-label="Play the video tour">
+      ${x.cover?`<img src="${esc(cropUrl(x.cover,1200,720))}" alt="${esc(x.title)}">`:""}
+      <span class="gv-play"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 4.5l13 7.5-13 7.5z"/></svg></span>
+      <span class="gv-label">Play video tour</span>
+    </button>`;
+}
+function playInline(){
+  const x=galItem,gEl=document.getElementById("gallery");
+  if(!x||!x.video)return;
+  gEl.innerHTML=`<video class="gv-player" src="${esc(x.video.url)}" poster="${esc(x.video.poster)}" controls playsinline autoplay></video>`;
+  const v=gEl.querySelector("video");v.play().catch(()=>{});
+}
+// No photos and no video: say so plainly and offer the next step,
+// asking the lister for photos, or adding them when it's your own listing.
+function renderNoMedia(gEl){
+  const x=galItem, mine=window.ME_ID&&x.ownerId===window.ME_ID;
+  const who=x.role==="agent"?"agent":x.role==="caretaker"?"caretaker":"owner";
+  gEl.className="gallery gal-empty";
+  gEl.innerHTML=`<div class="ge-in">
+      <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 22 24 7l18 15"/><path d="M11 18v22h26V18"/><path d="M20 40V28h8v12"/></svg>
+      <b>No photos yet</b>
+      <span>${mine?"Listings with photos get far more attention. Add a few from your dashboard.":`The ${who} hasn't added photos for this listing yet.`}</span>
+      ${mine?`<a class="ge-btn" href="/dashboard?edit=${x.id}">Add photos</a>`
+        :`<button type="button" class="ge-btn" onclick="askPhotos(${x.id})">Ask for photos</button>`}
+    </div>`;
+}
+function askPhotos(id){
+  const x=BYID.get(id);if(!x)return;
+  openContact(id,`Hi! I saw your listing '${x.title}' in ${String(x.area).split(",")[0]} on PataHome. Could you share some photos of it?`);
 }
 // Booking.com-style grid: one big photo + up to four small ones. Tapping any
 // tile opens the full-screen zoom viewer at that photo.
@@ -1421,7 +1458,7 @@ function galStep(n){
   galIdx=(galIdx+n+len)%len;
   renderGallery();
 }
-async function openContact(id){
+async function openContact(id,ask){
   if(needListing(id,openContact))return;
   const x=BYID.get(id),c=CAT[x.cat];
   contactId=id;
@@ -1436,7 +1473,7 @@ async function openContact(id){
     document.getElementById("cPhone").textContent=r.ownerPhone;
     const digits=String(r.whatsapp||r.ownerPhone).replace(/\D/g,"");
     const intl=digits.startsWith("0")?"254"+digits.slice(1):digits;
-    document.getElementById("cWhatsApp").href="https://wa.me/"+intl+"?text="+encodeURIComponent("Hi! I found your listing '"+x.title+"' on PataHome. Is it still available?");
+    document.getElementById("cWhatsApp").href="https://wa.me/"+intl+"?text="+encodeURIComponent(typeof ask==="string"&&ask?ask:"Hi! I found your listing '"+x.title+"' on PataHome. Is it still available?");
     document.getElementById("cCall").href="tel:"+r.ownerPhone.replace(/\s/g,"");
   }catch(e){
     document.getElementById("cPhone").textContent="Couldn't load contact, try again";
@@ -1466,6 +1503,7 @@ async function paintAccount(){
     const r=await fetch("/api/auth/me",{headers:{Authorization:"Bearer "+tok}});
     if(!r.ok){localStorage.removeItem("pb_token");return}
     const me=await r.json();
+    window.ME_ID=me.id;
     const chip=document.getElementById("acctChip"),av=document.getElementById("acctAv");
     if(me.avatarUrl)av.innerHTML=`<img src="${esc(me.avatarUrl)}" alt="">`;
     else av.textContent=(me.name||"U").trim().split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase();
