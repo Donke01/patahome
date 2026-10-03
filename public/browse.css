@@ -492,3 +492,24 @@ html.dark .leaflet-popup-content-wrapper,html.dark .leaflet-popup-tip{background
   .card-body .price{order:9;margin-top:auto;padding:6px 50px 2px 0;font-size:1.06rem}
   .card-body .foot{display:none}
 }
+
+/* ---- listing page without photos (Oct 2026) ---- */
+/* video-only: the tour is the gallery */
+.gallery.gal-video{height:440px;background:#0E2A3B}
+.gal-video .gv-still{position:absolute;inset:0;width:100%;height:100%;padding:0;border:0;cursor:pointer;background:#0E2A3B;display:block}
+.gal-video .gv-still img{width:100%;height:100%;object-fit:cover;display:block;opacity:.92;transition:opacity .25s,transform .6s var(--ease)}
+.gal-video .gv-still:hover img{opacity:1;transform:scale(1.02)}
+.gal-video .gv-play{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:76px;height:76px;border-radius:50%;background:rgba(255,255,255,.96);color:#0E2A3B;display:grid;place-items:center;box-shadow:0 10px 28px rgba(0,0,0,.3);transition:transform .2s}
+.gal-video .gv-still:hover .gv-play{transform:translate(-50%,-50%) scale(1.06)}
+.gal-video .gv-play svg{width:26px;height:26px;margin-left:4px}
+.gal-video .gv-label{position:absolute;left:50%;top:calc(50% + 56px);transform:translateX(-50%);background:rgba(14,42,59,.82);color:#fff;font:600 .82rem var(--sans);padding:6px 14px;border-radius:var(--pill);white-space:nowrap}
+.gal-video .gv-player{width:100%;height:100%;display:block;background:#000;object-fit:contain}
+/* no photos, no video: a calm panel with a next step, not a coloured box */
+.gallery.gal-empty{height:auto;min-height:220px;display:grid;place-items:center;background:var(--surface-2);border:1px dashed var(--line-2)}
+.gal-empty .ge-in{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:30px 24px;max-width:380px}
+.gal-empty svg{width:46px;height:46px;color:var(--muted);margin-bottom:4px}
+.gal-empty b{font-family:var(--serif);font-weight:500;font-size:1.2rem;color:var(--heading)}
+.gal-empty span{font-size:.88rem;color:var(--muted);line-height:1.5}
+.gal-empty .ge-btn{margin-top:10px;display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 22px;border-radius:var(--pill);border:1px solid var(--heading);background:transparent;color:var(--heading);font:600 .88rem var(--sans);cursor:pointer;text-decoration:none;transition:background .2s,color .2s}
+.gal-empty .ge-btn:hover{background:var(--heading);color:var(--bg)}
+@media (max-width:900px){.gallery.gal-video{height:auto;aspect-ratio:16/10}.gallery.gal-empty{min-height:200px}}

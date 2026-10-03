@@ -773,6 +773,9 @@ async function refresh(){
   if(stats){renderStats(stats);if($("oWeek"))$("oWeek").textContent=stats.thisWeek}
   lastUpdated=Date.now();tickUpdated();
   renderTable();
+  // /dashboard?edit=ID (e.g. "Add photos" on a listing page) opens that listing's editor once
+  const editId=+new URLSearchParams(location.search).get("edit");
+  if(editId&&!window._editOpened&&myListings.some(x=>x.id===editId)){window._editOpened=1;history.replaceState(null,"",location.pathname);setTimeout(()=>{try{openEdit(editId)}catch(e){}},200)}
   renderHealth();
   renderInbox();
   renderPerfTable();
