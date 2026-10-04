@@ -34,7 +34,18 @@ globalThis.fetch = async (url, opts = {}) => {
 
 let server, base;
 const lastCode = (to) => { const m = [...mails].reverse().find(x => !to || x.to === to); return m && (m.subject.match(/\b(\d{6})\b/) || [])[1]; };
+// Every listing needs a photo or a video. Tests about other features get a default
+// photo; a test that sets `photos` or `video` itself (even empty) is left as written.
+const TEST_PHOTO = "patahome/listings/test_default";
+const hasMedia = (l) => l && ("photos" in l || "video" in l);
+function withMedia(method, p, body) {
+  if (method !== "POST" || !body) return body;
+  if (p === "/api/listings" && !hasMedia(body)) return { ...body, photos: [TEST_PHOTO] };
+  if (p === "/api/admin/assisted" && body.listing && !hasMedia(body.listing)) return { ...body, listing: { ...body.listing, photos: [TEST_PHOTO] } };
+  return body;
+}
 async function call(method, p, body, token, headers = {}) {
+  body = withMedia(method, p, body);
   const r = await fetch(base + p, { method, redirect: "manual",
     headers: { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}), ...headers },
     body: body ? JSON.stringify(body) : undefined });
@@ -532,4 +543,27 @@ test("photos: owners and the team can reorder so the best photo is the cover", a
   assert.equal(a.status, 200);
   assert.deepEqual(a.body.photos, [ids[3], ids[2], ids[0]]);
   assert.equal(a.body.photoCount, 3);
+});
+
+test("media: a listing can't be posted or left without a photo or a video", async () => {
+  const t = await owner("media@example.com");
+  await call("POST", "/api/account/change-phone", { phone: "0712000099" }, t);
+  const base = { category: "rent", title: "Bare flat", areaId: areaId("Ruaka"), price: 15000, bedrooms: 1, description: "Quiet compound near the stage." };
+  const none = await call("POST", "/api/listings", { ...base, photos: [] }, t);
+  assert.equal(none.status, 400);
+  assert.equal(none.body.code, "NO_MEDIA", JSON.stringify(none.body));
+  const vidOnly = await call("POST", "/api/listings", { ...base, title: "Video flat", photos: [], video: "patahome/videos/tour_1" }, t);
+  assert.equal(vidOnly.status, 201, "a video on its own is enough");
+  const r = await call("POST", "/api/listings", { ...base, title: "Photo flat", photos: ["patahome/listings/m_a", "patahome/listings/m_b"] }, t);
+  assert.equal(r.status, 201, JSON.stringify(r.body));
+  // removing the last media is refused, and nothing is changed
+  const strip = await call("PATCH", `/api/listings/${r.body.id}`, { photos: [], video: "" }, t);
+  assert.equal(strip.status, 400);
+  assert.equal(strip.body.code, "NO_MEDIA", JSON.stringify(strip.body));
+  assert.deepEqual((await call("GET", `/api/listings/${r.body.id}`)).body.photos, ["patahome/listings/m_a", "patahome/listings/m_b"]);
+  // dropping one photo, or swapping photos for a video, is fine
+  assert.equal((await call("PATCH", `/api/listings/${r.body.id}`, { photos: ["patahome/listings/m_b"] }, t)).status, 200);
+  assert.equal((await call("PATCH", `/api/listings/${vidOnly.body.id}`, { video: "" }, t)).status, 400, "can't remove a video-only listing's video");
+  // edits that don't touch media still work on any listing
+  assert.equal((await call("PATCH", `/api/listings/${vidOnly.body.id}`, { price: 15500 }, t)).status, 200);
 });

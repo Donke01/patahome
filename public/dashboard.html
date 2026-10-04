@@ -259,6 +259,7 @@
     <textarea id="eDesc" rows="4" oninput="descCount()" placeholder="What makes it good? e.g. Water 24/7, quiet compound, 5 min walk to the stage, tiled floors, big windows. Mention anything tenants should know (rules, move-in date)."></textarea>
     <div id="photoWrap" style="display:none">
       <label>Photos <span id="photoCount" style="font-weight:400;text-transform:none;letter-spacing:0"></span></label>
+      <div class="photo-note" style="margin:-2px 0 8px">Add at least one photo, or a video below. Listings without either can't be published.</div>
       <div class="ph-tools" id="phTools" hidden><span>Drag photos to reorder (on a phone, press and hold first). The first photo is the cover.</span><button type="button" class="btn btn-ghost btn-sm" id="phBest" onclick="bestCover()">✨ Choose best cover</button></div>
       <div class="photo-grid" id="photoGrid"></div>
       <div class="up-prog" id="upProg" aria-live="polite"><div class="up-bar"><i id="upBar"></i></div><span id="upPct">0%</span></div>
@@ -430,7 +431,7 @@
       </div>
     </details>
     <div id="videoWrap" style="display:none">
-      <label>Video walkthrough <small style="text-transform:none;letter-spacing:0;font-weight:500">(optional · up to 90 seconds)</small></label>
+      <label>Video walkthrough <small style="text-transform:none;letter-spacing:0;font-weight:500">(optional if you added photos · up to 90 seconds)</small></label>
       <div id="videoBox"></div>
       <input type="file" id="videoFile" accept="video/mp4,video/quicktime,video/webm,video/3gpp" style="display:none" onchange="uploadVideo(this.files[0]);this.value=''">
     </div>
@@ -1566,6 +1567,10 @@ async function saveListing(){
   if(isLand&&!(lister.sizeValue>0)){$("emErr").textContent="Enter the land size";return}
   if(isComm&&lister.priceBasis==="sqft_month"&&!(lister.sizeValue>0)){$("emErr").textContent="Enter the floor area to quote a price per sq ft";return}
   if(videoUp){$("emErr").textContent="Wait for the video to finish uploading…";return}
+  if(signCfg&&!photoIds.length&&!videoId){
+    $("emErr").textContent="Add at least one photo or a video. Listings people can see get far more calls.";
+    try{$("photoWrap").scrollIntoView({behavior:"smooth",block:"center"})}catch(e){}
+    return}
   if(listerRole==="agent"&&!lister.agentFee){$("emErr").textContent="State your fee to the tenant, or choose “No fee to tenant”";return}
   if($("eDesc").value.trim().length<DESC_MIN){$("emErr").textContent=`Add a short description (at least ${DESC_MIN} characters). Listings with a description get far more calls.`;$("eDesc").focus();return}
   setSaveBusy(editId==null?"Publishing…":"Saving…");
