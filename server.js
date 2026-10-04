@@ -63,6 +63,9 @@ const CLD = {
   maxPhotos: 60
 };
 const cldEnabled = () => !!(CLD.cloud && CLD.key && CLD.secret);
+// Every listing needs at least one photo or a video (only when uploads are possible at all).
+const NO_MEDIA_ERROR = "Add at least one photo or a video so people can see the place";
+const mediaRequired = () => cldEnabled();
 // Cloudinary signature: sha1 of sorted params + api_secret
 function cldSign(params) {
   const str = Object.keys(params).sort().map(k => `${k}=${params[k]}`).join("&");
@@ -1078,6 +1081,7 @@ function createListingFor(ownerId, body, res, extra) {
   }
   const video = req.body.video ? String(req.body.video) : "";
   if (video && !validVideoId(video)) return send(res, 400, { error: "Invalid video" });
+  if (mediaRequired() && !(photos && photos.length) && !video) return send(res, 400, { error: NO_MEDIA_ERROR, code: "NO_MEDIA" });
   const info = db.prepare(`INSERT INTO listings (owner_id,category,title,description,area_id,price,bedrooms,lat,lng,photos,lister_role,agent_fee,features,video)
     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
     .run(u.id, category, title.trim(), description || "", areaId, +price,
@@ -1444,6 +1448,13 @@ router.add("PATCH", "/api/listings/:id", (req, res, p) => {
   if (!row) return send(res, 404, { error: "Listing not found" });
   if (row.owner_id !== u.id && !can(u, "moderate")) return send(res, 403, { error: "Not your listing" });
   const body = req.body || {};
+  // An edit may not take away the last photo/video. Checked before anything is
+  // deleted from Cloudinary below, so a refused edit loses nothing.
+  if (mediaRequired() && (body.photos !== undefined || body.video !== undefined)) {
+    const nextPhotos = body.photos !== undefined ? (Array.isArray(body.photos) ? body.photos : []) : parsePhotos(row.photos);
+    const nextVideo = body.video !== undefined ? String(body.video || "") : (row.video || "");
+    if (!nextPhotos.length && !nextVideo) return send(res, 400, { error: "Keep at least one photo or a video on the listing", code: "NO_MEDIA" });
+  }
   if (row.owner_id !== u.id) auditOnSuccess(req, res, u, "owner_edit_as_admin", "listing", row.id, Object.keys(body).join(","));
   const allowed = ["title", "description", "price", "bedrooms"];
   const sets = [], params = [];

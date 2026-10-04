@@ -145,6 +145,7 @@
     const body = { owner: { name: $("asOName").value.trim(), phone: $("asOPhone").value.trim(), email: $("asOEmail").value.trim(), whatsapp: $("asOWa").value.trim() },
       consent: { how: $("asHow").value, note: $("asNote").value.trim() }, textOwner: $("asTell").checked,
       contact: ct.contact, relaySms: ct.relaySms, relayCopy: ct.relayCopy, listing };
+    if (uploading) return toast("Wait for the photos to finish uploading");
     const btn = $("asSave"); btn.disabled = true; btn.textContent = "Publishing…";
     try {
       const r = await api("/api/admin/assisted", { method: "POST", body: JSON.stringify(body) });
