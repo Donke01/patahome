@@ -137,6 +137,16 @@ body.ph .lang-btn span.on{background:var(--primary)!important;color:var(--on-pri
 .np-help a,.np-help button{display:flex;align-items:center;justify-content:center;gap:7px;height:42px;border-radius:var(--pill);border:1px solid var(--line);background:var(--surface);color:var(--ink);font:600 .82rem var(--sans);cursor:pointer}
 .np-help a:hover,.np-help button:hover{border-color:var(--line-2)}
 .nav-pop :focus-visible{outline:2px solid var(--link);outline-offset:2px}
+/* coloured icons: each link has its own colour on a soft tile of the same colour */
+.nav-pop{--ic-teal:#0E7C86;--ic-blue:#2563EB;--ic-purple:#7C3AED;--ic-coral:#D9512F;--ic-navy:#014B6A;--ic-gold:#A87A2A;--ic-green:#2F855A;--ic-slate:#5B6B7F;--ic-indigo:#4F46E5;--ic-wa:#1FA855}
+html.dark .nav-pop{--ic-teal:#4FC3C9;--ic-blue:#7AA7FF;--ic-purple:#B39BFF;--ic-coral:#FF8A6B;--ic-navy:#8FC3DA;--ic-gold:#E0C283;--ic-green:#6BCB94;--ic-slate:#A9B6C4;--ic-indigo:#9C97FF;--ic-wa:#4AD27F}
+.nav-pop .ic-teal{--c:var(--ic-teal)}.nav-pop .ic-blue{--c:var(--ic-blue)}.nav-pop .ic-purple{--c:var(--ic-purple)}.nav-pop .ic-coral{--c:var(--ic-coral)}.nav-pop .ic-navy{--c:var(--ic-navy)}
+.nav-pop .ic-gold{--c:var(--ic-gold)}.nav-pop .ic-green{--c:var(--ic-green)}.nav-pop .ic-slate{--c:var(--ic-slate)}.nav-pop .ic-indigo{--c:var(--ic-indigo)}.nav-pop .ic-wa{--c:var(--ic-wa)}
+.nav-pop [class*="ic-"] svg{color:var(--c)}
+.np-col a svg,.np-row svg{box-sizing:content-box;width:18px;height:18px;padding:6px;border-radius:9px;background:color-mix(in srgb,var(--c,var(--link)) 13%,transparent)}
+html.dark .np-col a svg,html.dark .np-row svg{background:color-mix(in srgb,var(--c,var(--link)) 18%,transparent)}
+.np-col a{padding:5px 0;gap:10px}
+.np-row{padding:9px 0}
 
 /* ---------- hero ---------- */
 .ph-hero{padding:56px 0 80px}
