@@ -11,6 +11,12 @@
     "Home": "Nyumbani", "Browse": "Tafuta", "Post": "Tangaza", "Account": "Akaunti",
     "Browse all listings": "Tazama nyumba zote", "My messages & viewings": "Jumbe na ziara zangu",
     "Houses for rent": "Nyumba za kupanga", "Homes for sale": "Nyumba zinazouzwa",
+    "2+ Bedrooms": "Vyumba 2+", "All rentals": "Nyumba zote za kupanga", "Homes": "Nyumba", "By area": "Kwa eneo",
+    "All listings": "Nyumba zote", "Have a property to let?": "Una nyumba ya kupangisha?",
+    "Listing is free. Tenants contact you directly.": "Kutangaza ni bure. Wapangaji wanawasiliana nawe moja kwa moja.",
+    "Post a listing": "Tangaza nyumba", "Messages & viewings": "Jumbe na ziara", "My account": "Akaunti yangu",
+    "Dark mode": "Hali ya giza", "Light mode": "Hali ya mwanga", "Chat": "Gumzo",
+    "Open menu": "Fungua menyu", "Close menu": "Funga menyu",
     // hero + search
     "Kenya's home of direct owner deals": "Mahali pa mikataba moja kwa moja na wamiliki",
     "Across all 47 counties": "Katika kaunti zote 47",
