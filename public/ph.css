@@ -86,21 +86,57 @@ html.dark .ph-logo img{filter:brightness(0) invert(1) opacity(.92)}
 .acct-av{width:32px;height:32px;border-radius:50%;background:var(--accent-soft);color:var(--on-accent-soft);display:grid;place-items:center;font:500 .8rem var(--serif);overflow:hidden}
 .acct-av img{width:100%;height:100%;object-fit:cover}
 .acct-name{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ph-menu-btn{display:grid}
+.np-label{font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);font-weight:600;padding:12px 12px 6px}
 /* language toggle injected by i18n.js */
 body.ph .lang-btn{background:var(--surface)!important;border:1px solid var(--line)!important;height:42px;padding:4px!important}
 body.ph .lang-btn span{color:var(--muted)!important;padding:6px 8px!important}
 body.ph .lang-btn span.on{background:var(--primary)!important;color:var(--on-primary)!important}
 
-/* menu drawer */
-.nav-pop{position:absolute;right:32px;top:calc(100% + 8px);width:300px;max-height:calc(100vh - 110px);overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow-lg);padding:10px;display:none;z-index:60}
+/* menu button: one pill with the menu icon and the account avatar (initials once signed in) */
+.ph-menu-pill{display:flex;align-items:center;gap:8px;height:44px;padding:0 5px 0 13px;border:1px solid var(--line);border-radius:var(--pill);background:var(--surface);color:var(--heading);cursor:pointer;flex-shrink:0;box-shadow:0 1px 2px rgba(14,42,59,.05);transition:box-shadow .2s,background .2s,border-color .2s,color .2s}
+.ph-menu-pill:hover{box-shadow:var(--shadow)}
+.mp-ic{position:relative;width:18px;height:18px}
+.mp-ic svg{position:absolute;inset:0;width:18px;height:18px;transition:opacity .15s,transform .2s var(--ease)}
+.mp-close{opacity:0;transform:rotate(-45deg)}
+.mp-av{width:32px;height:32px;border-radius:50%;background:var(--surface-2);color:var(--muted);display:grid;place-items:center;font:600 .78rem var(--sans);overflow:hidden;letter-spacing:.02em}
+.mp-av svg{width:18px;height:18px}
+.mp-av.in{background:var(--accent);color:#fff}
+.mp-av img{width:100%;height:100%;object-fit:cover}
+.ph-menu-pill[aria-expanded="true"]{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
+.ph-menu-pill[aria-expanded="true"] .mp-open{opacity:0;transform:rotate(45deg)}
+.ph-menu-pill[aria-expanded="true"] .mp-close{opacity:1;transform:none}
+.ph-menu-pill[aria-expanded="true"] .mp-av:not(.in){background:rgba(255,255,255,.14);color:inherit}
+/* the avatar lives in the menu pill now */
+.acct-chip{display:none!important}
+
+/* menu: floating card under the pill, page dimmed behind it */
+.nav-dim{position:fixed;inset:0;background:rgba(14,42,59,.38);z-index:49;opacity:0;pointer-events:none;transition:opacity .2s}
+.nav-dim.show{opacity:1;pointer-events:auto}
+.nav-pop{position:absolute;right:32px;top:calc(100% + 6px);width:372px;max-height:calc(100vh - 100px);max-height:calc(100dvh - 100px);overflow:auto;overscroll-behavior:contain;background:var(--bg);border:1px solid var(--line);border-radius:26px;box-shadow:0 24px 60px rgba(14,42,59,.28);padding:12px;display:none;z-index:60}
 .nav-pop.show{display:block;animation:phPop .22s var(--ease)}
-@keyframes phPop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
-.np-label{font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);font-weight:600;padding:12px 12px 6px}
-.np-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:var(--r-sm);font-size:.92rem;color:var(--ink);border:0;background:none;width:100%;text-align:left;cursor:pointer}
-.np-item:hover{background:var(--surface-2)}
-.np-item svg{width:18px;height:18px;color:var(--link);flex-shrink:0}
-.np-sep{height:1px;background:var(--line);margin:8px 6px}
+@keyframes phPop{from{opacity:0;transform:translateY(-6px) scale(.98)}to{opacity:1;transform:none}}
+.np-cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.np-card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:12px 14px}
+.np-h{font:400 1.12rem var(--serif);color:var(--heading);margin:2px 0 4px}
+.np-col a{display:flex;align-items:center;gap:9px;padding:7px 0;font-size:.9rem;color:var(--ink);border-radius:8px}
+.np-col a:hover{color:var(--link)}
+.nav-pop svg{width:17px;height:17px;color:var(--link);flex-shrink:0}
+.np-own{background:var(--accent-soft);border-radius:18px;padding:16px 16px 14px;margin:10px 0}
+.np-own-t{font:400 1.06rem var(--serif);color:var(--heading)}
+.np-own-s{font-size:.78rem;color:var(--on-accent-soft);margin:2px 0 12px}
+.np-cta{display:flex;align-items:center;justify-content:center;gap:8px;height:44px;border-radius:var(--pill);background:var(--primary);color:var(--on-primary);font-weight:600;font-size:.9rem}
+.np-cta:hover{background:var(--primary-hover)}
+.nav-pop .np-cta svg{color:inherit;width:16px;height:16px}
+.np-you{padding:2px 14px}
+.np-row{display:flex;align-items:center;gap:12px;width:100%;padding:12px 0;border:0;border-top:1px solid var(--line);background:none;font:inherit;font-size:.92rem;color:var(--ink);text-align:left;cursor:pointer}
+.np-row:first-child{border-top:0}
+.np-row span{flex:1}
+.np-row:hover span{color:var(--link)}
+.np-chev{width:7px;height:7px;border-right:1.6px solid var(--muted);border-top:1.6px solid var(--muted);transform:rotate(45deg);margin-right:4px}
+.np-help{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.np-help a,.np-help button{display:flex;align-items:center;justify-content:center;gap:7px;height:42px;border-radius:var(--pill);border:1px solid var(--line);background:var(--surface);color:var(--ink);font:600 .82rem var(--sans);cursor:pointer}
+.np-help a:hover,.np-help button:hover{border-color:var(--line-2)}
+.nav-pop :focus-visible{outline:2px solid var(--link);outline-offset:2px}
 
 /* ---------- hero ---------- */
 .ph-hero{padding:56px 0 80px}
@@ -306,6 +342,7 @@ html.dark body.ph ::-webkit-scrollbar-thumb{background:var(--line-2);border-radi
   .acct-chip{padding:3px}
   .ph-logo img{height:38px}
   .nav-pop{right:12px;left:12px;width:auto}
+  .ph-menu-pill{padding-left:12px}
   .ph-hero{padding:20px 0 48px}
   .ph-hero-grid{grid-template-columns:1fr;gap:28px}
   .ph-hero-photo{order:-1;aspect-ratio:16/11}
@@ -360,7 +397,7 @@ body.page-home main{padding-top:0}
 .ph-header.over .ph-logo img{filter:brightness(0) invert(1)}
 .ph-header.over .ph-nav a,.ph-header.over .ph-signin{color:rgba(255,255,255,.88)}
 .ph-header.over .ph-nav a:hover,.ph-header.over .ph-signin:hover{color:#fff}
-.ph-header.over .ph-icon-btn,.ph-header.over .ph-btn-line,.ph-header.over .acct-chip{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.35);color:#fff;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.ph-header.over .ph-icon-btn,.ph-header.over .ph-btn-line,.ph-header.over .acct-chip,.ph-header.over .ph-menu-pill:not([aria-expanded="true"]){background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.35);color:#fff;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 .ph-header.over .ph-btn-line:hover,.ph-header.over .ph-icon-btn:hover{border-color:#fff}
 .ph-header.over .lang-btn{background:rgba(255,255,255,.12)!important;border-color:rgba(255,255,255,.35)!important}
 .ph-header.over .lang-btn span{color:rgba(255,255,255,.8)!important}
