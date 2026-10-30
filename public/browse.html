@@ -476,8 +476,10 @@ function timeAgo(iso){
 }
 
 /* ================= DATA LOADING ================= */
+/* "Westlands, Nairobi" + county "Nairobi" reads "Westlands, Nairobi", not "…, Nairobi, Nairobi" */
+const placeOf=(a,c)=>{a=String(a||"");return !c||a.split(",").pop().trim().toLowerCase()===String(c).toLowerCase()?a:a+", "+c};
 const toItem=x=>({
-  id:x.id,cat:x.category,title:x.title,desc:x.description,area:x.area+", "+x.county,
+  id:x.id,cat:x.category,title:x.title,desc:x.description,area:x.area+", "+x.county,place:placeOf(x.area,x.county),
   price:x.price,beds:x.bedrooms,lat:x.lat,lng:x.lng,
   posted:timeAgo(x.createdAt),owner:x.ownerName,ownerId:x.ownerId,verified:x.ownerVerified,
   role:x.listerRole||"owner",fee:x.agentFee||"",
@@ -718,7 +720,7 @@ async function renderSugg(){
     const th=x.cover?`<img src="${esc(cropUrl(x.cover,120,120))}" alt="">`:ICONS[c.gal[0]];
     return `<div class="sg" onmousedown="event.preventDefault()" onclick="pickSugg(${x.id})">
       <span class="sg-th" style="background:${c.grad}">${th}</span>
-      <span class="sg-main"><span class="sg-t">${esc(x.title)}</span><span class="sg-s">${esc(x.area)} · ${c.label}</span></span>
+      <span class="sg-main"><span class="sg-t">${esc(x.title)}</span><span class="sg-s">${esc(x.place)} · ${c.label}</span></span>
       <span class="sg-p">${fmt(x.price)}${c.unit?`<small>${c.unit}</small>`:""}</span>
     </div>`;
   }).join("")+
@@ -974,7 +976,7 @@ function cardHTML(x,i){
         <div class="kicker">${esc(catLabel(x))}</div>
         <div class="price">${priceHTML(x)}</div>
         <div class="title">${esc(cleanTitle(x))}</div>
-        <div class="where">${PIN}<span>${esc(x.area)}</span></div>
+        <div class="where">${PIN}<span>${esc(x.place)}</span></div>
         ${facts.length?`<div class="facts">${facts.map(v=>`<span>${esc(v)}</span>`).join("")}</div>`:""}
         <div class="foot"><span class="listing-trust ${t.cls}">${esc(t.txt)}</span><span>${esc(x.posted)}</span></div>
       </div>
@@ -1051,7 +1053,7 @@ function renderMarkers(list){
   list.forEach(x=>{
     const c=CAT[x.cat];
     const m=L.marker([x.lat,x.lng]).addTo(map)
-      .bindPopup(`<b>${esc(x.title)}</b><br>${esc(priceTxt(x))}<br>${esc(x.area)}<br><a href="#" onclick="openContact(${x.id});return false">Contact owner</a>`);
+      .bindPopup(`<b>${esc(x.title)}</b><br>${esc(priceTxt(x))}<br>${esc(x.place)}<br><a href="#" onclick="openContact(${x.id});return false">Contact owner</a>`);
     markers.push(m);
   });
 }
@@ -1087,10 +1089,10 @@ function openDetail(id){
   document.getElementById("dRef").textContent="Ref "+x.ref;
   const d=userLoc?dist(userLoc[0],userLoc[1],x.lat,x.lng):null;
   const dTxt=d!==null?(d<1?Math.round(d*1000)+" m":d.toFixed(1)+" km")+" from you":"";
-  document.getElementById("dSub").textContent=priceTxt(x)+" · "+x.area+(dTxt?" · "+dTxt:"")+" · posted "+x.posted;
+  document.getElementById("dSub").textContent=priceTxt(x)+" · "+x.place+(dTxt?" · "+dTxt:"")+" · posted "+x.posted;
   document.getElementById("dCat").textContent=catLabel(x);
   document.getElementById("dCat").className="dm-cat "+c.badge;
-  document.getElementById("dPlace").textContent=x.area+(dTxt?" · "+dTxt:"");
+  document.getElementById("dPlace").textContent=x.place+(dTxt?" · "+dTxt:"");
   document.getElementById("dMapLink").onclick=()=>focusOnMap(id);
   document.getElementById("dPrice").innerHTML=priceHTML(x);
   document.getElementById("dPriceSide").innerHTML=priceHTML(x);
@@ -1246,7 +1248,7 @@ async function shareListing(id){
   const x=BYID.get(id);if(!x)return;
   const c=CAT[x.cat];
   const url=`${location.origin}/listing/${x.id}/${x.title.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")}`;
-  const text=`${x.title}: ${priceTxt(x)} in ${x.area}. On PataHome:`;
+  const text=`${x.title}: ${priceTxt(x)} in ${x.place}. On PataHome:`;
   track(id,"share");
   if(navigator.share){try{await navigator.share({title:x.title,text,url});return}catch(e){if(e&&e.name==="AbortError")return}}
   window.open("https://wa.me/?text="+encodeURIComponent(text+" "+url),"_blank","noopener");
@@ -1263,7 +1265,7 @@ let viewId=null,vwDay=null,vwTime=null;
 function openViewing(id){
   viewId=id;vwDay=null;vwTime=null;
   const x=BYID.get(id);
-  document.getElementById("vwSub").textContent=x?`${x.title} · ${x.area}`:"";
+  document.getElementById("vwSub").textContent=x?`${x.title} · ${x.place}`:"";
   const days=[];for(let i=0;i<14;i++){const d=new Date(Date.now()+i*864e5);days.push(d)}
   document.getElementById("vwDays").innerHTML=days.map((d,i)=>{const iso=d.toLocaleDateString("en-CA",{timeZone:"Africa/Nairobi"});
     return `<button type="button" data-d="${iso}" onclick="pickDay('${iso}')"><small>${i===0?"Today":i===1?"Tomorrow":d.toLocaleDateString("en-KE",{weekday:"short",timeZone:"Africa/Nairobi"})}</small><b>${d.toLocaleDateString("en-KE",{day:"numeric",timeZone:"Africa/Nairobi"})}</b><small>${d.toLocaleDateString("en-KE",{month:"short",timeZone:"Africa/Nairobi"})}</small></button>`}).join("");
@@ -1463,7 +1465,7 @@ async function openContact(id,ask){
   const x=BYID.get(id),c=CAT[x.cat];
   contactId=id;
   document.getElementById("cTitle").textContent=x.title;
-  document.getElementById("cSub").textContent=priceTxt(x)+" · "+x.area;
+  document.getElementById("cSub").textContent=priceTxt(x)+" · "+x.place;
   document.getElementById("cAvatar").textContent=x.owner[0]||"?";
   document.getElementById("cOwner").textContent=x.owner;
   document.getElementById("cPhone").textContent="Loading…";

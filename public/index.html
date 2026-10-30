@@ -246,8 +246,10 @@ const inBrowser=typeof requestAnimationFrame==="function";
 const reduceMotion=typeof matchMedia==="function"&&matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /* ================= DATA ================= */
+/* "Westlands, Nairobi" + county "Nairobi" reads "Westlands, Nairobi", not "…, Nairobi, Nairobi" */
+const placeOf=(a,c)=>{a=String(a||"");return !c||a.split(",").pop().trim().toLowerCase()===String(c).toLowerCase()?a:a+", "+c};
 const toHome=x=>({
-    id:x.id,cat:x.category,title:x.title,area:x.area+", "+x.county,
+    id:x.id,cat:x.category,title:x.title,area:x.area+", "+x.county,place:placeOf(x.area,x.county),
     price:x.price,beds:x.bedrooms,posted:x.createdAt,featured:!!x.featured,
     owner:x.ownerName,verified:x.ownerVerified,role:x.listerRole||"owner",
     photos:x.photoUrls||[],photoCount:x.photoCount||(x.photoUrls||[]).length,
@@ -360,7 +362,7 @@ async function renderSugg(){
   let r;
   try{r=await api("/api/search?"+new URLSearchParams({q,cat,perPage:5}))}catch(e){return}
   if(seq!==suggSeq||document.getElementById("searchInput").value.trim()!==q)return;
-  const matches=r.listings.filter(x=>CAT[x.category]).map(x=>({id:x.id,cat:x.category,title:x.title,area:x.area+", "+x.county,price:x.price,beds:x.bedrooms,features:x.features||{},cover:x.cover||((x.photoUrls||[])[0]||{}).thumb||"",photos:x.photoUrls||[],photoCount:x.photoCount||(x.photoUrls||[]).length,landDeal:x.landDeal,priceBasis:x.priceBasis,pricePerAcre:x.pricePerAcre,sizeAcres:x.sizeAcres,deal:x.deal,commType:x.commType,areaSqft:x.areaSqft,pricePerSqft:x.pricePerSqft,incomeMonth:x.incomeMonth}));
+  const matches=r.listings.filter(x=>CAT[x.category]).map(x=>({id:x.id,cat:x.category,title:x.title,area:x.area+", "+x.county,place:placeOf(x.area,x.county),price:x.price,beds:x.bedrooms,features:x.features||{},cover:x.cover||((x.photoUrls||[])[0]||{}).thumb||"",photos:x.photoUrls||[],photoCount:x.photoCount||(x.photoUrls||[]).length,landDeal:x.landDeal,priceBasis:x.priceBasis,pricePerAcre:x.pricePerAcre,sizeAcres:x.sizeAcres,deal:x.deal,commType:x.commType,areaSqft:x.areaSqft,pricePerSqft:x.pricePerSqft,incomeMonth:x.incomeMonth}));
   if(!matches.length){
     box.innerHTML=`<div class="sg-none">No matches yet, try other keywords, e.g. “bedsitter Kasarani” or “2br under 20k”</div>`;
     box.classList.add("show");return;
@@ -370,7 +372,7 @@ async function renderSugg(){
     const th=x.cover?`<img src="${esc(crop(x.cover,120,120))}" alt="">`:ICONS[c.icon];
     return `<div class="sg" onmousedown="event.preventDefault()" onclick="pickSugg(${x.id})">
       <span class="sg-th" style="background:${c.tint}">${th}</span>
-      <span class="sg-main"><span class="sg-t">${esc(cleanTitle(x))}</span><span class="sg-s">${esc(x.area)} · ${esc(catLabel(x))}</span></span>
+      <span class="sg-main"><span class="sg-t">${esc(cleanTitle(x))}</span><span class="sg-s">${esc(x.place)} · ${esc(catLabel(x))}</span></span>
       <span class="sg-p">${priceHTML(x)}</span>
     </div>`;
   }).join("")+`<div class="sg all" onmousedown="event.preventDefault()" onclick="closeSugg();doSearch()">See all ${r.total} result${r.total===1?"":"s"} →</div>`;
@@ -416,7 +418,7 @@ function renderLatest(){
         <button class="fav${favs.has(x.id)?" on":""}" type="button" aria-label="Save" aria-pressed="${favs.has(x.id)}" onclick="toggleFav(event,${x.id})">${HEART}</button>
         ${!n&&x.video?`<span class="play" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 4.5l13 7.5-13 7.5z"/></svg></span>`:""}
         <div class="sheet-info">
-          <div class="where">${esc(x.area)}</div>
+          <div class="where">${esc(x.place)}</div>
           <h3>${esc(cleanTitle(x))}</h3>
           <div class="row"><div class="price">${priceHTML(x)}</div><div class="chips">${chips.map(t=>`<span>${esc(t)}</span>`).join("")}${!n&&x.video?`<span>Video</span>`:n>1?`<span>${n} photos</span>`:""}</div></div>
           <div class="who">${who}</div>

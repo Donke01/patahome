@@ -3473,7 +3473,7 @@ ${noindex ? '<meta name="robots" content="noindex">' : ""}
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="preconnect" href="https://res.cloudinary.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/ph.css?v=18">
-<link rel="stylesheet" href="/page.css?v=1">
+<link rel="stylesheet" href="/page.css?v=2">
 <script>try{navigator.sendBeacon("/api/pv",new Blob([JSON.stringify({path:location.pathname,ref:document.referrer})],{type:"application/json"}))}catch(e){}</script>
 ${jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd).replace(/</g, "\\u003c")}</script>` : ""}
 </head>
@@ -3482,19 +3482,41 @@ ${jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd).replace(
 <script>try{history.scrollRestoration="manual";if(!location.hash){scrollTo(0,0);addEventListener("load",function(){scrollTo(0,0)})}}catch(e){}</script>
 <header class="ph-header"><div class="ph-wrap ph-hd"><a class="ph-logo" href="/" aria-label="PataHome home"><img src="/patahome-logo-transparent.png?v=20260921-2" alt="PataHome" width="110" height="46"></a>
 <nav class="ph-nav" aria-label="Main"><a href="/browse?cat=rent">Rent</a><a href="/browse?cat=sale">Buy</a><a href="/browse?cat=shortlet">Airbnb</a><a href="/browse?cat=land">Land</a><a href="/browse?cat=commercial">Commercial</a></nav>
-<div class="header-actions"><a class="ph-btn ph-btn-line ph-btn-sm" href="/browse">Browse homes</a></div></div></header>
+<div class="header-actions"><a class="ph-btn ph-btn-line ph-btn-sm sub-browse" href="/browse">Browse homes</a></div></div></header>
 <main class="sub-main${wide ? " wide" : ""}">${bodyHtml}</main>
 <footer class="sub-foot"><b>PataHome</b> · Homes, land and shops across Kenya<br><a href="/browse">Browse</a><a href="/areas">Areas</a><a href="/dashboard">List a property</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a></footer>
 </body>
 </html>`;
 }
 
-function areaLinksHtml() {
+// "Westlands, Nairobi" in Nairobi county → "Westlands"; "Milimani, Kitale" keeps its town.
+const shortArea = (a) => a.name.replace(new RegExp(`,\\s*${a.county.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i"), "");
+
+// Footer links on listing + area pages: the same kind of home in other areas of that county, plus the full directory.
+function areaLinksHtml(county, catSlug, exceptId) {
+  const areas = db.prepare("SELECT * FROM areas WHERE county=? AND id!=? ORDER BY name LIMIT 16").all(county, exceptId || 0);
+  return `<div class="links">${areas.length ? `<strong>${escapeHtml(CATS[catSlug].label)} elsewhere in ${escapeHtml(county)}:</strong><br>` +
+    areas.map((a) => `<a href="/${catSlug}/${slugify(a.name)}">${escapeHtml(shortArea(a))}</a>`).join(" ") + "<br>" : ""}` +
+    `<a class="all" href="/areas">All areas in Kenya →</a></div>`;
+}
+
+// /areas: every area grouped by county, each with rent / buy / Airbnb links and live counts.
+function areaDirectoryHtml() {
   const areas = db.prepare("SELECT * FROM areas ORDER BY county, name").all();
-  return `<div class="links"><strong>Browse by area:</strong><br>` +
-    Object.keys(CATS).filter(cs => !DEAL_CATS.has(CATS[cs].db)).map((cs) =>
-      areas.map((a) => `<a href="/${cs}/${slugify(a.name)}">${escapeHtml(CATS[cs].label.split(" ")[0])} ${escapeHtml(a.name)}</a>`).join(" ")
-    ).join("<br>") + `</div>`;
+  const counts = {};
+  for (const r of db.prepare("SELECT area_id, category, COUNT(*) n FROM listings WHERE status='active' GROUP BY area_id, category").all())
+    (counts[r.area_id] ||= {})[r.category] = r.n;
+  const kinds = [["rentals", "rent", "Rent"], ["for-sale", "sale", "Buy"], ["short-stays", "shortlet", "Airbnb"]];
+  const byCounty = {};
+  for (const a of areas) (byCounty[a.county] ||= []).push(a);
+  return `<div class="adir">` + Object.entries(byCounty).map(([county, list]) => {
+    const total = list.reduce((t, a) => t + Object.values(counts[a.id] || {}).reduce((x, y) => x + y, 0), 0);
+    return `<section class="adir-c"><h2>${escapeHtml(county)}${total ? ` <small>${total} listing${total === 1 ? "" : "s"}</small>` : ""}</h2><ul>` +
+      list.map((a) => `<li><span>${escapeHtml(shortArea(a))}</span><span class="adir-k">` +
+        kinds.map(([slug, cat, label]) => { const n = (counts[a.id] || {})[cat] || 0;
+          return `<a href="/${slug}/${slugify(a.name)}"${n ? ` class="has"` : ""}>${label}${n ? ` <b>${n}</b>` : ""}</a>`; }).join("") +
+        `</span></li>`).join("") + `</ul></section>`;
+  }).join("") + `</div>`;
 }
 
 function sendHtml(res, code, html) {
@@ -3534,7 +3556,6 @@ function listingPage(req, res, p) {
     : `${fmtKes(row.price)}${unit} · ${row.bedrooms != null ? (row.bedrooms === 0 ? "Bedsitter" : row.bedrooms + " bedroom") + " · " : ""}${row.area_name}`;
   const F = parseJson(row.features, {});
   const kv = [
-    ["Price", priceText(row)],
     [isLand ? "Size" : "Bedrooms", isLand ? landSize : row.bedrooms == null ? "" : row.bedrooms === 0 ? "Bedsitter" : row.bedrooms + " bedroom" + (row.bedrooms === 1 ? "" : "s")],
     ["Area", `${row.area_name}, ${row.county} County`],
     ["Photos", photos.length ? String(photos.length) : ""],
@@ -3555,7 +3576,7 @@ function listingPage(req, res, p) {
     ${isLand ? `<div class="safe"><b>Before paying anything:</b> ${row.category === "commercial" && row.land_deal === "lease" ? "view the premises and confirm the landlord owns or manages it" : "do an official search on Ardhisasa and visit the property with the owner"}.</div>` : `<div class="safe"><b>Never pay before viewing.</b> PataHome never asks for money.</div>`}
     <div class="ctarow"><a class="cta" href="/browse?open=${row.id}">See all photos &amp; contact the ${row.lister_role === "agent" ? "agent" : row.lister_role === "caretaker" ? "caretaker" : "owner"}</a></div>
     <p style="text-align:center"><a href="/${catSlug}/${slugify(row.area_name)}">More ${escapeHtml(CATS[catSlug].label.toLowerCase())} in ${escapeHtml(row.area_name)} →</a></p>
-    ${areaLinksHtml()}`;
+    ${areaLinksHtml(row.county, catSlug, row.area_id)}`;
   const crumbsLd = { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: [
     { "@type": "ListItem", position: 1, name: "Home", item: `${BASE_URL}/` },
     { "@type": "ListItem", position: 2, name: `${CATS[catSlug].label} in ${row.area_name}`, item: `${BASE_URL}/${catSlug}/${slugify(row.area_name)}` },
@@ -3608,8 +3629,7 @@ function landingPage(req, res, p) {
         <div class="meta">📍 ${escapeHtml(r.area_name)}${r.bedrooms != null ? ` · 🛏 ${r.bedrooms === 0 ? "Bedsitter" : r.bedrooms + " BR"}` : ""}${(r.lister_role || "owner") === "owner" ? " · Direct owner" : " · Agent"}</div></div></a>`;
     }).join("")}</div>` : `<div class="card">No ${escapeHtml(what.toLowerCase())} listed here right now. <a href="${browseQ}">Search nearby areas</a> or set an alert on the browse page to hear about new ones first.</div>`}
     <div class="ctarow"><a class="cta" href="${browseQ}">Search, filter &amp; see these on the map</a></div>
-    ${nearby.length ? `<div class="links"><strong>Nearby in ${escapeHtml(area.county)}:</strong><br>${nearby.map(a => `<a href="/${p.catSlug}/${slugify(a.name)}${bedSlug ? "/" + bedSlug : ""}">${escapeHtml(a.name)}</a>`).join(" ")}</div>` : ""}
-    ${areaLinksHtml()}`;
+    <div class="links">${nearby.length ? `<strong>Nearby in ${escapeHtml(area.county)}:</strong><br>${nearby.map(a => `<a href="/${p.catSlug}/${slugify(a.name)}${bedSlug ? "/" + bedSlug : ""}">${escapeHtml(shortArea(a))}</a>`).join(" ")}<br>` : ""}<a class="all" href="/areas">All areas in Kenya →</a></div>`;
   sendHtml(res, 200, pageShell({ title, description: desc, canonical, jsonLd, bodyHtml, wide: true, noindex: !rows.length }));
 }
 router.add("GET", "/:catSlug/:areaSlug", landingPage);
@@ -3627,7 +3647,7 @@ router.add("GET", "/areas", (req, res) => {
     title: "Browse Houses by Area | PataHome",
     description: "Browse rentals and houses for sale across Kenyan counties on PataHome, direct from verified owners.",
     canonical: `${BASE_URL}/areas`,
-    wide: true, bodyHtml: `<h1>Browse by area</h1><p class="sub-lead">Rentals, homes for sale and Airbnbs in every area we cover.</p>${areaLinksHtml()}`
+    wide: true, bodyHtml: `<h1>Browse by area</h1><p class="sub-lead">Rentals, homes for sale and Airbnbs in every area we cover.</p>${areaDirectoryHtml()}`
   }));
 });
 
